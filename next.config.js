@@ -4,7 +4,6 @@ const nextConfig = {
   output: 'standalone',
   
   reactStrictMode: true,
-  swcMinify: true,
   
   // Отключаем ESLint и TypeScript проверки во время сборки для Docker
   eslint: {
