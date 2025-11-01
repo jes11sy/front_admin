@@ -275,7 +275,7 @@ class ApiClient {
    * Получение профиля текущего пользователя
    */
   async getProfile() {
-    return this.request<any>('/users/profile')
+    return this.request<any>('/auth/profile')
   }
 
   // Сотрудники (мастера и директора)
