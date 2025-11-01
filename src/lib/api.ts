@@ -326,8 +326,9 @@ class ApiClient {
     return this.request<any>(`/operators${query ? `?${query}` : ''}`)
   }
 
-  async getOperator(id: string) {
-    return this.request<any>(`/operators/${id}`)
+  async getOperator(id: string, type?: 'operator' | 'admin') {
+    const query = type ? `?type=${type}` : ''
+    return this.request<any>(`/operators/${id}${query}`)
   }
 
   async createOperator(data: any) {

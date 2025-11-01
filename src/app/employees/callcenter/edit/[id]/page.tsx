@@ -7,6 +7,8 @@ import { Label } from '@/components/ui/label'
 import { RefreshCw, Upload } from 'lucide-react'
 import { useRouter, useParams } from 'next/navigation'
 import { useState, useEffect } from 'react'
+import { apiClient } from '@/lib/api'
+import { toast } from 'sonner'
 
 export default function EditCallCenterEmployeePage() {
   const router = useRouter()
@@ -25,66 +27,39 @@ export default function EditCallCenterEmployeePage() {
   const [contractFile, setContractFile] = useState<File | null>(null)
   const [existingPassport, setExistingPassport] = useState<string | null>(null)
   const [existingContract, setExistingContract] = useState<string | null>(null)
+  const [isLoading, setIsLoading] = useState(true)
 
   // Загрузка данных сотрудника
   useEffect(() => {
-    // TODO: Загрузить данные с API
-    // Мок-данные для примера
-    const mockEmployees: { [key: string]: any } = {
-      '1': {
-        name: 'Иванов Иван',
-        login: 'ivanov',
-        password: 'password123',
-        sipAddress: '100',
-        note: 'Опытный сотрудник',
-        status: 'active',
-        passport: 'passport_1.jpg',
-        contract: 'contract_1.pdf'
-      },
-      '2': {
-        name: 'Петрова Мария',
-        login: 'petrova',
-        password: 'password456',
-        sipAddress: '101',
-        note: '',
-        status: 'active',
-        passport: 'passport_2.jpg',
-        contract: 'contract_2.pdf'
-      },
-      '3': {
-        name: 'Сидоров Петр',
-        login: 'sidorov',
-        password: 'password789',
-        sipAddress: '102',
-        note: 'В отпуске до 15.11',
-        status: 'inactive',
-        passport: null,
-        contract: null
-      },
-      '4': {
-        name: 'Кузнецова Анна',
-        login: 'kuznetsova',
-        password: 'passwordabc',
-        sipAddress: '103',
-        note: '',
-        status: 'active',
-        passport: 'passport_4.jpg',
-        contract: 'contract_4.pdf'
+    const loadOperator = async () => {
+      setIsLoading(true)
+      try {
+        const response = await apiClient.getOperator(employeeId as string, 'operator')
+        if (response.success && response.data) {
+          const operator = response.data
+          setFormData({
+            name: operator.name || '',
+            login: operator.login || '',
+            password: '', // Пароль не возвращается с API из соображений безопасности
+            sipAddress: operator.sipAddress || '',
+            note: operator.note || '',
+            status: operator.statusWork || 'active'
+          })
+          setExistingPassport(operator.passportDoc || null)
+          setExistingContract(operator.contractDoc || null)
+        } else {
+          toast.error('Не удалось загрузить данные оператора')
+        }
+      } catch (error) {
+        console.error('Error loading operator:', error)
+        toast.error('Ошибка при загрузке данных')
+      } finally {
+        setIsLoading(false)
       }
     }
 
-    const employee = mockEmployees[employeeId as string]
-    if (employee) {
-      setFormData({
-        name: employee.name,
-        login: employee.login,
-        password: employee.password,
-        sipAddress: employee.sipAddress,
-        note: employee.note,
-        status: employee.status
-      })
-      setExistingPassport(employee.passport)
-      setExistingContract(employee.contract)
+    if (employeeId) {
+      loadOperator()
     }
   }, [employeeId])
 
@@ -122,15 +97,56 @@ export default function EditCallCenterEmployeePage() {
     setFormData({ ...formData, password })
   }
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    // TODO: Отправить данные на API
-    console.log('Updated form data:', formData)
-    console.log('Passport file:', passportFile)
-    console.log('Contract file:', contractFile)
+    setIsLoading(true)
     
-    // Вернуться к списку
-    router.push('/employees/callcenter')
+    try {
+      const updateData: any = {
+        name: formData.name,
+        login: formData.login,
+        sipAddress: formData.sipAddress,
+        note: formData.note,
+        statusWork: formData.status,
+      }
+
+      // Добавляем пароль только если он был изменен
+      if (formData.password) {
+        updateData.password = formData.password
+      }
+
+      // TODO: Загрузка файлов паспорта и договора через files-service
+      if (passportFile) {
+        // updateData.passportDoc = await uploadFile(passportFile)
+        console.log('Passport file to upload:', passportFile)
+      }
+      if (contractFile) {
+        // updateData.contractDoc = await uploadFile(contractFile)
+        console.log('Contract file to upload:', contractFile)
+      }
+
+      const response = await apiClient.updateOperator(employeeId as string, updateData)
+      
+      if (response.success) {
+        toast.success('Данные оператора успешно обновлены')
+        router.push('/employees/callcenter')
+      } else {
+        toast.error('Не удалось обновить данные оператора')
+      }
+    } catch (error) {
+      console.error('Error updating operator:', error)
+      toast.error('Ошибка при обновлении данных')
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  if (isLoading && !formData.name) {
+    return (
+      <div className="min-h-screen flex items-center justify-center" style={{backgroundColor: '#114643'}}>
+        <div className="text-white text-xl">Загрузка...</div>
+      </div>
+    )
   }
 
   return (

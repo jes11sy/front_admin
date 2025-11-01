@@ -7,6 +7,8 @@ import { Label } from '@/components/ui/label'
 import { RefreshCw, Upload, X } from 'lucide-react'
 import { useRouter, useParams } from 'next/navigation'
 import { useState, useEffect } from 'react'
+import { apiClient } from '@/lib/api'
+import { toast } from 'sonner'
 
 export default function EditDirectorPage() {
   const router = useRouter()
@@ -29,6 +31,7 @@ export default function EditDirectorPage() {
   const [showCityDropdown, setShowCityDropdown] = useState(false)
   const [existingPassport, setExistingPassport] = useState<string | null>(null)
   const [existingContract, setExistingContract] = useState<string | null>(null)
+  const [isLoading, setIsLoading] = useState(true)
 
   const availableCities = ['Саратов', 'Энгельс', 'Ульяновск']
 
@@ -39,57 +42,36 @@ export default function EditDirectorPage() {
 
   // Загрузка данных директора
   useEffect(() => {
-    // TODO: Загрузить данные с API
-    // Мок-данные для примера
-    const mockDirectors: { [key: string]: any } = {
-      '1': {
-        cities: ['Саратов'],
-        name: 'Соколов Дмитрий',
-        login: 'sokolov_dir',
-        password: 'password123',
-        tgId: '@sokolov_dir',
-        note: '',
-        status: 'active',
-        passport: 'passport_1.jpg',
-        contract: 'contract_1.pdf'
-      },
-      '2': {
-        cities: ['Энгельс', 'Ульяновск'],
-        name: 'Михайлова Анна',
-        login: 'mikhaylova_dir',
-        password: 'password456',
-        tgId: '@anna_spb',
-        note: 'Работает в двух городах',
-        status: 'active',
-        passport: 'passport_2.jpg',
-        contract: 'contract_2.pdf'
-      },
-      '3': {
-        cities: ['Саратов'],
-        name: 'Николаев Сергей',
-        login: 'nikolaev_dir',
-        password: 'password789',
-        tgId: '@nikolaev_kzn',
-        note: '',
-        status: 'active',
-        passport: null,
-        contract: null
-      },
+    const loadDirector = async () => {
+      setIsLoading(true)
+      try {
+        const response = await apiClient.request<any>(`/directors/${directorId}`)
+        if (response.success && response.data) {
+          const director = response.data
+          setFormData({
+            cities: director.cities || [],
+            name: director.name || '',
+            login: director.login || '',
+            password: '',
+            tgId: director.tgId || '',
+            note: director.note || '',
+            status: director.statusWork || 'active'
+          })
+          setExistingPassport(director.passportDoc || null)
+          setExistingContract(director.contractDoc || null)
+        } else {
+          toast.error('Не удалось загрузить данные директора')
+        }
+      } catch (error) {
+        console.error('Error loading director:', error)
+        toast.error('Ошибка при загрузке данных')
+      } finally {
+        setIsLoading(false)
+      }
     }
 
-    const director = mockDirectors[directorId as string]
-    if (director) {
-      setFormData({
-        cities: director.cities || [],
-        name: director.name,
-        login: director.login,
-        password: director.password,
-        tgId: director.tgId,
-        note: director.note,
-        status: director.status
-      })
-      setExistingPassport(director.passport)
-      setExistingContract(director.contract)
+    if (directorId) {
+      loadDirector()
     }
   }, [directorId])
 
@@ -127,27 +109,87 @@ export default function EditDirectorPage() {
     setFormData({ ...formData, password })
   }
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     
+    // Валидация
+    const newErrors: { cities?: string } = {}
     if (formData.cities.length === 0) {
-      setErrors({ cities: 'Выберите хотя бы один город' })
-      return
+      newErrors.cities = 'Выберите хотя бы один город'
     }
     
-    setErrors({})
+    if (Object.keys(newErrors).length > 0) {
+      setErrors(newErrors)
+      return
+    }
+
+    setIsLoading(true)
     
-    // TODO: Отправить данные на API
-    console.log('Updated form data:', formData)
-    console.log('Passport file:', passportFile)
-    console.log('Contract file:', contractFile)
-    
-    // Вернуться к списку
-    router.push('/employees/directors')
+    try {
+      const updateData: any = {
+        cities: formData.cities,
+        name: formData.name,
+        login: formData.login,
+        tgId: formData.tgId,
+        note: formData.note,
+        statusWork: formData.status,
+      }
+
+      // Добавляем пароль только если он был изменен
+      if (formData.password) {
+        updateData.password = formData.password
+      }
+
+      // TODO: Загрузка файлов паспорта и договора через files-service
+      if (passportFile) {
+        console.log('Passport file to upload:', passportFile)
+      }
+      if (contractFile) {
+        console.log('Contract file to upload:', contractFile)
+      }
+
+      const response = await apiClient.updateDirector(directorId as string, updateData)
+      
+      if (response.success) {
+        toast.success('Данные директора успешно обновлены')
+        router.push('/employees/directors')
+      } else {
+        toast.error('Не удалось обновить данные директора')
+      }
+    } catch (error) {
+      console.error('Error updating director:', error)
+      toast.error('Ошибка при обновлении данных')
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const addCity = (city: string) => {
+    if (!formData.cities.includes(city)) {
+      setFormData({ ...formData, cities: [...formData.cities, city] })
+      setErrors({ ...errors, cities: undefined })
+    }
+    setCitySearch('')
+    setShowCityDropdown(false)
+  }
+
+  const removeCity = (cityToRemove: string) => {
+    setFormData({
+      ...formData,
+      cities: formData.cities.filter(city => city !== cityToRemove)
+    })
+  }
+
+  if (isLoading && !formData.name) {
+    return (
+      <div className="min-h-screen flex items-center justify-center" style={{backgroundColor: '#114643'}}>
+        <div className="text-white text-xl">Загрузка...</div>
+      </div>
+    )
   }
 
   return (
-    <div className="min-h-screen" style={{backgroundColor: '#114643'}} onClick={() => setShowCityDropdown(false)}>
+    <div className="min-h-screen" style={{backgroundColor: '#114643'}}>
       <div className="container mx-auto px-4 py-8 max-w-4xl">
         <Card className="border-0 shadow-lg">
           <CardHeader>
@@ -155,12 +197,33 @@ export default function EditDirectorPage() {
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-6">
-              {/* Город */}
+              {/* Города */}
               <div>
-                <Label htmlFor="cityInput" className="text-gray-700">Город *</Label>
-                <div className="relative mt-1">
+                <Label htmlFor="cities" className="text-gray-700">Города *</Label>
+                
+                {/* Выбранные города */}
+                <div className="flex flex-wrap gap-2 mt-2 mb-2">
+                  {formData.cities.map((city) => (
+                    <div
+                      key={city}
+                      className="flex items-center gap-2 bg-teal-100 text-teal-800 px-3 py-1 rounded-full"
+                    >
+                      <span>{city}</span>
+                      <button
+                        type="button"
+                        onClick={() => removeCity(city)}
+                        className="hover:bg-teal-200 rounded-full p-1"
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Поле поиска городов */}
+                <div className="relative">
                   <Input
-                    id="cityInput"
+                    id="cities"
                     type="text"
                     value={citySearch}
                     onChange={(e) => {
@@ -168,71 +231,28 @@ export default function EditDirectorPage() {
                       setShowCityDropdown(true)
                     }}
                     onFocus={() => setShowCityDropdown(true)}
-                    onClick={(e) => e.stopPropagation()}
                     placeholder="Начните вводить название города..."
-                    className={`${errors.cities ? 'border-red-500' : ''}`}
+                    className="mt-1"
                   />
                   
-                  {showCityDropdown && citySearch && filteredCities.length > 0 && (
-                    <div 
-                      className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-48 overflow-auto"
-                      onClick={(e) => e.stopPropagation()}
-                    >
+                  {/* Dropdown со списком городов */}
+                  {showCityDropdown && filteredCities.length > 0 && (
+                    <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-auto">
                       {filteredCities.map((city) => (
-                        <div
+                        <button
                           key={city}
-                          onClick={() => {
-                            setFormData({ ...formData, cities: [...formData.cities, city] })
-                            setCitySearch('')
-                            setShowCityDropdown(false)
-                            if (errors.cities) {
-                              setErrors({ ...errors, cities: undefined })
-                            }
-                          }}
-                          className="px-4 py-2 hover:bg-gray-100 cursor-pointer"
+                          type="button"
+                          onClick={() => addCity(city)}
+                          className="w-full text-left px-4 py-2 hover:bg-gray-100 focus:bg-gray-100 focus:outline-none"
                         >
                           {city}
-                        </div>
+                        </button>
                       ))}
                     </div>
                   )}
-                  
-                  {citySearch && filteredCities.length === 0 && formData.cities.length < availableCities.length && (
-                    <div 
-                      className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg"
-                      onClick={(e) => e.stopPropagation()}
-                    >
-                      <div className="px-4 py-2 text-gray-500 text-sm">
-                        Город не найден
-                      </div>
-                    </div>
-                  )}
                 </div>
-                
                 {errors.cities && (
-                  <p className="text-xs text-red-500 mt-1">{errors.cities}</p>
-                )}
-                
-                {formData.cities.length > 0 && (
-                  <div className="mt-2 flex flex-wrap gap-2">
-                    {formData.cities.map((city) => (
-                      <span
-                        key={city}
-                        className="px-3 py-1 bg-teal-100 text-teal-800 rounded-full text-sm font-medium flex items-center gap-2"
-                      >
-                        {city}
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setFormData({ ...formData, cities: formData.cities.filter(c => c !== city) })
-                          }}
-                          className="hover:text-teal-900"
-                        >
-                          <X className="h-3 w-3" />
-                        </button>
-                      </span>
-                    ))}
-                  </div>
+                  <p className="text-sm text-red-600 mt-1">{errors.cities}</p>
                 )}
               </div>
 
@@ -275,17 +295,16 @@ export default function EditDirectorPage() {
                 </div>
               </div>
 
-              {/* Пароль с генерацией */}
+              {/* Пароль */}
               <div>
-                <Label htmlFor="password" className="text-gray-700">Пароль *</Label>
+                <Label htmlFor="password" className="text-gray-700">Пароль</Label>
                 <div className="flex gap-2 mt-1">
                   <Input
                     id="password"
                     type="text"
-                    required
                     value={formData.password}
                     onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                    placeholder="Введите пароль или сгенерируйте"
+                    placeholder="Оставьте пустым, чтобы не менять пароль"
                     className="flex-1"
                   />
                   <Button 
@@ -300,16 +319,15 @@ export default function EditDirectorPage() {
                 </div>
               </div>
 
-              {/* TG_ID */}
+              {/* Telegram ID */}
               <div>
-                <Label htmlFor="tgId" className="text-gray-700">TG_ID *</Label>
+                <Label htmlFor="tgId" className="text-gray-700">Telegram ID</Label>
                 <Input
                   id="tgId"
                   type="text"
-                  required
                   value={formData.tgId}
                   onChange={(e) => setFormData({ ...formData, tgId: e.target.value })}
-                  placeholder="Например: @username или 123456789"
+                  placeholder="@username или ID"
                   className="mt-1"
                 />
               </div>
@@ -328,9 +346,9 @@ export default function EditDirectorPage() {
                 </select>
               </div>
 
-              {/* Паспорт */}
+              {/* Фото паспорта */}
               <div>
-                <Label htmlFor="passport" className="text-gray-700">Паспорт</Label>
+                <Label htmlFor="passport" className="text-gray-700">Фото паспорта</Label>
                 {existingPassport && !passportFile && (
                   <p className="text-sm text-gray-500 mt-1 mb-2">Текущий файл: {existingPassport}</p>
                 )}
@@ -359,9 +377,9 @@ export default function EditDirectorPage() {
                 </div>
               </div>
 
-              {/* Договор */}
+              {/* Фото договора */}
               <div>
-                <Label htmlFor="contract" className="text-gray-700">Договор</Label>
+                <Label htmlFor="contract" className="text-gray-700">Фото договора</Label>
                 {existingContract && !contractFile && (
                   <p className="text-sm text-gray-500 mt-1 mb-2">Текущий файл: {existingContract}</p>
                 )}
@@ -407,15 +425,17 @@ export default function EditDirectorPage() {
               <div className="flex gap-4 pt-4">
                 <Button 
                   type="submit"
+                  disabled={isLoading}
                   className="bg-gradient-to-r from-teal-600 to-emerald-600 hover:from-teal-700 hover:to-emerald-700 text-white"
                 >
-                  Сохранить изменения
+                  {isLoading ? 'Сохранение...' : 'Сохранить изменения'}
                 </Button>
                 <Button 
                   type="button"
                   variant="outline"
                   onClick={() => router.push('/employees/directors')}
                   className="bg-white"
+                  disabled={isLoading}
                 >
                   Отмена
                 </Button>
@@ -427,4 +447,3 @@ export default function EditDirectorPage() {
     </div>
   )
 }
-
