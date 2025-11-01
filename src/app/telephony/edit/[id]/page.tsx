@@ -15,12 +15,12 @@ export default function EditPhoneNumberPage() {
   const phoneId = params.id
 
   const [formData, setFormData] = useState({
-    number: '',
-    rk: '',
+    phoneNumber: '',
+    campaign: '',
     city: '',
-    avitoName: ''
+    accountName: ''
   })
-  const [errors, setErrors] = useState<{ number?: string }>({})
+  const [errors, setErrors] = useState<{ phoneNumber?: string }>({})
   const [isLoading, setIsLoading] = useState(true)
 
   // Загрузка данных телефонного номера
@@ -32,10 +32,10 @@ export default function EditPhoneNumberPage() {
         if (response.success && response.data) {
           const phone = response.data
           setFormData({
-            number: phone.number || '',
-            rk: phone.rk || '',
+            phoneNumber: phone.phoneNumber || '',
+            campaign: phone.campaign || '',
             city: phone.city || '',
-            avitoName: phone.avitoName || ''
+            accountName: phone.accountName || ''
           })
         } else {
           toast.error('Не удалось загрузить данные телефонного номера')
@@ -55,9 +55,9 @@ export default function EditPhoneNumberPage() {
 
   const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value
-    setFormData({ ...formData, number: value })
-    if (errors.number) {
-      setErrors({ ...errors, number: undefined })
+    setFormData({ ...formData, phoneNumber: value })
+    if (errors.phoneNumber) {
+      setErrors({ ...errors, phoneNumber: undefined })
     }
   }
 
@@ -67,10 +67,10 @@ export default function EditPhoneNumberPage() {
     
     try {
       const updateData = {
-        number: formData.number,
-        rk: formData.rk,
+        phoneNumber: formData.phoneNumber,
+        campaign: formData.campaign,
         city: formData.city,
-        avitoName: formData.avitoName || null
+        accountName: formData.accountName || ''
       }
 
       const response = await apiClient.updatePhone(phoneId as string, updateData)
@@ -100,34 +100,34 @@ export default function EditPhoneNumberPage() {
             <form onSubmit={handleSubmit} className="space-y-6">
               {/* Номер телефона */}
               <div>
-                <Label htmlFor="number" className="text-gray-700">Номер телефона *</Label>
+                <Label htmlFor="phoneNumber" className="text-gray-700">Номер телефона *</Label>
                 <Input
-                  id="number"
+                  id="phoneNumber"
                   type="text"
                   required
-                  value={formData.number}
+                  value={formData.phoneNumber}
                   onChange={handlePhoneChange}
-                  placeholder="+79539979880"
-                  className={`mt-1 ${errors.number ? 'border-red-500' : ''}`}
+                  placeholder="79539979880"
+                  className={`mt-1 ${errors.phoneNumber ? 'border-red-500' : ''}`}
                   disabled={isLoading}
                 />
                 <p className="text-xs text-gray-500 mt-1">
-                  Формат: +7... (с плюсом и кодом страны)
+                  Формат: 11 цифр без пробелов (например: 79539979880)
                 </p>
-                {errors.number && (
-                  <p className="text-xs text-red-500 mt-1">{errors.number}</p>
+                {errors.phoneNumber && (
+                  <p className="text-xs text-red-500 mt-1">{errors.phoneNumber}</p>
                 )}
               </div>
 
               {/* РК */}
               <div>
-                <Label htmlFor="rk" className="text-gray-700">РК *</Label>
+                <Label htmlFor="campaign" className="text-gray-700">РК *</Label>
                 <Input
-                  id="rk"
+                  id="campaign"
                   type="text"
                   required
-                  value={formData.rk}
-                  onChange={(e) => setFormData({ ...formData, rk: e.target.value })}
+                  value={formData.campaign}
+                  onChange={(e) => setFormData({ ...formData, campaign: e.target.value })}
                   placeholder="Например: РК_Москва_1"
                   className="mt-1"
                   disabled={isLoading}
@@ -151,12 +151,12 @@ export default function EditPhoneNumberPage() {
 
               {/* Имя авито */}
               <div>
-                <Label htmlFor="avitoName" className="text-gray-700">Имя аккаунта Авито</Label>
+                <Label htmlFor="accountName" className="text-gray-700">Имя аккаунта Авито</Label>
                 <Input
-                  id="avitoName"
+                  id="accountName"
                   type="text"
-                  value={formData.avitoName}
-                  onChange={(e) => setFormData({ ...formData, avitoName: e.target.value })}
+                  value={formData.accountName}
+                  onChange={(e) => setFormData({ ...formData, accountName: e.target.value })}
                   placeholder="Например: Avito_Moscow_Main"
                   className="mt-1"
                   disabled={isLoading}

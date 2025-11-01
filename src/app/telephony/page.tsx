@@ -12,10 +12,11 @@ import { toast } from 'sonner'
 
 interface PhoneNumber {
   id: number
-  number: string
-  rk: string
+  phoneNumber: string
+  campaign: string
   city: string
-  avitoName: string | null
+  accountName: string
+  callsCount: number
   createdAt: string
 }
 
@@ -179,13 +180,13 @@ export default function TelephonyPage() {
                 ) : (
                   filteredPhoneNumbers.map((phone) => (
                     <TableRow key={phone.id}>
-                      <TableCell className="font-mono text-gray-900">{phone.number}</TableCell>
-                      <TableCell className="text-gray-600">{phone.rk}</TableCell>
+                      <TableCell className="font-mono text-gray-900">{phone.phoneNumber}</TableCell>
+                      <TableCell className="text-gray-600">{phone.campaign}</TableCell>
                       <TableCell className="text-gray-600">{phone.city}</TableCell>
-                      <TableCell className="font-medium text-gray-900">{phone.avitoName || '-'}</TableCell>
+                      <TableCell className="font-medium text-gray-900">{phone.accountName}</TableCell>
                       <TableCell className="text-center">
                         <span className="px-3 py-1 bg-teal-100 text-teal-800 rounded-full text-sm font-medium">
-                          -
+                          {phone.callsCount}
                         </span>
                       </TableCell>
                       <TableCell className="text-gray-600">{formatDate(phone.createdAt)}</TableCell>
