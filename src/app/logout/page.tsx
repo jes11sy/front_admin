@@ -1,0 +1,29 @@
+'use client'
+
+import { useEffect } from 'react'
+import { useRouter } from 'next/navigation'
+import { useAuthStore } from '@/store/auth.store'
+import { apiClient } from '@/lib/api'
+
+export default function LogoutPage() {
+  const router = useRouter()
+  const clearAuth = useAuthStore((state) => state.clearAuth)
+
+  useEffect(() => {
+    // Выполняем выход
+    apiClient.logout()
+    clearAuth()
+    
+    // Перенаправляем на страницу логина
+    router.push('/login')
+  }, [router, clearAuth])
+
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 via-teal-900 to-slate-900">
+      <div className="text-white text-xl">
+        Выход из системы...
+      </div>
+    </div>
+  )
+}
+
