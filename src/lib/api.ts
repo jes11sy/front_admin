@@ -365,6 +365,13 @@ class ApiClient {
     return this.request<any>(`/masters${query ? `?${query}` : ''}`)
   }
 
+  async updateMaster(id: string, data: any) {
+    return this.request<any>(`/masters/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    })
+  }
+
   // Директора
   async getDirectors(params?: {
     search?: string
@@ -374,6 +381,13 @@ class ApiClient {
 
     const query = searchParams.toString()
     return this.request<any>(`/directors${query ? `?${query}` : ''}`)
+  }
+
+  async updateDirector(id: string, data: any) {
+    return this.request<any>(`/directors/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    })
   }
 
   // Отчеты (заглушки для будущей реализации)
