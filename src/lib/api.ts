@@ -391,6 +391,41 @@ class ApiClient {
     })
   }
 
+  // Телефонные номера
+  async getPhones(params?: {
+    search?: string
+  }) {
+    const searchParams = new URLSearchParams()
+    if (params?.search) searchParams.append('search', params.search)
+
+    const query = searchParams.toString()
+    return this.request<any>(`/phones${query ? `?${query}` : ''}`)
+  }
+
+  async getPhone(id: string) {
+    return this.request<any>(`/phones/${id}`)
+  }
+
+  async createPhone(data: any) {
+    return this.request<any>('/phones', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    })
+  }
+
+  async updatePhone(id: string, data: any) {
+    return this.request<any>(`/phones/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    })
+  }
+
+  async deletePhone(id: string) {
+    return this.request<any>(`/phones/${id}`, {
+      method: 'DELETE',
+    })
+  }
+
   // Отчеты (заглушки для будущей реализации)
   async getGlobalStatistics() {
     return this.request<any>('/reports/global')
