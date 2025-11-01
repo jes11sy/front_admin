@@ -68,5 +68,5 @@ NEXT_PUBLIC_API_URL=https://api.test-shem.ru/api/v1
 
 Логин для доступа к админке выдается только учредителю.
 
-**URL:** https://admin.test-shem.ru
+**URL:** https://test-shem.ru
 

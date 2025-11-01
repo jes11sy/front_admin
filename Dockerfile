@@ -1,43 +1,68 @@
-FROM node:20-alpine AS base
+# Используем официальный Node.js образ как базовый
+FROM node:18-alpine AS base
 
-# Install dependencies only when needed
-FROM base AS deps
-RUN apk add --no-cache libc6-compat
+# Устанавливаем рабочую директорию
 WORKDIR /app
 
-COPY package.json package-lock.json* ./
+# Копируем package.json и package-lock.json
+COPY package*.json ./
+
+# Устанавливаем зависимости
+RUN npm ci --only=production
+
+# Этап сборки
+FROM node:18-alpine AS builder
+WORKDIR /app
+
+# Копируем package.json и package-lock.json
+COPY package*.json ./
+
+# Устанавливаем все зависимости (включая dev)
 RUN npm ci
 
-# Rebuild the source code only when needed
-FROM base AS builder
-WORKDIR /app
-COPY --from=deps /app/node_modules ./node_modules
+# Копируем исходный код
 COPY . .
 
-ENV NEXT_TELEMETRY_DISABLED 1
+# Build arguments для переменных окружения
+ARG NEXT_PUBLIC_API_URL=https://api.test-shem.ru/api/v1
+ARG NEXT_PUBLIC_S3_BUCKET_URL=https://s3.twcstorage.ru/f7eead03-crmfiles
 
+# Устанавливаем как ENV для использования в сборке
+ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
+ENV NEXT_PUBLIC_S3_BUCKET_URL=$NEXT_PUBLIC_S3_BUCKET_URL
+
+# Собираем приложение
 RUN npm run build
 
-# Production image, copy all the files and run next
-FROM base AS runner
+# Этап продакшена
+FROM node:18-alpine AS runner
 WORKDIR /app
 
-ENV NODE_ENV production
-ENV NEXT_TELEMETRY_DISABLED 1
-
+# Создаем пользователя для безопасности
 RUN addgroup --system --gid 1001 nodejs
 RUN adduser --system --uid 1001 nextjs
 
-COPY --from=builder /app/public ./public
+# Копируем package.json
+COPY package*.json ./
+
+# Устанавливаем только production зависимости
+RUN npm ci --only=production && npm cache clean --force
+
+# Копируем собранное приложение из builder этапа (standalone)
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
+COPY --from=builder --chown=nextjs:nodejs /app/public ./public
 
+# Переключаемся на пользователя nextjs
 USER nextjs
 
+# Открываем порт
 EXPOSE 3004
 
-ENV PORT 3004
-ENV HOSTNAME "0.0.0.0"
+# Устанавливаем переменные окружения
+ENV NODE_ENV=production
+ENV PORT=3004
+ENV HOSTNAME="0.0.0.0"
 
+# Запускаем приложение (standalone режим)
 CMD ["node", "server.js"]
-

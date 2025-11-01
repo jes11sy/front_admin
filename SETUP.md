@@ -9,11 +9,10 @@ npm install
 
 ## 2. Настройка переменных окружения
 
-Файл `.env.local` уже создан с настройками:
+Создайте файл `.env.local` с настройками:
 
 ```env
 NEXT_PUBLIC_API_URL=https://api.test-shem.ru/api/v1
-NEXT_PUBLIC_MOCK_MODE=true  # Включен мок-режим для тестирования визуала
 NEXT_PUBLIC_S3_BUCKET_URL=https://s3.twcstorage.ru/f7eead03-crmfiles
 ```
 
@@ -97,21 +96,15 @@ front admin/
 - `GET /reports/regions` - Статистика по регионам
 - `GET /reports/cities` - Статистика по городам
 
-## Доступ (МОК-РЕЖИМ для тестирования визуала)
+## Доступ
 
-**Для входа используйте:**
-- Логин: `admin`
-- Пароль: `admin`
+**Для входа используйте учетные данные из таблицы `callcentre_admin` в базе данных.**
 
-URL: http://localhost:3004 (dev) / https://admin.test-shem.ru (production)
+URL: http://localhost:3004 (dev) / https://test-shem.ru (production)
 Порт: 3004
 Роль: admin (учредитель)
 
-**Отключение мок-режима:**
-Для подключения к реальному API измените в `.env.local`:
-```env
-NEXT_PUBLIC_MOCK_MODE=false
-```
+**Примечание:** Админка работает только с реальным API. Таблица для поиска администраторов: `callcentre_admin`.
 
 ## Следующие шаги
 
