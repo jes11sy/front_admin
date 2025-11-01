@@ -44,12 +44,13 @@ export default function ClientLayout({
           setUser({
             id: profileResponse.data.id,
             login: profileResponse.data.login,
-            name: profileResponse.data.name,
+            name: profileResponse.data.name || profileResponse.data.login, // Для админа name может отсутствовать
             role: profileResponse.data.role || 'admin',
           })
           setIsChecking(false)
         } else {
           // Профиль не получен - редирект на логин
+          console.error('Failed to get profile:', profileResponse)
           router.push('/login')
         }
       } catch (error) {
