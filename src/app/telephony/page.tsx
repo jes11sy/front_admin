@@ -5,22 +5,27 @@ import { PhoneCall, PhoneIncoming, PhoneOutgoing, Clock, Plus, Edit, Trash2, Sea
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
+import { apiClient } from '@/lib/api'
+import { toast } from 'sonner'
 
 interface PhoneNumber {
   id: number
-  phoneNumber: string
-  campaign: string
+  number: string
+  rk: string
   city: string
-  accountName: string
-  callsCount: number
+  avitoName: string | null
   createdAt: string
 }
 
 export default function TelephonyPage() {
+  const router = useRouter()
   const [searchQuery, setSearchQuery] = useState('')
+  const [phoneNumbers, setPhoneNumbers] = useState<PhoneNumber[]>([])
+  const [isLoading, setIsLoading] = useState(true)
 
-  // Мок-данные для статистики
+  // Мок-данные для статистики (пока оставляем, так как нет эндпоинта для статистики)
   const stats = {
     totalCalls: 1245,
     incomingCalls: 856,
@@ -28,51 +33,48 @@ export default function TelephonyPage() {
     avgCallDuration: '4:32',
   }
 
-  // Мок-данные для таблицы
-  const [phoneNumbers] = useState<PhoneNumber[]>([
-    {
-      id: 1,
-      phoneNumber: '+7 (495) 123-45-67',
-      campaign: 'РК_Москва_1',
-      city: 'Москва',
-      accountName: 'Avito_Moscow_Main',
-      callsCount: 245,
-      createdAt: '2024-01-15'
-    },
-    {
-      id: 2,
-      phoneNumber: '+7 (812) 987-65-43',
-      campaign: 'РК_СПб_2',
-      city: 'Санкт-Петербург',
-      accountName: 'Avito_SPB_Premium',
-      callsCount: 189,
-      createdAt: '2024-02-20'
-    },
-    {
-      id: 3,
-      phoneNumber: '+7 (843) 456-78-90',
-      campaign: 'РК_Казань_1',
-      city: 'Казань',
-      accountName: 'Avito_Kazan_Base',
-      callsCount: 112,
-      createdAt: '2024-01-10'
-    },
-    {
-      id: 4,
-      phoneNumber: '+7 (495) 234-56-78',
-      campaign: 'РК_Москва_2',
-      city: 'Москва',
-      accountName: 'Avito_Moscow_Extra',
-      callsCount: 298,
-      createdAt: '2024-03-05'
-    },
-  ])
+  useEffect(() => {
+    loadPhones()
+  }, [])
 
-  // Фильтрация по номеру телефона или названию аккаунта
-  const filteredPhoneNumbers = phoneNumbers.filter(phone =>
-    phone.phoneNumber.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    phone.accountName.toLowerCase().includes(searchQuery.toLowerCase())
-  )
+  const loadPhones = async () => {
+    setIsLoading(true)
+    try {
+      const response = await apiClient.getPhones({ search: searchQuery })
+      if (response.success && response.data) {
+        setPhoneNumbers(response.data)
+      } else {
+        toast.error('Не удалось загрузить список телефонных номеров')
+      }
+    } catch (error) {
+      console.error('Error loading phones:', error)
+      toast.error('Ошибка при загрузке телефонных номеров')
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const handleDelete = async (id: number) => {
+    if (!confirm('Вы уверены, что хотите удалить этот номер?')) {
+      return
+    }
+
+    try {
+      const response = await apiClient.deletePhone(id.toString())
+      if (response.success) {
+        toast.success('Номер успешно удален')
+        loadPhones()
+      } else {
+        toast.error('Не удалось удалить номер')
+      }
+    } catch (error) {
+      console.error('Error deleting phone:', error)
+      toast.error('Ошибка при удалении номера')
+    }
+  }
+
+  // Фильтрация локальная (можно убрать если делать поиск на сервере)
+  const filteredPhoneNumbers = phoneNumbers
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('ru-RU', {
@@ -141,7 +143,8 @@ export default function TelephonyPage() {
               </div>
               <Button 
                 className="bg-gradient-to-r from-teal-600 to-emerald-600 hover:from-teal-700 hover:to-emerald-700 text-white"
-                onClick={() => window.location.href = '/telephony/add'}
+                onClick={() => router.push('/telephony/add')}
+                disabled={isLoading}
               >
                 <Plus className="h-4 w-4 mr-2" />
                 Добавить номер
@@ -161,35 +164,54 @@ export default function TelephonyPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredPhoneNumbers.map((phone) => (
-                  <TableRow key={phone.id}>
-                    <TableCell className="font-mono text-gray-900">{phone.phoneNumber}</TableCell>
-                    <TableCell className="text-gray-600">{phone.campaign}</TableCell>
-                    <TableCell className="text-gray-600">{phone.city}</TableCell>
-                    <TableCell className="font-medium text-gray-900">{phone.accountName}</TableCell>
-                    <TableCell className="text-center">
-                      <span className="px-3 py-1 bg-teal-100 text-teal-800 rounded-full text-sm font-medium">
-                        {phone.callsCount}
-                      </span>
-                    </TableCell>
-                    <TableCell className="text-gray-600">{formatDate(phone.createdAt)}</TableCell>
-                    <TableCell>
-                      <div className="flex items-center justify-center space-x-2">
-                        <Button 
-                          variant="outline" 
-                          size="icon" 
-                          className="h-8 w-8 text-teal-600 hover:bg-teal-50"
-                          onClick={() => window.location.href = `/telephony/edit/${phone.id}`}
-                        >
-                          <Edit className="h-4 w-4" />
-                        </Button>
-                        <Button variant="outline" size="icon" className="h-8 w-8 text-red-600 hover:bg-red-50">
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
+                {isLoading ? (
+                  <TableRow>
+                    <TableCell colSpan={7} className="text-center py-8 text-gray-500">
+                      Загрузка...
                     </TableCell>
                   </TableRow>
-                ))}
+                ) : filteredPhoneNumbers.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={7} className="text-center py-8 text-gray-500">
+                      Телефонные номера не найдены
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  filteredPhoneNumbers.map((phone) => (
+                    <TableRow key={phone.id}>
+                      <TableCell className="font-mono text-gray-900">{phone.number}</TableCell>
+                      <TableCell className="text-gray-600">{phone.rk}</TableCell>
+                      <TableCell className="text-gray-600">{phone.city}</TableCell>
+                      <TableCell className="font-medium text-gray-900">{phone.avitoName || '-'}</TableCell>
+                      <TableCell className="text-center">
+                        <span className="px-3 py-1 bg-teal-100 text-teal-800 rounded-full text-sm font-medium">
+                          -
+                        </span>
+                      </TableCell>
+                      <TableCell className="text-gray-600">{formatDate(phone.createdAt)}</TableCell>
+                      <TableCell>
+                        <div className="flex items-center justify-center space-x-2">
+                          <Button 
+                            variant="outline" 
+                            size="icon" 
+                            className="h-8 w-8 text-teal-600 hover:bg-teal-50"
+                            onClick={() => router.push(`/telephony/edit/${phone.id}`)}
+                          >
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                          <Button 
+                            variant="outline" 
+                            size="icon" 
+                            className="h-8 w-8 text-red-600 hover:bg-red-50"
+                            onClick={() => handleDelete(phone.id)}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
               </TableBody>
             </Table>
 

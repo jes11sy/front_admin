@@ -6,6 +6,8 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { useRouter, useParams } from 'next/navigation'
 import { useState, useEffect } from 'react'
+import { apiClient } from '@/lib/api'
+import { toast } from 'sonner'
 
 export default function EditPhoneNumberPage() {
   const router = useRouter()
@@ -13,81 +15,78 @@ export default function EditPhoneNumberPage() {
   const phoneId = params.id
 
   const [formData, setFormData] = useState({
-    phoneNumber: '',
-    campaign: '',
+    number: '',
+    rk: '',
     city: '',
-    avitoAccount: ''
+    avitoName: ''
   })
-  const [errors, setErrors] = useState<{ phoneNumber?: string }>({})
+  const [errors, setErrors] = useState<{ number?: string }>({})
+  const [isLoading, setIsLoading] = useState(true)
 
   // Загрузка данных телефонного номера
   useEffect(() => {
-    // TODO: Загрузить данные с API
-    // Мок-данные для примера
-    const mockPhones: { [key: string]: any } = {
-      '1': {
-        phoneNumber: '79531234567',
-        campaign: 'РК_Москва_1',
-        city: 'Москва',
-        avitoAccount: 'Avito_Moscow_Main'
-      },
-      '2': {
-        phoneNumber: '78129876543',
-        campaign: 'РК_СПб_2',
-        city: 'Санкт-Петербург',
-        avitoAccount: 'Avito_SPB_Premium'
-      },
-      '3': {
-        phoneNumber: '78434567890',
-        campaign: 'РК_Казань_1',
-        city: 'Казань',
-        avitoAccount: 'Avito_Kazan_Base'
-      },
-      '4': {
-        phoneNumber: '79532345678',
-        campaign: 'РК_Москва_2',
-        city: 'Москва',
-        avitoAccount: 'Avito_Moscow_Extra'
-      },
+    const loadPhone = async () => {
+      setIsLoading(true)
+      try {
+        const response = await apiClient.getPhone(phoneId as string)
+        if (response.success && response.data) {
+          const phone = response.data
+          setFormData({
+            number: phone.number || '',
+            rk: phone.rk || '',
+            city: phone.city || '',
+            avitoName: phone.avitoName || ''
+          })
+        } else {
+          toast.error('Не удалось загрузить данные телефонного номера')
+        }
+      } catch (error) {
+        console.error('Error loading phone:', error)
+        toast.error('Ошибка при загрузке данных')
+      } finally {
+        setIsLoading(false)
+      }
     }
 
-    const phone = mockPhones[phoneId as string]
-    if (phone) {
-      setFormData({
-        phoneNumber: phone.phoneNumber,
-        campaign: phone.campaign,
-        city: phone.city,
-        avitoAccount: phone.avitoAccount
-      })
+    if (phoneId) {
+      loadPhone()
     }
   }, [phoneId])
 
   const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    // Убираем все нецифровые символы
-    const value = e.target.value.replace(/\D/g, '')
-    // Ограничиваем до 11 цифр (7 + 10 цифр)
-    const formatted = value.slice(0, 11)
-    setFormData({ ...formData, phoneNumber: formatted })
-    if (errors.phoneNumber) {
-      setErrors({ ...errors, phoneNumber: undefined })
+    const value = e.target.value
+    setFormData({ ...formData, number: value })
+    if (errors.number) {
+      setErrors({ ...errors, number: undefined })
     }
   }
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    setIsLoading(true)
     
-    if (formData.phoneNumber.length !== 11) {
-      setErrors({ phoneNumber: 'Номер телефона должен содержать 11 цифр' })
-      return
+    try {
+      const updateData = {
+        number: formData.number,
+        rk: formData.rk,
+        city: formData.city,
+        avitoName: formData.avitoName || null
+      }
+
+      const response = await apiClient.updatePhone(phoneId as string, updateData)
+      
+      if (response.success) {
+        toast.success('Телефонный номер успешно обновлен')
+        router.push('/telephony')
+      } else {
+        toast.error('Не удалось обновить телефонный номер')
+      }
+    } catch (error) {
+      console.error('Error updating phone:', error)
+      toast.error('Ошибка при обновлении телефонного номера')
+    } finally {
+      setIsLoading(false)
     }
-    
-    setErrors({})
-    
-    // TODO: Отправить данные на API
-    console.log('Updated form data:', formData)
-    
-    // Вернуться к списку
-    router.push('/telephony')
   }
 
   return (
@@ -101,41 +100,37 @@ export default function EditPhoneNumberPage() {
             <form onSubmit={handleSubmit} className="space-y-6">
               {/* Номер телефона */}
               <div>
-                <Label htmlFor="phoneNumber" className="text-gray-700">Номер телефона *</Label>
+                <Label htmlFor="number" className="text-gray-700">Номер телефона *</Label>
                 <Input
-                  id="phoneNumber"
+                  id="number"
                   type="text"
                   required
-                  value={formData.phoneNumber}
+                  value={formData.number}
                   onChange={handlePhoneChange}
-                  placeholder="79539979880 (11 цифр)"
-                  className={`mt-1 ${errors.phoneNumber ? 'border-red-500' : ''}`}
-                  maxLength={11}
+                  placeholder="+79539979880"
+                  className={`mt-1 ${errors.number ? 'border-red-500' : ''}`}
+                  disabled={isLoading}
                 />
                 <p className="text-xs text-gray-500 mt-1">
-                  Формат: 11 цифр без пробелов и скобок (например: 79539979880)
+                  Формат: +7... (с плюсом и кодом страны)
                 </p>
-                {errors.phoneNumber && (
-                  <p className="text-xs text-red-500 mt-1">{errors.phoneNumber}</p>
-                )}
-                {formData.phoneNumber && formData.phoneNumber.length !== 11 && !errors.phoneNumber && (
-                  <p className="text-xs text-gray-500 mt-1">
-                    Введено: {formData.phoneNumber.length} из 11 цифр
-                  </p>
+                {errors.number && (
+                  <p className="text-xs text-red-500 mt-1">{errors.number}</p>
                 )}
               </div>
 
               {/* РК */}
               <div>
-                <Label htmlFor="campaign" className="text-gray-700">РК *</Label>
+                <Label htmlFor="rk" className="text-gray-700">РК *</Label>
                 <Input
-                  id="campaign"
+                  id="rk"
                   type="text"
                   required
-                  value={formData.campaign}
-                  onChange={(e) => setFormData({ ...formData, campaign: e.target.value })}
+                  value={formData.rk}
+                  onChange={(e) => setFormData({ ...formData, rk: e.target.value })}
                   placeholder="Например: РК_Москва_1"
                   className="mt-1"
+                  disabled={isLoading}
                 />
               </div>
 
@@ -150,20 +145,21 @@ export default function EditPhoneNumberPage() {
                   onChange={(e) => setFormData({ ...formData, city: e.target.value })}
                   placeholder="Введите город"
                   className="mt-1"
+                  disabled={isLoading}
                 />
               </div>
 
               {/* Имя авито */}
               <div>
-                <Label htmlFor="avitoAccount" className="text-gray-700">Имя аккаунта Авито *</Label>
+                <Label htmlFor="avitoName" className="text-gray-700">Имя аккаунта Авито</Label>
                 <Input
-                  id="avitoAccount"
+                  id="avitoName"
                   type="text"
-                  required
-                  value={formData.avitoAccount}
-                  onChange={(e) => setFormData({ ...formData, avitoAccount: e.target.value })}
+                  value={formData.avitoName}
+                  onChange={(e) => setFormData({ ...formData, avitoName: e.target.value })}
                   placeholder="Например: Avito_Moscow_Main"
                   className="mt-1"
+                  disabled={isLoading}
                 />
               </div>
 
@@ -172,14 +168,16 @@ export default function EditPhoneNumberPage() {
                 <Button 
                   type="submit"
                   className="bg-gradient-to-r from-teal-600 to-emerald-600 hover:from-teal-700 hover:to-emerald-700 text-white"
+                  disabled={isLoading}
                 >
-                  Сохранить изменения
+                  {isLoading ? 'Загрузка...' : 'Сохранить изменения'}
                 </Button>
                 <Button 
                   type="button"
                   variant="outline"
                   onClick={() => router.push('/telephony')}
                   className="bg-white"
+                  disabled={isLoading}
                 >
                   Отмена
                 </Button>
