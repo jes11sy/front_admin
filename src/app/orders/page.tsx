@@ -4,10 +4,13 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Label } from '@/components/ui/label'
 import { Search, ShoppingCart } from 'lucide-react'
 import { useState, useEffect } from 'react'
 import { apiClient } from '@/lib/api'
 import { toast } from 'sonner'
+import { OptimizedPagination } from '@/components/ui/optimized-pagination'
 
 interface Order {
   id: number
@@ -52,7 +55,13 @@ export default function OrdersPage() {
   const [totalPages, setTotalPages] = useState(1)
   const [totalOrders, setTotalOrders] = useState(0)
   const [allOrders, setAllOrders] = useState<Order[]>([])
-  const ordersPerPage = 50
+  const [ordersPerPage, setOrdersPerPage] = useState(50)
+
+  const PAGE_SIZES = [
+    { value: '20', label: '20' },
+    { value: '50', label: '50' },
+    { value: '100', label: '100' },
+  ]
 
   // Загрузка заказов из API
   useEffect(() => {
@@ -135,7 +144,7 @@ export default function OrdersPage() {
     }
 
     loadOrders()
-  }, [currentPage, searchQuery])
+  }, [currentPage, searchQuery, ordersPerPage])
 
   // Поиск теперь делается на сервере, используем orders напрямую
   const filteredOrders = orders
@@ -311,80 +320,47 @@ export default function OrdersPage() {
 
             {/* Пагинация */}
             {!isLoading && orders.length > 0 && (
-              <div className="mt-6 flex items-center justify-between border-t border-gray-200 pt-4">
-                <div className="text-sm text-gray-600">
-                  Страница {currentPage} из {totalPages} • Всего заказов: {totalOrders}
-                </div>
-                <div className="flex gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handlePageChange(1)}
-                    disabled={currentPage === 1 || isLoading}
-                    className="bg-white"
-                  >
-                    Первая
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handlePageChange(currentPage - 1)}
-                    disabled={currentPage === 1 || isLoading}
-                    className="bg-white"
-                  >
-                    Назад
-                  </Button>
-                  
-                  {/* Номера страниц */}
-                  <div className="flex gap-1">
-                    {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-                      let pageNum: number
-                      if (totalPages <= 5) {
-                        pageNum = i + 1
-                      } else if (currentPage <= 3) {
-                        pageNum = i + 1
-                      } else if (currentPage >= totalPages - 2) {
-                        pageNum = totalPages - 4 + i
-                      } else {
-                        pageNum = currentPage - 2 + i
-                      }
-                      
-                      return (
-                        <Button
-                          key={pageNum}
-                          variant={currentPage === pageNum ? "default" : "outline"}
-                          size="sm"
-                          onClick={() => handlePageChange(pageNum)}
-                          disabled={isLoading}
-                          className={currentPage === pageNum 
-                            ? "bg-gradient-to-r from-teal-600 to-emerald-600 text-white" 
-                            : "bg-white"}
-                        >
-                          {pageNum}
-                        </Button>
-                      )
-                    })}
+              <div className="flex flex-col sm:flex-row items-center justify-between mt-6 gap-4 border-t border-gray-200 pt-4">
+                <div className="flex items-center gap-4">
+                  <div className="text-sm text-gray-600">
+                    Показано {((currentPage - 1) * ordersPerPage) + 1} - {Math.min(currentPage * ordersPerPage, totalOrders)} из {totalOrders} заказов
                   </div>
-
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handlePageChange(currentPage + 1)}
-                    disabled={currentPage === totalPages || isLoading}
-                    className="bg-white"
-                  >
-                    Вперед
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handlePageChange(totalPages)}
-                    disabled={currentPage === totalPages || isLoading}
-                    className="bg-white"
-                  >
-                    Последняя
-                  </Button>
+                  <div className="flex items-center gap-2">
+                    <Label htmlFor="page-size" className="text-sm text-gray-600">
+                      На странице:
+                    </Label>
+                    <Select
+                      value={ordersPerPage.toString()}
+                      onValueChange={(value) => {
+                        setOrdersPerPage(parseInt(value))
+                        setCurrentPage(1)
+                      }}
+                      disabled={isLoading}
+                    >
+                      <SelectTrigger className="w-20" id="page-size">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {PAGE_SIZES.map((size) => (
+                          <SelectItem key={size.value} value={size.value}>
+                            {size.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
+                {totalPages > 1 && (
+                  <OptimizedPagination
+                    currentPage={currentPage}
+                    totalPages={totalPages}
+                    onPageChange={handlePageChange}
+                    showFirstLast={true}
+                    showPrevNext={true}
+                    maxVisiblePages={5}
+                    disabled={isLoading}
+                  />
+                )}
               </div>
             )}
           </CardContent>
