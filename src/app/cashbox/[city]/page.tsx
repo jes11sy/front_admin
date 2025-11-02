@@ -37,14 +37,23 @@ export default function CityTransactionsPage() {
     totalExpenses: 0,
     balance: 0
   })
+  const [currentPage, setCurrentPage] = useState(1)
+  const [totalPages, setTotalPages] = useState(1)
+  const itemsPerPage = 50
 
   useEffect(() => {
     const loadData = async () => {
       setLoading(true)
       try {
-        const response = await apiClient.getCashByCity(cityName, { limit: 1000 })
+        const response = await apiClient.getCashByCity(cityName, { page: currentPage, limit: itemsPerPage })
         if (response.success && response.data) {
           const transactionsData: Transaction[] = response.data.data || response.data
+          const pagination = response.data.pagination
+          
+          if (pagination) {
+            setTotalPages(pagination.totalPages || 1)
+          }
+          
           setTransactions(transactionsData)
 
           // Рассчитываем статистику
@@ -72,7 +81,12 @@ export default function CityTransactionsPage() {
     }
 
     loadData()
-  }, [cityName])
+  }, [cityName, currentPage])
+
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page)
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('ru-RU', {
@@ -226,6 +240,85 @@ export default function CityTransactionsPage() {
                 )}
               </TableBody>
             </Table>
+
+            {/* Пагинация */}
+            {totalPages > 1 && (
+              <div className="mt-6 flex items-center justify-between border-t border-gray-200 pt-4">
+                <div className="text-sm text-gray-600">
+                  Страница {currentPage} из {totalPages}
+                </div>
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handlePageChange(1)}
+                    disabled={currentPage === 1 || loading}
+                    className="bg-white"
+                  >
+                    Первая
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handlePageChange(currentPage - 1)}
+                    disabled={currentPage === 1 || loading}
+                    className="bg-white"
+                  >
+                    Назад
+                  </Button>
+                  
+                  {/* Номера страниц */}
+                  <div className="flex gap-1">
+                    {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                      let pageNum: number
+                      if (totalPages <= 5) {
+                        pageNum = i + 1
+                      } else if (currentPage <= 3) {
+                        pageNum = i + 1
+                      } else if (currentPage >= totalPages - 2) {
+                        pageNum = totalPages - 4 + i
+                      } else {
+                        pageNum = currentPage - 2 + i
+                      }
+                      
+                      return (
+                        <Button
+                          key={pageNum}
+                          variant={currentPage === pageNum ? "default" : "outline"}
+                          size="sm"
+                          onClick={() => handlePageChange(pageNum)}
+                          disabled={loading}
+                          className={currentPage === pageNum 
+                            ? "bg-gradient-to-r from-teal-600 to-emerald-600 text-white" 
+                            : "bg-white"}
+                        >
+                          {pageNum}
+                        </Button>
+                      )
+                    })}
+                  </div>
+
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handlePageChange(currentPage + 1)}
+                    disabled={currentPage === totalPages || loading}
+                    className="bg-white"
+                  >
+                    Вперед
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handlePageChange(totalPages)}
+                    disabled={currentPage === totalPages || loading}
+                    className="bg-white"
+                  >
+                    Последняя
+                  </Button>
+                </div>
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>

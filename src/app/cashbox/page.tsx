@@ -42,15 +42,33 @@ export default function CashboxPage() {
     balance: 0,
   })
   const [isLoading, setIsLoading] = useState(true)
+  const [currentPage, setCurrentPage] = useState(1)
+  const [hasMore, setHasMore] = useState(true)
+  const itemsPerPage = 50
 
   // Загрузка данных из API
   useEffect(() => {
     const loadData = async () => {
+      // Проверяем наличие токена
+      const token = typeof window !== 'undefined' ? 
+        (localStorage.getItem('auth_token') || sessionStorage.getItem('auth_token')) : null
+      
+      if (!token) {
+        setIsLoading(false)
+        return
+      }
+      
       setIsLoading(true)
       try {
-        const response = await apiClient.getCashTransactions({ limit: 1000 })
+        // Загружаем все транзакции для статистики (можно оптимизировать через отдельный endpoint статистики)
+        const response = await apiClient.getCashTransactions({ page: currentPage, limit: itemsPerPage })
         if (response.success && response.data) {
           const transactions: CashTransaction[] = response.data.data || response.data
+          const pagination = response.data.pagination
+          
+          if (pagination) {
+            setHasMore(pagination.page < pagination.totalPages)
+          }
           
           // Группируем по городам
           const cityMap = new Map<string, CityBalance>()
@@ -95,7 +113,7 @@ export default function CashboxPage() {
     }
 
     loadData()
-  }, [])
+  }, [currentPage])
 
   const filteredCities = cityBalances.filter(city =>
     city.city.toLowerCase().includes(searchQuery.toLowerCase())
@@ -222,6 +240,35 @@ export default function CashboxPage() {
             {!isLoading && cityBalances.length === 0 && (
               <div className="text-center py-8 text-gray-500">
                 Нет данных по городам.
+              </div>
+            )}
+
+            {/* Пагинация */}
+            {!isLoading && hasMore && (
+              <div className="mt-6 flex items-center justify-center border-t border-gray-200 pt-4">
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                    disabled={currentPage === 1 || isLoading}
+                    className="bg-white"
+                  >
+                    Назад
+                  </Button>
+                  <div className="px-4 py-2 text-sm text-gray-600">
+                    Страница {currentPage}
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setCurrentPage(prev => prev + 1)}
+                    disabled={!hasMore || isLoading}
+                    className="bg-white"
+                  >
+                    Вперед
+                  </Button>
+                </div>
               </div>
             )}
           </CardContent>

@@ -51,6 +51,7 @@ export default function OrdersPage() {
   const [currentPage, setCurrentPage] = useState(1)
   const [totalPages, setTotalPages] = useState(1)
   const [totalOrders, setTotalOrders] = useState(0)
+  const [allOrders, setAllOrders] = useState<Order[]>([])
   const ordersPerPage = 50
 
   // Загрузка заказов из API
@@ -58,6 +59,7 @@ export default function OrdersPage() {
     const loadOrders = async () => {
       setIsLoading(true)
       try {
+        // Загружаем текущую страницу для отображения
         const response = await apiClient.getOrders({ 
           page: currentPage, 
           limit: ordersPerPage,
@@ -72,15 +74,56 @@ export default function OrdersPage() {
           setTotalOrders(total)
           setTotalPages(pages)
           
-          // Вычисляем статистику
-          const calculatedStats = {
-            totalOrders: total,
-            newOrders: ordersData.filter((o: Order) => o.statusOrder === 'Ожидает' || o.statusOrder === 'Принял').length,
-            inProgress: ordersData.filter((o: Order) => o.statusOrder === 'В пути' || o.statusOrder === 'В работе').length,
-            completed: ordersData.filter((o: Order) => o.statusOrder === 'Готово').length,
-            cancelled: ordersData.filter((o: Order) => o.statusOrder === 'Отказ' || o.statusOrder === 'Незаказ').length,
+          // Загружаем ВСЕ заказы для статистики (только если это первая загрузка)
+          if (allOrders.length === 0 && !searchQuery) {
+            // Загружаем все страницы
+            const allOrdersData: Order[] = []
+            let currentPageForAll = 1
+            let hasMorePages = true
+            
+            while (hasMorePages) {
+              const allResponse = await apiClient.getOrders({ 
+                page: currentPageForAll, 
+                limit: 100 
+              })
+              if (allResponse.success && allResponse.data) {
+                const pageData = allResponse.data.orders || allResponse.data
+                allOrdersData.push(...pageData)
+                
+                const pagination = allResponse.data.pagination
+                if (pagination && currentPageForAll < pagination.totalPages) {
+                  currentPageForAll++
+                } else {
+                  hasMorePages = false
+                }
+              } else {
+                hasMorePages = false
+              }
+            }
+            
+            setAllOrders(allOrdersData)
+            
+            // Вычисляем статистику по ВСЕМ заказам
+            const calculatedStats = {
+              totalOrders: allOrdersData.length,
+              newOrders: allOrdersData.filter((o: Order) => o.statusOrder === 'Ожидает' || o.statusOrder === 'Принял').length,
+              inProgress: allOrdersData.filter((o: Order) => o.statusOrder === 'В пути' || o.statusOrder === 'В работе').length,
+              completed: allOrdersData.filter((o: Order) => o.statusOrder === 'Готово').length,
+              cancelled: allOrdersData.filter((o: Order) => o.statusOrder === 'Отказ' || o.statusOrder === 'Незаказ').length,
+            }
+            setStats(calculatedStats)
+          } else {
+            // Используем уже загруженные данные для статистики
+            const statsData = searchQuery ? ordersData : allOrders
+            const calculatedStats = {
+              totalOrders: searchQuery ? total : allOrders.length,
+              newOrders: statsData.filter((o: Order) => o.statusOrder === 'Ожидает' || o.statusOrder === 'Принял').length,
+              inProgress: statsData.filter((o: Order) => o.statusOrder === 'В пути' || o.statusOrder === 'В работе').length,
+              completed: statsData.filter((o: Order) => o.statusOrder === 'Готово').length,
+              cancelled: statsData.filter((o: Order) => o.statusOrder === 'Отказ' || o.statusOrder === 'Незаказ').length,
+            }
+            setStats(calculatedStats)
           }
-          setStats(calculatedStats)
         }
       } catch (error) {
         console.error('Error loading orders:', error)
@@ -267,10 +310,10 @@ export default function OrdersPage() {
             )}
 
             {/* Пагинация */}
-            {totalPages > 1 && (
+            {!isLoading && orders.length > 0 && (
               <div className="mt-6 flex items-center justify-between border-t border-gray-200 pt-4">
                 <div className="text-sm text-gray-600">
-                  Страница {currentPage} из {totalPages}
+                  Страница {currentPage} из {totalPages} • Всего заказов: {totalOrders}
                 </div>
                 <div className="flex gap-2">
                   <Button
