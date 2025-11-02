@@ -5,23 +5,29 @@ import { Button } from '@/components/ui/button'
 import { useRouter, useParams } from 'next/navigation'
 import { useState, useEffect } from 'react'
 import { ArrowLeft, MapPin, Phone, Calendar, User, Wrench, DollarSign, FileText, Tag } from 'lucide-react'
+import { apiClient } from '@/lib/api'
+import { toast } from 'sonner'
 
 interface Order {
   id: number
-  campaign: string
+  rk: string
   city: string
-  avitoAccount: string
+  avitoName: string
   phone: string
-  orderType: string
-  client: string
+  typeOrder: string
+  clientName: string
   address: string
-  meetingDate: string
-  closingDate: string | null
-  techType: string
-  status: 'new' | 'in_progress' | 'completed' | 'cancelled'
-  master: string
-  amount: number
-  operator: string
+  dateMeeting: string
+  closingData: string | null
+  typeEquipment: string
+  statusOrder: string
+  masterId: number
+  result: number
+  operatorNameId: number
+  master?: { name: string }
+  operator?: { login: string }
+  problem?: string
+  comment?: string
 }
 
 export default function OrderViewPage() {
@@ -33,85 +39,29 @@ export default function OrderViewPage() {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    // TODO: Загрузить данные с API
-    // Мок-данные для примера
-    const mockOrders: { [key: string]: Order } = {
-      '1': {
-        id: 1,
-        campaign: 'РК_Москва_1',
-        city: 'Москва',
-        avitoAccount: 'Avito_Moscow_Main',
-        phone: '+7 (495) 123-45-67',
-        orderType: 'Ремонт',
-        client: 'Иванов Петр',
-        address: 'ул. Ленина, д. 10, кв. 5',
-        meetingDate: '2024-11-02',
-        closingDate: '2024-11-03',
-        techType: 'Стиральная машина',
-        status: 'completed',
-        master: 'Сергеев С.',
-        amount: 5500,
-        operator: 'Козлова А.'
-      },
-      '2': {
-        id: 2,
-        campaign: 'РК_СПб_2',
-        city: 'Санкт-Петербург',
-        avitoAccount: 'Avito_SPB_Premium',
-        phone: '+7 (812) 987-65-43',
-        orderType: 'Диагностика',
-        client: 'Петрова Анна',
-        address: 'Невский пр., д. 45, кв. 12',
-        meetingDate: '2024-11-03',
-        closingDate: null,
-        techType: 'Холодильник',
-        status: 'in_progress',
-        master: 'Козлов А.',
-        amount: 4200,
-        operator: 'Иванова М.'
-      },
-      '3': {
-        id: 3,
-        campaign: 'РК_Казань_1',
-        city: 'Казань',
-        avitoAccount: 'Avito_Kazan_Base',
-        phone: '+7 (843) 456-78-90',
-        orderType: 'Ремонт',
-        client: 'Сидоров Игорь',
-        address: 'ул. Баумана, д. 20, кв. 8',
-        meetingDate: '2024-11-04',
-        closingDate: null,
-        techType: 'Посудомоечная машина',
-        status: 'new',
-        master: 'Морозов И.',
-        amount: 3800,
-        operator: 'Петрова О.'
-      },
-      '4': {
-        id: 4,
-        campaign: 'РК_Москва_2',
-        city: 'Москва',
-        avitoAccount: 'Avito_Moscow_Extra',
-        phone: '+7 (495) 234-56-78',
-        orderType: 'Установка',
-        client: 'Кузнецова Мария',
-        address: 'ул. Пушкина, д. 15, кв. 22',
-        meetingDate: '2024-11-05',
-        closingDate: null,
-        techType: 'Варочная панель',
-        status: 'in_progress',
-        master: 'Иванов С.',
-        amount: 6200,
-        operator: 'Козлова А.'
-      },
+    const loadOrder = async () => {
+      setLoading(true)
+      try {
+        const response = await apiClient.getOrder(orderId as string)
+        if (response.success && response.data) {
+          setOrder(response.data)
+        } else {
+          toast.error('Заказ не найден')
+        }
+      } catch (error) {
+        console.error('Error loading order:', error)
+        const errorMessage = error instanceof Error ? error.message : 'Ошибка при загрузке заказа'
+        toast.error(errorMessage)
+      } finally {
+        setLoading(false)
+      }
     }
 
-    const foundOrder = mockOrders[orderId as string]
-    if (foundOrder) {
-      setOrder(foundOrder)
+    if (orderId) {
+      loadOrder()
     }
-    setLoading(false)
   }, [orderId])
+
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('ru-RU', {
@@ -129,24 +79,18 @@ export default function OrderViewPage() {
     })
   }
 
-  const getStatusLabel = (status: Order['status']) => {
-    const labels = {
-      new: 'Новый',
-      in_progress: 'В работе',
-      completed: 'Завершен',
-      cancelled: 'Отменен'
+  const getStatusColor = (status: string) => {
+    const colors: Record<string, string> = {
+      'Ожидает': 'bg-blue-100 text-blue-800',
+      'Принял': 'bg-cyan-100 text-cyan-800',
+      'В пути': 'bg-purple-100 text-purple-800',
+      'В работе': 'bg-yellow-100 text-yellow-800',
+      'Готово': 'bg-green-100 text-green-800',
+      'Отказ': 'bg-red-100 text-red-800',
+      'Модерн': 'bg-orange-100 text-orange-800',
+      'Незаказ': 'bg-gray-100 text-gray-800'
     }
-    return labels[status]
-  }
-
-  const getStatusColor = (status: Order['status']) => {
-    const colors = {
-      new: 'bg-blue-100 text-blue-800',
-      in_progress: 'bg-yellow-100 text-yellow-800',
-      completed: 'bg-green-100 text-green-800',
-      cancelled: 'bg-red-100 text-red-800'
-    }
-    return colors[status]
+    return colors[status] || 'bg-gray-100 text-gray-800'
   }
 
   if (loading) {
@@ -200,8 +144,8 @@ export default function OrderViewPage() {
           <CardHeader>
             <div className="flex items-center justify-between">
               <CardTitle className="text-2xl text-gray-800">Заказ #{order.id}</CardTitle>
-              <span className={`px-4 py-2 rounded-full text-sm font-medium ${getStatusColor(order.status)}`}>
-                {getStatusLabel(order.status)}
+              <span className={`px-4 py-2 rounded-full text-sm font-medium ${getStatusColor(order.statusOrder)}`}>
+                {order.statusOrder}
               </span>
             </div>
           </CardHeader>
@@ -214,7 +158,7 @@ export default function OrderViewPage() {
                     <User className="h-4 w-4" />
                     Клиент
                   </div>
-                  <p className="text-gray-900 font-medium text-lg">{order.client}</p>
+                  <p className="text-gray-900 font-medium text-lg">{order.clientName}</p>
                 </div>
 
                 <div>
@@ -240,7 +184,7 @@ export default function OrderViewPage() {
                     <Tag className="h-4 w-4" />
                     Тип заказа
                   </div>
-                  <p className="text-gray-900 font-medium">{order.orderType}</p>
+                  <p className="text-gray-900 font-medium">{order.typeOrder}</p>
                 </div>
 
                 <div>
@@ -248,7 +192,7 @@ export default function OrderViewPage() {
                     <FileText className="h-4 w-4" />
                     Тип техники
                   </div>
-                  <p className="text-gray-900">{order.techType}</p>
+                  <p className="text-gray-900">{order.typeEquipment}</p>
                 </div>
 
                 <div>
@@ -256,7 +200,7 @@ export default function OrderViewPage() {
                     <Wrench className="h-4 w-4" />
                     Мастер
                   </div>
-                  <p className="text-gray-900 font-medium">{order.master}</p>
+                  <p className="text-gray-900 font-medium">{order.master?.name || '-'}</p>
                 </div>
               </div>
             </div>
@@ -267,7 +211,9 @@ export default function OrderViewPage() {
                 <DollarSign className="h-4 w-4" />
                 Сумма заказа
               </div>
-              <p className="text-green-600 font-bold text-2xl">{formatCurrency(order.amount)}</p>
+              <p className="text-green-600 font-bold text-2xl">
+                {order.result ? formatCurrency(Number(order.result)) : '-'}
+              </p>
             </div>
           </CardContent>
         </Card>
@@ -281,7 +227,7 @@ export default function OrderViewPage() {
             <CardContent className="space-y-4">
               <div>
                 <p className="text-gray-500 text-sm">РК</p>
-                <p className="text-gray-900 font-medium">{order.campaign}</p>
+                <p className="text-gray-900 font-medium">{order.rk}</p>
               </div>
               <div>
                 <p className="text-gray-500 text-sm">Город</p>
@@ -289,11 +235,11 @@ export default function OrderViewPage() {
               </div>
               <div>
                 <p className="text-gray-500 text-sm">Авито аккаунт</p>
-                <p className="text-gray-900 font-medium">{order.avitoAccount}</p>
+                <p className="text-gray-900 font-medium">{order.avitoName || '-'}</p>
               </div>
               <div>
                 <p className="text-gray-500 text-sm">Оператор</p>
-                <p className="text-gray-900 font-medium">{order.operator}</p>
+                <p className="text-gray-900 font-medium">{order.operator?.login || '-'}</p>
               </div>
             </CardContent>
           </Card>
@@ -308,7 +254,7 @@ export default function OrderViewPage() {
                   <Calendar className="h-4 w-4" />
                   Дата встречи
                 </div>
-                <p className="text-gray-900 font-medium">{formatDate(order.meetingDate)}</p>
+                <p className="text-gray-900 font-medium">{formatDate(order.dateMeeting)}</p>
               </div>
               <div>
                 <div className="flex items-center gap-2 text-gray-500 text-sm mb-1">
@@ -316,7 +262,7 @@ export default function OrderViewPage() {
                   Дата закрытия
                 </div>
                 <p className="text-gray-900 font-medium">
-                  {order.closingDate ? formatDate(order.closingDate) : '-'}
+                  {order.closingData ? formatDate(order.closingData) : '-'}
                 </p>
               </div>
             </CardContent>

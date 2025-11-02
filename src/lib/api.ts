@@ -245,9 +245,9 @@ class ApiClient {
   }
 
   /**
-   * Обновление токена доступа
+   * Обновление токена доступа (публичный метод)
    */
-  async refreshToken() {
+  async refreshAuthToken() {
     if (!this.refreshToken) {
       throw new Error('Refresh token не найден')
     }
@@ -502,6 +502,72 @@ class ApiClient {
       method: 'POST',
       body: JSON.stringify({ text, avitoAccountName }),
     })
+  }
+
+  // Заказы (Orders Service)
+  async getOrders(params?: {
+    page?: number
+    limit?: number
+    status?: string
+    city?: string
+    search?: string
+    masterId?: number
+    master?: string
+    closingDate?: string
+  }) {
+    const searchParams = new URLSearchParams()
+    if (params?.page) searchParams.append('page', params.page.toString())
+    if (params?.limit) searchParams.append('limit', params.limit.toString())
+    if (params?.status) searchParams.append('status', params.status)
+    if (params?.city) searchParams.append('city', params.city)
+    if (params?.search) searchParams.append('search', params.search)
+    if (params?.masterId) searchParams.append('masterId', params.masterId.toString())
+    if (params?.master) searchParams.append('master', params.master)
+    if (params?.closingDate) searchParams.append('closingDate', params.closingDate)
+
+    const query = searchParams.toString()
+    return this.request<any>(`/orders${query ? `?${query}` : ''}`)
+  }
+
+  async getOrder(id: string) {
+    return this.request<any>(`/orders/${id}`)
+  }
+
+  async createOrder(data: any) {
+    return this.request<any>('/orders', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    })
+  }
+
+  async updateOrder(id: string, data: any) {
+    return this.request<any>(`/orders/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    })
+  }
+
+  async updateOrderStatus(id: string, status: string) {
+    return this.request<any>(`/orders/${id}/status`, {
+      method: 'PATCH',
+      body: JSON.stringify({ status }),
+    })
+  }
+
+  async getOrderStats(params?: {
+    startDate?: string
+    endDate?: string
+    city?: string
+    masterId?: number
+  }) {
+    const searchParams = new URLSearchParams()
+    if (params?.startDate) searchParams.append('startDate', params.startDate)
+    if (params?.endDate) searchParams.append('endDate', params.endDate)
+    if (params?.city) searchParams.append('city', params.city)
+    if (params?.masterId) searchParams.append('masterId', params.masterId.toString())
+
+    const query = searchParams.toString()
+    return this.request<any>(`/orders/stats${query ? `?${query}` : ''}`)
   }
 
   // Отчеты (заглушки для будущей реализации)

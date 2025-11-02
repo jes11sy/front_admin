@@ -5,113 +5,85 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Search, ShoppingCart } from 'lucide-react'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { apiClient } from '@/lib/api'
+import { toast } from 'sonner'
 
 interface Order {
   id: number
-  campaign: string
+  rk: string
   city: string
-  avitoAccount: string
+  avitoName: string
   phone: string
-  orderType: string
-  client: string
+  typeOrder: string
+  clientName: string
   address: string
-  meetingDate: string
-  closingDate: string | null
-  techType: string
-  status: 'new' | 'in_progress' | 'completed' | 'cancelled'
-  master: string
-  amount: number
-  operator: string
+  dateMeeting: string
+  closingData: string | null
+  typeEquipment: string
+  statusOrder: string
+  masterId: number
+  result: number
+  operatorNameId: number
+  master?: { name: string }
+  operator?: { login: string }
+}
+
+interface OrderStats {
+  totalOrders: number
+  newOrders: number
+  inProgress: number
+  completed: number
+  cancelled: number
 }
 
 export default function OrdersPage() {
   const [searchQuery, setSearchQuery] = useState('')
+  const [orders, setOrders] = useState<Order[]>([])
+  const [stats, setStats] = useState<OrderStats>({
+    totalOrders: 0,
+    newOrders: 0,
+    inProgress: 0,
+    completed: 0,
+    cancelled: 0,
+  })
+  const [isLoading, setIsLoading] = useState(true)
 
-  // Мок-данные для статистики
-  const stats = {
-    totalOrders: 324,
-    newOrders: 45,
-    inProgress: 128,
-    completed: 142,
-    cancelled: 9,
-  }
+  // Загрузка заказов из API
+  useEffect(() => {
+    const loadOrders = async () => {
+      setIsLoading(true)
+      try {
+        const response = await apiClient.getOrders({ limit: 100 })
+        if (response.success && response.data) {
+          const ordersData = response.data.orders || response.data
+          setOrders(ordersData)
+          
+          // Вычисляем статистику
+          const calculatedStats = {
+            totalOrders: ordersData.length,
+            newOrders: ordersData.filter((o: Order) => o.statusOrder === 'Ожидает' || o.statusOrder === 'Принял').length,
+            inProgress: ordersData.filter((o: Order) => o.statusOrder === 'В пути' || o.statusOrder === 'В работе').length,
+            completed: ordersData.filter((o: Order) => o.statusOrder === 'Готово').length,
+            cancelled: ordersData.filter((o: Order) => o.statusOrder === 'Отказ' || o.statusOrder === 'Незаказ').length,
+          }
+          setStats(calculatedStats)
+        }
+      } catch (error) {
+        console.error('Error loading orders:', error)
+        const errorMessage = error instanceof Error ? error.message : 'Ошибка при загрузке заказов'
+        toast.error(errorMessage)
+      } finally {
+        setIsLoading(false)
+      }
+    }
 
-  // Мок-данные для таблицы заказов
-  const [orders] = useState<Order[]>([
-    {
-      id: 1,
-      campaign: 'РК_Москва_1',
-      city: 'Москва',
-      avitoAccount: 'Avito_Moscow_Main',
-      phone: '+7 (495) 123-45-67',
-      orderType: 'Ремонт',
-      client: 'Иванов Петр',
-      address: 'ул. Ленина, д. 10, кв. 5',
-      meetingDate: '2024-11-02',
-      closingDate: '2024-11-03',
-      techType: 'Стиральная машина',
-      status: 'completed',
-      master: 'Сергеев С.',
-      amount: 5500,
-      operator: 'Козлова А.'
-    },
-    {
-      id: 2,
-      campaign: 'РК_СПб_2',
-      city: 'Санкт-Петербург',
-      avitoAccount: 'Avito_SPB_Premium',
-      phone: '+7 (812) 987-65-43',
-      orderType: 'Диагностика',
-      client: 'Петрова Анна',
-      address: 'Невский пр., д. 45, кв. 12',
-      meetingDate: '2024-11-03',
-      closingDate: null,
-      techType: 'Холодильник',
-      status: 'in_progress',
-      master: 'Козлов А.',
-      amount: 4200,
-      operator: 'Иванова М.'
-    },
-    {
-      id: 3,
-      campaign: 'РК_Казань_1',
-      city: 'Казань',
-      avitoAccount: 'Avito_Kazan_Base',
-      phone: '+7 (843) 456-78-90',
-      orderType: 'Ремонт',
-      client: 'Сидоров Игорь',
-      address: 'ул. Баумана, д. 20, кв. 8',
-      meetingDate: '2024-11-04',
-      closingDate: null,
-      techType: 'Посудомоечная машина',
-      status: 'new',
-      master: 'Морозов И.',
-      amount: 3800,
-      operator: 'Петрова О.'
-    },
-    {
-      id: 4,
-      campaign: 'РК_Москва_2',
-      city: 'Москва',
-      avitoAccount: 'Avito_Moscow_Extra',
-      phone: '+7 (495) 234-56-78',
-      orderType: 'Установка',
-      client: 'Кузнецова Мария',
-      address: 'ул. Пушкина, д. 15, кв. 22',
-      meetingDate: '2024-11-05',
-      closingDate: null,
-      techType: 'Варочная панель',
-      status: 'in_progress',
-      master: 'Иванов С.',
-      amount: 6200,
-      operator: 'Козлова А.'
-    },
-  ])
+    loadOrders()
+  }, [])
 
   const filteredOrders = orders.filter(order =>
     order.id.toString().includes(searchQuery) ||
-    order.client.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    order.clientName.toLowerCase().includes(searchQuery.toLowerCase()) ||
     order.phone.includes(searchQuery) ||
     order.address.toLowerCase().includes(searchQuery.toLowerCase())
   )
@@ -132,24 +104,18 @@ export default function OrdersPage() {
     })
   }
 
-  const getStatusLabel = (status: Order['status']) => {
-    const labels = {
-      new: 'Новый',
-      in_progress: 'В работе',
-      completed: 'Завершен',
-      cancelled: 'Отменен'
+  const getStatusColor = (status: string) => {
+    const colors: Record<string, string> = {
+      'Ожидает': 'bg-blue-100 text-blue-800',
+      'Принял': 'bg-cyan-100 text-cyan-800',
+      'В пути': 'bg-purple-100 text-purple-800',
+      'В работе': 'bg-yellow-100 text-yellow-800',
+      'Готово': 'bg-green-100 text-green-800',
+      'Отказ': 'bg-red-100 text-red-800',
+      'Модерн': 'bg-orange-100 text-orange-800',
+      'Незаказ': 'bg-gray-100 text-gray-800'
     }
-    return labels[status]
-  }
-
-  const getStatusColor = (status: Order['status']) => {
-    const colors = {
-      new: 'bg-blue-100 text-blue-800',
-      in_progress: 'bg-yellow-100 text-yellow-800',
-      completed: 'bg-green-100 text-green-800',
-      cancelled: 'bg-red-100 text-red-800'
-    }
-    return colors[status]
+    return colors[status] || 'bg-gray-100 text-gray-800'
   }
 
   return (
@@ -231,35 +197,41 @@ export default function OrdersPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredOrders.map((order) => (
+                {isLoading ? (
+                  <TableRow>
+                    <TableCell colSpan={15} className="text-center py-8 text-gray-500">
+                      Загрузка...
+                    </TableCell>
+                  </TableRow>
+                ) : filteredOrders.map((order) => (
                   <TableRow 
                     key={order.id}
                     className="cursor-pointer hover:bg-gray-100"
                     onClick={() => window.location.href = `/orders/${order.id}`}
                   >
                       <TableCell className="text-gray-500 px-2 py-2 text-[11px]">#{order.id}</TableCell>
-                      <TableCell className="text-gray-600 px-2 py-2 text-[11px]">{order.campaign}</TableCell>
+                      <TableCell className="text-gray-600 px-2 py-2 text-[11px]">{order.rk}</TableCell>
                       <TableCell className="text-gray-600 px-2 py-2 text-[11px]">{order.city}</TableCell>
-                      <TableCell className="text-gray-600 px-2 py-2 text-[11px] max-w-[90px] truncate">{order.avitoAccount}</TableCell>
+                      <TableCell className="text-gray-600 px-2 py-2 text-[11px] max-w-[90px] truncate">{order.avitoName || '-'}</TableCell>
                       <TableCell className="font-mono text-gray-600 px-2 py-2 text-[10px]">{order.phone}</TableCell>
-                      <TableCell className="text-gray-600 px-2 py-2 text-[11px]">{order.orderType}</TableCell>
-                      <TableCell className="font-medium text-gray-900 px-2 py-2 text-[11px]">{order.client}</TableCell>
+                      <TableCell className="text-gray-600 px-2 py-2 text-[11px]">{order.typeOrder}</TableCell>
+                      <TableCell className="font-medium text-gray-900 px-2 py-2 text-[11px]">{order.clientName}</TableCell>
                       <TableCell className="text-gray-600 px-2 py-2 text-[11px] max-w-[100px] truncate" title={order.address}>{order.address}</TableCell>
-                      <TableCell className="text-gray-600 px-2 py-2 text-[11px] whitespace-nowrap">{formatDate(order.meetingDate)}</TableCell>
+                      <TableCell className="text-gray-600 px-2 py-2 text-[11px] whitespace-nowrap">{formatDate(order.dateMeeting)}</TableCell>
                       <TableCell className="text-gray-600 px-2 py-2 text-[11px] whitespace-nowrap">
-                        {order.closingDate ? formatDate(order.closingDate) : '-'}
+                        {order.closingData ? formatDate(order.closingData) : '-'}
                       </TableCell>
-                      <TableCell className="text-gray-600 px-2 py-2 text-[11px]">{order.techType}</TableCell>
+                      <TableCell className="text-gray-600 px-2 py-2 text-[11px]">{order.typeEquipment}</TableCell>
                       <TableCell className="text-center px-2 py-2">
-                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-medium ${getStatusColor(order.status)}`}>
-                          {getStatusLabel(order.status)}
+                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-medium ${getStatusColor(order.statusOrder)}`}>
+                          {order.statusOrder}
                         </span>
                       </TableCell>
-                      <TableCell className="text-gray-600 px-2 py-2 text-[11px]">{order.master}</TableCell>
+                      <TableCell className="text-gray-600 px-2 py-2 text-[11px]">{order.master?.name || '-'}</TableCell>
                       <TableCell className="text-right font-medium text-green-600 px-2 py-2 text-[11px] whitespace-nowrap">
-                        {formatCurrency(order.amount)}
+                        {order.result ? formatCurrency(Number(order.result)) : '-'}
                       </TableCell>
-                      <TableCell className="text-gray-600 px-2 py-2 text-[11px]">{order.operator}</TableCell>
+                      <TableCell className="text-gray-600 px-2 py-2 text-[11px]">{order.operator?.login || '-'}</TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
