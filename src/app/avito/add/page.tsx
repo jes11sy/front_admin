@@ -10,13 +10,13 @@ import { apiClient } from '@/lib/api'
 import { toast } from 'sonner'
 
 interface FormData {
-  accountName: string
+  name: string
   clientId: string
   clientSecret: string
   userId: string
   proxyType: string
-  proxyIp: string
-  proxyPort: string
+  proxyHost: string
+  proxyPort: number | string
   proxyLogin: string
   proxyPassword: string
 }
@@ -24,12 +24,12 @@ interface FormData {
 export default function AddAvitoAccountPage() {
   const router = useRouter()
   const [formData, setFormData] = useState<FormData>({
-    accountName: '',
+    name: '',
     clientId: '',
     clientSecret: '',
     userId: '',
     proxyType: 'http',
-    proxyIp: '',
+    proxyHost: '',
     proxyPort: '',
     proxyLogin: '',
     proxyPassword: ''
@@ -41,7 +41,12 @@ export default function AddAvitoAccountPage() {
     setIsLoading(true)
     
     try {
-      const response = await apiClient.createAvitoAccount(formData)
+      // Преобразуем данные для API
+      const apiData = {
+        ...formData,
+        proxyPort: formData.proxyPort ? parseInt(formData.proxyPort.toString()) : undefined
+      }
+      const response = await apiClient.createAvitoAccount(apiData)
       
       if (response.success) {
         toast.success('Аккаунт Avito успешно добавлен')
@@ -69,13 +74,13 @@ export default function AddAvitoAccountPage() {
             <form onSubmit={handleSubmit} className="space-y-6">
               {/* Имя аккаунта */}
               <div>
-                <Label htmlFor="accountName" className="text-gray-700">Имя аккаунта *</Label>
+                <Label htmlFor="name" className="text-gray-700">Имя аккаунта *</Label>
                 <Input
-                  id="accountName"
+                  id="name"
                   type="text"
                   required
-                  value={formData.accountName}
-                  onChange={(e) => setFormData({ ...formData, accountName: e.target.value })}
+                  value={formData.name}
+                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                   placeholder="Например: Avito_Moscow_Main"
                   className="mt-1"
                 />
@@ -141,13 +146,13 @@ export default function AddAvitoAccountPage() {
 
               {/* IP прокси */}
               <div>
-                <Label htmlFor="proxyIp" className="text-gray-700">IP прокси *</Label>
+                <Label htmlFor="proxyHost" className="text-gray-700">IP прокси *</Label>
                 <Input
-                  id="proxyIp"
+                  id="proxyHost"
                   type="text"
                   required
-                  value={formData.proxyIp}
-                  onChange={(e) => setFormData({ ...formData, proxyIp: e.target.value })}
+                  value={formData.proxyHost}
+                  onChange={(e) => setFormData({ ...formData, proxyHost: e.target.value })}
                   placeholder="Например: 192.168.1.1"
                   className="mt-1"
                 />

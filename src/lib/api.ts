@@ -434,35 +434,43 @@ class ApiClient {
     if (params?.search) searchParams.append('search', params.search)
 
     const query = searchParams.toString()
-    return this.request<any>(`/avito${query ? `?${query}` : ''}`)
+    return this.request<any>(`/accounts${query ? `?${query}` : ''}`)
   }
 
   async getAvitoAccount(id: string) {
-    return this.request<any>(`/avito/${id}`)
+    return this.request<any>(`/accounts/${id}`)
   }
 
   async createAvitoAccount(data: any) {
-    return this.request<any>('/avito', {
+    return this.request<any>('/accounts', {
       method: 'POST',
       body: JSON.stringify(data),
     })
   }
 
   async updateAvitoAccount(id: string, data: any) {
-    return this.request<any>(`/avito/${id}`, {
+    return this.request<any>(`/accounts/${id}`, {
       method: 'PUT',
       body: JSON.stringify(data),
     })
   }
 
   async deleteAvitoAccount(id: string) {
-    return this.request<any>(`/avito/${id}`, {
+    return this.request<any>(`/accounts/${id}`, {
       method: 'DELETE',
     })
   }
 
-  async getAvitoStats() {
-    return this.request<any>('/avito/stats')
+  async checkAvitoConnection(id: string) {
+    return this.request<any>(`/accounts/${id}/check-connection`, {
+      method: 'POST',
+    })
+  }
+
+  async syncAvitoStats(id: string) {
+    return this.request<any>(`/accounts/${id}/sync-stats`, {
+      method: 'POST',
+    })
   }
 
   // Отчеты (заглушки для будущей реализации)

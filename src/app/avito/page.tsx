@@ -10,14 +10,16 @@ import { toast } from 'sonner'
 
 interface AvitoAccount {
   id: number
-  accountName: string
-  connectionStatus: 'online' | 'offline'
-  proxyStatus: 'active' | 'inactive'
-  cpa: number
-  balance: number
-  adsCount: number
-  viewsCount: number
-  contactsCount: number
+  name: string
+  connectionStatus?: 'online' | 'offline'
+  proxyStatus?: 'active' | 'inactive'
+  cpa?: number
+  balance?: number
+  adsCount?: number
+  viewsCount?: number
+  contactsCount?: number
+  lastSyncAt?: string
+  createdAt?: string
 }
 
 interface AvitoStats {
@@ -52,13 +54,22 @@ export default function AvitoPage() {
         // Загружаем аккаунты
         const accountsResponse = await apiClient.getAvitoAccounts()
         if (accountsResponse.success && accountsResponse.data) {
-          setAccounts(accountsResponse.data)
-        }
-
-        // Загружаем статистику
-        const statsResponse = await apiClient.getAvitoStats()
-        if (statsResponse.success && statsResponse.data) {
-          setStats(statsResponse.data)
+          const accountsData = accountsResponse.data
+          setAccounts(accountsData)
+          
+          // Вычисляем статистику из данных аккаунтов
+          const calculatedStats = {
+            accountsCount: accountsData.length,
+            adsCount: accountsData.reduce((sum: number, acc: AvitoAccount) => sum + (acc.adsCount || 0), 0),
+            viewsCount: accountsData.reduce((sum: number, acc: AvitoAccount) => sum + (acc.viewsCount || 0), 0),
+            contactsCount: accountsData.reduce((sum: number, acc: AvitoAccount) => sum + (acc.contactsCount || 0), 0),
+            totalBalance: accountsData.reduce((sum: number, acc: AvitoAccount) => sum + (acc.balance || 0), 0),
+            ordersCount: 0, // Данные заказов пока недоступны
+            orderPrice: 0, // Данные цены заказа пока недоступны
+          }
+          setStats(calculatedStats)
+        } else {
+          toast.error(accountsResponse.error || 'Не удалось загрузить данные')
         }
       } catch (error) {
         console.error('Error loading Avito data:', error)
@@ -198,7 +209,7 @@ export default function AvitoPage() {
                     onClick={() => window.location.href = `/avito/edit/${account.id}`}
                   >
                     <TableCell className="text-gray-500">#{account.id}</TableCell>
-                    <TableCell className="font-medium text-gray-900">{account.accountName}</TableCell>
+                    <TableCell className="font-medium text-gray-900">{account.name}</TableCell>
                     <TableCell className="text-center">
                       <span className={`inline-flex h-2 w-2 rounded-full ${
                         account.connectionStatus === 'online' ? 'bg-green-500' : 'bg-red-500'
@@ -209,11 +220,11 @@ export default function AvitoPage() {
                         account.proxyStatus === 'active' ? 'bg-blue-500' : 'bg-gray-300'
                       }`} />
                     </TableCell>
-                    <TableCell className="text-right text-gray-900">{formatCurrency(account.cpa)}</TableCell>
-                    <TableCell className="text-right font-medium text-green-600">{formatCurrency(account.balance)}</TableCell>
-                    <TableCell className="text-center text-gray-600">{account.adsCount}</TableCell>
-                    <TableCell className="text-center text-gray-600">{formatNumber(account.viewsCount)}</TableCell>
-                    <TableCell className="text-center text-gray-600">{account.contactsCount}</TableCell>
+                    <TableCell className="text-right text-gray-900">{account.cpa ? formatCurrency(account.cpa) : '-'}</TableCell>
+                    <TableCell className="text-right font-medium text-green-600">{account.balance ? formatCurrency(account.balance) : '-'}</TableCell>
+                    <TableCell className="text-center text-gray-600">{account.adsCount || 0}</TableCell>
+                    <TableCell className="text-center text-gray-600">{account.viewsCount ? formatNumber(account.viewsCount) : 0}</TableCell>
+                    <TableCell className="text-center text-gray-600">{account.contactsCount || 0}</TableCell>
                   </TableRow>
                 ))}
               </TableBody>
