@@ -4,7 +4,19 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Input } from '@/components/ui/input'
 import { Search } from 'lucide-react'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { apiClient } from '@/lib/api'
+import { toast } from 'sonner'
+
+interface ApiMasterReport {
+  masterId: number
+  masterName: string
+  city: string
+  totalOrders: number
+  turnover: number
+  avgCheck: number
+  salary: number
+}
 
 interface MasterReport {
   id: number
@@ -17,50 +29,40 @@ interface MasterReport {
 
 export default function MastersReportPage() {
   const [searchQuery, setSearchQuery] = useState('')
+  const [mastersData, setMastersData] = useState<MasterReport[]>([])
+  const [isLoading, setIsLoading] = useState(true)
 
-  // Мок-данные для отчета по мастерам
-  const [mastersData] = useState<MasterReport[]>([
-    {
-      id: 1,
-      name: 'Иванов Сергей',
-      city: 'Москва',
-      ordersCompleted: 45,
-      revenue: 135000,
-      salary: 67500
-    },
-    {
-      id: 2,
-      name: 'Петрова Ольга',
-      city: 'Санкт-Петербург',
-      ordersCompleted: 38,
-      revenue: 114000,
-      salary: 57000
-    },
-    {
-      id: 3,
-      name: 'Сидоров Алексей',
-      city: 'Казань',
-      ordersCompleted: 32,
-      revenue: 96000,
-      salary: 48000
-    },
-    {
-      id: 4,
-      name: 'Кузнецова Дарья',
-      city: 'Москва',
-      ordersCompleted: 41,
-      revenue: 123000,
-      salary: 61500
-    },
-    {
-      id: 5,
-      name: 'Морозов Игорь',
-      city: 'Новосибирск',
-      ordersCompleted: 28,
-      revenue: 84000,
-      salary: 42000
-    },
-  ])
+  useEffect(() => {
+    const loadData = async () => {
+      setIsLoading(true)
+      try {
+        const response = await apiClient.getMastersReport()
+        if (response.success && response.data) {
+          // Преобразуем данные из API в формат для отображения
+          const mappedData: MasterReport[] = response.data.map((item: ApiMasterReport) => ({
+            id: item.masterId,
+            name: item.masterName,
+            city: item.city,
+            ordersCompleted: item.totalOrders,
+            revenue: item.turnover,
+            salary: item.salary
+          }))
+          setMastersData(mappedData)
+        } else {
+          toast.error('Не удалось загрузить отчет по мастерам')
+        }
+      } catch (error) {
+        console.error('Error loading masters report:', error)
+        const errorMessage = error instanceof Error ? error.message : 'Ошибка при загрузке данных'
+        toast.error(errorMessage)
+      } finally {
+        setIsLoading(false)
+      }
+    }
+
+    loadData()
+  }, [])
+
 
   const filteredMasters = mastersData.filter(master =>
     master.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -111,10 +113,16 @@ export default function MastersReportPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredMasters.map((master) => {
+                {isLoading ? (
+                  <TableRow>
+                    <TableCell colSpan={6} className="text-center py-8 text-gray-500">
+                      Загрузка...
+                    </TableCell>
+                  </TableRow>
+                ) : filteredMasters.map((master) => {
                   const averageCheck = getAverageCheck(master.revenue, master.ordersCompleted)
                   return (
-                    <TableRow key={master.id}>
+                    <TableRow key={`${master.id}-${master.city}`}>
                       <TableCell className="font-medium text-gray-900">{master.name}</TableCell>
                       <TableCell className="text-gray-600">{master.city}</TableCell>
                       <TableCell className="text-center text-gray-600">{master.ordersCompleted}</TableCell>
