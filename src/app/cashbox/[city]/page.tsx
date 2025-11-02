@@ -306,7 +306,7 @@ export default function CityTransactionsPage() {
                   <TableHead className="text-xs font-semibold text-gray-600 uppercase tracking-wider">Тип</TableHead>
                   <TableHead className="text-xs font-semibold text-gray-600 uppercase tracking-wider">Описание</TableHead>
                   <TableHead className="text-xs font-semibold text-gray-600 uppercase tracking-wider">Заказ</TableHead>
-                  <TableHead className="text-xs font-semibold text-gray-600 uppercase tracking-wider">Категория</TableHead>
+                  <TableHead className="text-xs font-semibold text-gray-600 uppercase tracking-wider">Город</TableHead>
                   <TableHead className="text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">Сумма</TableHead>
                 </TableRow>
               </TableHeader>
