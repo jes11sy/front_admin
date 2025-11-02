@@ -126,7 +126,6 @@ export default function CityTransactionsPage() {
           totalExpenses: expenses,
           balance
         })
-        }
       } catch (error) {
         console.error('Error loading city transactions:', error)
         const errorMessage = error instanceof Error ? error.message : 'Ошибка при загрузке транзакций'

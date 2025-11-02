@@ -652,7 +652,7 @@ class ApiClient {
     if (params?.city) searchParams.append('city', params.city)
 
     const query = searchParams.toString()
-    return this.request<any>(`/reports/cities${query ? `?${query}` : ''}`)
+    return this.request<any>(`/reports/city${query ? `?${query}` : ''}`)
   }
 
   async getCitiesAnalytics(params?: {
