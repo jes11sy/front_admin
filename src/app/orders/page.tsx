@@ -48,20 +48,33 @@ export default function OrdersPage() {
     cancelled: 0,
   })
   const [isLoading, setIsLoading] = useState(true)
+  const [currentPage, setCurrentPage] = useState(1)
+  const [totalPages, setTotalPages] = useState(1)
+  const [totalOrders, setTotalOrders] = useState(0)
+  const ordersPerPage = 50
 
   // Загрузка заказов из API
   useEffect(() => {
     const loadOrders = async () => {
       setIsLoading(true)
       try {
-        const response = await apiClient.getOrders({ limit: 100 })
+        const response = await apiClient.getOrders({ 
+          page: currentPage, 
+          limit: ordersPerPage,
+          search: searchQuery || undefined
+        })
         if (response.success && response.data) {
           const ordersData = response.data.orders || response.data
+          const total = response.data.total || ordersData.length
+          const pages = response.data.totalPages || Math.ceil(total / ordersPerPage)
+          
           setOrders(ordersData)
+          setTotalOrders(total)
+          setTotalPages(pages)
           
           // Вычисляем статистику
           const calculatedStats = {
-            totalOrders: ordersData.length,
+            totalOrders: total,
             newOrders: ordersData.filter((o: Order) => o.statusOrder === 'Ожидает' || o.statusOrder === 'Принял').length,
             inProgress: ordersData.filter((o: Order) => o.statusOrder === 'В пути' || o.statusOrder === 'В работе').length,
             completed: ordersData.filter((o: Order) => o.statusOrder === 'Готово').length,
@@ -79,14 +92,20 @@ export default function OrdersPage() {
     }
 
     loadOrders()
-  }, [])
+  }, [currentPage, searchQuery])
 
-  const filteredOrders = orders.filter(order =>
-    order.id.toString().includes(searchQuery) ||
-    order.clientName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    order.phone.includes(searchQuery) ||
-    order.address.toLowerCase().includes(searchQuery.toLowerCase())
-  )
+  // Поиск теперь делается на сервере, используем orders напрямую
+  const filteredOrders = orders
+
+  const handleSearch = (value: string) => {
+    setSearchQuery(value)
+    setCurrentPage(1) // Сброс на первую страницу при поиске
+  }
+
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page)
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('ru-RU', {
@@ -162,16 +181,19 @@ export default function OrdersPage() {
         {/* Таблица заказов */}
         <Card className="border-0 shadow-lg">
           <CardContent className="p-4">
-            <div className="mb-4">
+            <div className="mb-4 flex items-center justify-between">
               <div className="relative max-w-sm">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
                 <Input
                   type="text"
                   placeholder="Поиск по ID, клиенту, телефону или адресу..."
                   value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
+                  onChange={(e) => handleSearch(e.target.value)}
                   className="pl-10"
                 />
+              </div>
+              <div className="text-sm text-gray-600">
+                Всего заказов: <span className="font-semibold">{totalOrders}</span>
               </div>
             </div>
 
@@ -238,15 +260,88 @@ export default function OrdersPage() {
               </Table>
             </div>
 
-            {filteredOrders.length === 0 && orders.length > 0 && (
+            {filteredOrders.length === 0 && !isLoading && (
               <div className="text-center py-8 text-gray-500">
-                Заказы не найдены. Попробуйте изменить поисковый запрос.
+                {searchQuery ? 'Заказы не найдены. Попробуйте изменить поисковый запрос.' : 'Нет заказов.'}
               </div>
             )}
 
-            {orders.length === 0 && (
-              <div className="text-center py-8 text-gray-500">
-                Нет заказов.
+            {/* Пагинация */}
+            {totalPages > 1 && (
+              <div className="mt-6 flex items-center justify-between border-t border-gray-200 pt-4">
+                <div className="text-sm text-gray-600">
+                  Страница {currentPage} из {totalPages}
+                </div>
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handlePageChange(1)}
+                    disabled={currentPage === 1 || isLoading}
+                    className="bg-white"
+                  >
+                    Первая
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handlePageChange(currentPage - 1)}
+                    disabled={currentPage === 1 || isLoading}
+                    className="bg-white"
+                  >
+                    Назад
+                  </Button>
+                  
+                  {/* Номера страниц */}
+                  <div className="flex gap-1">
+                    {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                      let pageNum: number
+                      if (totalPages <= 5) {
+                        pageNum = i + 1
+                      } else if (currentPage <= 3) {
+                        pageNum = i + 1
+                      } else if (currentPage >= totalPages - 2) {
+                        pageNum = totalPages - 4 + i
+                      } else {
+                        pageNum = currentPage - 2 + i
+                      }
+                      
+                      return (
+                        <Button
+                          key={pageNum}
+                          variant={currentPage === pageNum ? "default" : "outline"}
+                          size="sm"
+                          onClick={() => handlePageChange(pageNum)}
+                          disabled={isLoading}
+                          className={currentPage === pageNum 
+                            ? "bg-gradient-to-r from-teal-600 to-emerald-600 text-white" 
+                            : "bg-white"}
+                        >
+                          {pageNum}
+                        </Button>
+                      )
+                    })}
+                  </div>
+
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handlePageChange(currentPage + 1)}
+                    disabled={currentPage === totalPages || isLoading}
+                    className="bg-white"
+                  >
+                    Вперед
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handlePageChange(totalPages)}
+                    disabled={currentPage === totalPages || isLoading}
+                    className="bg-white"
+                  >
+                    Последняя
+                  </Button>
+                </div>
               </div>
             )}
           </CardContent>

@@ -570,6 +570,84 @@ class ApiClient {
     return this.request<any>(`/orders/stats${query ? `?${query}` : ''}`)
   }
 
+  // Касса (Cash Service)
+  async getCashTransactions(params?: {
+    page?: number
+    limit?: number
+    type?: string
+    city?: string
+    name?: string
+  }) {
+    const searchParams = new URLSearchParams()
+    if (params?.page) searchParams.append('page', params.page.toString())
+    if (params?.limit) searchParams.append('limit', params.limit.toString())
+    if (params?.type) searchParams.append('type', params.type)
+    if (params?.city) searchParams.append('city', params.city)
+    if (params?.name) searchParams.append('name', params.name)
+
+    const query = searchParams.toString()
+    return this.request<any>(`/cash${query ? `?${query}` : ''}`)
+  }
+
+  async getCashTransaction(id: string) {
+    return this.request<any>(`/cash/${id}`)
+  }
+
+  async createCashTransaction(data: any) {
+    return this.request<any>('/cash', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    })
+  }
+
+  async updateCashTransaction(id: string, data: any) {
+    return this.request<any>(`/cash/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    })
+  }
+
+  async approveCashTransaction(id: string, approve: boolean) {
+    return this.request<any>(`/cash/${id}/approve`, {
+      method: 'PATCH',
+      body: JSON.stringify({ approve }),
+    })
+  }
+
+  async getCashBalance() {
+    return this.request<any>('/cash/balance')
+  }
+
+  async getCashByCity(city: string, params?: {
+    page?: number
+    limit?: number
+    type?: string
+  }) {
+    const searchParams = new URLSearchParams()
+    searchParams.append('city', city)
+    if (params?.page) searchParams.append('page', params.page.toString())
+    if (params?.limit) searchParams.append('limit', params.limit.toString())
+    if (params?.type) searchParams.append('type', params.type)
+
+    const query = searchParams.toString()
+    return this.request<any>(`/cash${query ? `?${query}` : ''}`)
+  }
+
+  // Сдачи мастеров (Handover)
+  async getMasterHandovers(params?: {
+    page?: number
+    limit?: number
+    status?: string
+  }) {
+    const searchParams = new URLSearchParams()
+    if (params?.page) searchParams.append('page', params.page.toString())
+    if (params?.limit) searchParams.append('limit', params.limit.toString())
+    if (params?.status) searchParams.append('status', params.status)
+
+    const query = searchParams.toString()
+    return this.request<any>(`/handover${query ? `?${query}` : ''}`)
+  }
+
   // Отчеты (заглушки для будущей реализации)
   async getGlobalStatistics() {
     return this.request<any>('/reports/global')

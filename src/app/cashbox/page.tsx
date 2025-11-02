@@ -5,59 +5,97 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Search, Download, TrendingUp, TrendingDown, DollarSign } from 'lucide-react'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
+import { apiClient } from '@/lib/api'
+import { toast } from 'sonner'
+
+interface CashTransaction {
+  id: number
+  name: string
+  amount: number
+  city: string
+  note?: string
+  createdAt: string
+}
 
 interface CityBalance {
-  id: number
   city: string
   income: number
   expenses: number
   balance: number
 }
 
+interface Stats {
+  totalIncome: number
+  totalExpenses: number
+  balance: number
+}
+
 export default function CashboxPage() {
   const router = useRouter()
   const [searchQuery, setSearchQuery] = useState('')
+  const [cityBalances, setCityBalances] = useState<CityBalance[]>([])
+  const [stats, setStats] = useState<Stats>({
+    totalIncome: 0,
+    totalExpenses: 0,
+    balance: 0,
+  })
+  const [isLoading, setIsLoading] = useState(true)
 
-  // Мок-данные для статистики
-  const stats = {
-    totalIncome: 1250000,
-    totalExpenses: 800000,
-    balance: 450000,
-  }
+  // Загрузка данных из API
+  useEffect(() => {
+    const loadData = async () => {
+      setIsLoading(true)
+      try {
+        const response = await apiClient.getCashTransactions({ limit: 1000 })
+        if (response.success && response.data) {
+          const transactions: CashTransaction[] = response.data.data || response.data
+          
+          // Группируем по городам
+          const cityMap = new Map<string, CityBalance>()
+          let totalInc = 0
+          let totalExp = 0
+          
+          transactions.forEach((t: CashTransaction) => {
+            const city = t.city || 'Не указан'
+            if (!cityMap.has(city)) {
+              cityMap.set(city, { city, income: 0, expenses: 0, balance: 0 })
+            }
+            
+            const cityData = cityMap.get(city)!
+            const amount = Number(t.amount)
+            
+            if (t.name === 'приход') {
+              cityData.income += amount
+              totalInc += amount
+            } else if (t.name === 'расход') {
+              cityData.expenses += amount
+              totalExp += amount
+            }
+            
+            cityData.balance = cityData.income - cityData.expenses
+          })
+          
+          const citiesData = Array.from(cityMap.values())
+          setCityBalances(citiesData)
+          setStats({
+            totalIncome: totalInc,
+            totalExpenses: totalExp,
+            balance: totalInc - totalExp
+          })
+        }
+      } catch (error) {
+        console.error('Error loading cash data:', error)
+        const errorMessage = error instanceof Error ? error.message : 'Ошибка при загрузке данных'
+        toast.error(errorMessage)
+      } finally {
+        setIsLoading(false)
+      }
+    }
 
-  // Мок-данные по городам
-  const [cityBalances] = useState<CityBalance[]>([
-    {
-      id: 1,
-      city: 'Москва',
-      income: 450000,
-      expenses: 280000,
-      balance: 170000
-    },
-    {
-      id: 2,
-      city: 'Санкт-Петербург',
-      income: 380000,
-      expenses: 240000,
-      balance: 140000
-    },
-    {
-      id: 3,
-      city: 'Казань',
-      income: 220000,
-      expenses: 150000,
-      balance: 70000
-    },
-    {
-      id: 4,
-      city: 'Новосибирск',
-      income: 180000,
-      expenses: 120000,
-      balance: 60000
-    },
-  ])
+    loadData()
+  }, [])
 
   const filteredCities = cityBalances.filter(city =>
     city.city.toLowerCase().includes(searchQuery.toLowerCase())
@@ -148,9 +186,15 @@ export default function CashboxPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredCities.map((city) => (
+                {isLoading ? (
+                  <TableRow>
+                    <TableCell colSpan={4} className="text-center py-8 text-gray-500">
+                      Загрузка...
+                    </TableCell>
+                  </TableRow>
+                ) : filteredCities.map((city, index) => (
                   <TableRow 
-                    key={city.id}
+                    key={index}
                     className="cursor-pointer hover:bg-gray-100"
                     onClick={() => router.push(`/cashbox/${encodeURIComponent(city.city)}`)}
                   >
@@ -169,13 +213,13 @@ export default function CashboxPage() {
               </TableBody>
             </Table>
 
-            {filteredCities.length === 0 && cityBalances.length > 0 && (
+            {!isLoading && filteredCities.length === 0 && cityBalances.length > 0 && (
               <div className="text-center py-8 text-gray-500">
                 Города не найдены. Попробуйте изменить поисковый запрос.
               </div>
             )}
 
-            {cityBalances.length === 0 && (
+            {!isLoading && cityBalances.length === 0 && (
               <div className="text-center py-8 text-gray-500">
                 Нет данных по городам.
               </div>

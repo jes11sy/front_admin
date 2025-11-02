@@ -6,15 +6,23 @@ import { Button } from '@/components/ui/button'
 import { useRouter, useParams } from 'next/navigation'
 import { useState, useEffect } from 'react'
 import { ArrowLeft, TrendingUp, TrendingDown, DollarSign, Calendar, FileText } from 'lucide-react'
+import { apiClient } from '@/lib/api'
+import { toast } from 'sonner'
 
 interface Transaction {
   id: number
-  date: string
-  type: 'income' | 'expense'
+  name: string
   amount: number
-  description: string
-  orderId?: number
-  category?: string
+  city: string
+  note?: string
+  createdAt: string
+  paymentPurpose?: string
+}
+
+interface CityStats {
+  totalIncome: number
+  totalExpenses: number
+  balance: number
 }
 
 export default function CityTransactionsPage() {
@@ -24,250 +32,46 @@ export default function CityTransactionsPage() {
 
   const [transactions, setTransactions] = useState<Transaction[]>([])
   const [loading, setLoading] = useState(true)
-  const [cityStats, setCityStats] = useState({
+  const [cityStats, setCityStats] = useState<CityStats>({
     totalIncome: 0,
     totalExpenses: 0,
     balance: 0
   })
 
   useEffect(() => {
-    // TODO: Загрузить данные с API
-    // Мок-данные для примера
-    const mockTransactions: { [key: string]: Transaction[] } = {
-      'Москва': [
-        {
-          id: 1,
-          date: '2024-11-01',
-          type: 'income',
-          amount: 125000,
-          description: 'Оплата заказов',
-          orderId: 101,
-          category: 'Доходы'
-        },
-        {
-          id: 2,
-          date: '2024-11-01',
-          type: 'expense',
-          amount: 45000,
-          description: 'Зарплата мастерам',
-          category: 'Расходы'
-        },
-        {
-          id: 3,
-          date: '2024-11-02',
-          type: 'income',
-          amount: 89000,
-          description: 'Оплата заказов',
-          orderId: 102,
-          category: 'Доходы'
-        },
-        {
-          id: 4,
-          date: '2024-11-02',
-          type: 'expense',
-          amount: 32000,
-          description: 'Аренда помещения',
-          category: 'Расходы'
-        },
-        {
-          id: 5,
-          date: '2024-11-03',
-          type: 'income',
-          amount: 145000,
-          description: 'Оплата заказов',
-          orderId: 103,
-          category: 'Доходы'
-        },
-        {
-          id: 6,
-          date: '2024-11-03',
-          type: 'expense',
-          amount: 56000,
-          description: 'Закупка запчастей',
-          category: 'Расходы'
-        },
-        {
-          id: 7,
-          date: '2024-11-04',
-          type: 'income',
-          amount: 91000,
-          description: 'Оплата заказов',
-          orderId: 104,
-          category: 'Доходы'
-        },
-        {
-          id: 8,
-          date: '2024-11-04',
-          type: 'expense',
-          amount: 28000,
-          description: 'Реклама',
-          category: 'Расходы'
-        },
-      ],
-      'Санкт-Петербург': [
-        {
-          id: 1,
-          date: '2024-11-01',
-          type: 'income',
-          amount: 98000,
-          description: 'Оплата заказов',
-          orderId: 201,
-          category: 'Доходы'
-        },
-        {
-          id: 2,
-          date: '2024-11-01',
-          type: 'expense',
-          amount: 35000,
-          description: 'Зарплата мастерам',
-          category: 'Расходы'
-        },
-        {
-          id: 3,
-          date: '2024-11-02',
-          type: 'income',
-          amount: 112000,
-          description: 'Оплата заказов',
-          orderId: 202,
-          category: 'Доходы'
-        },
-        {
-          id: 4,
-          date: '2024-11-02',
-          type: 'expense',
-          amount: 28000,
-          description: 'Аренда помещения',
-          category: 'Расходы'
-        },
-        {
-          id: 5,
-          date: '2024-11-03',
-          type: 'income',
-          amount: 87000,
-          description: 'Оплата заказов',
-          orderId: 203,
-          category: 'Доходы'
-        },
-        {
-          id: 6,
-          date: '2024-11-03',
-          type: 'expense',
-          amount: 41000,
-          description: 'Закупка запчастей',
-          category: 'Расходы'
-        },
-      ],
-      'Казань': [
-        {
-          id: 1,
-          date: '2024-11-01',
-          type: 'income',
-          amount: 65000,
-          description: 'Оплата заказов',
-          orderId: 301,
-          category: 'Доходы'
-        },
-        {
-          id: 2,
-          date: '2024-11-01',
-          type: 'expense',
-          amount: 22000,
-          description: 'Зарплата мастерам',
-          category: 'Расходы'
-        },
-        {
-          id: 3,
-          date: '2024-11-02',
-          type: 'income',
-          amount: 78000,
-          description: 'Оплата заказов',
-          orderId: 302,
-          category: 'Доходы'
-        },
-        {
-          id: 4,
-          date: '2024-11-02',
-          type: 'expense',
-          amount: 18000,
-          description: 'Аренда помещения',
-          category: 'Расходы'
-        },
-        {
-          id: 5,
-          date: '2024-11-03',
-          type: 'income',
-          amount: 77000,
-          description: 'Оплата заказов',
-          orderId: 303,
-          category: 'Доходы'
-        },
-      ],
-      'Новосибирск': [
-        {
-          id: 1,
-          date: '2024-11-01',
-          type: 'income',
-          amount: 55000,
-          description: 'Оплата заказов',
-          orderId: 401,
-          category: 'Доходы'
-        },
-        {
-          id: 2,
-          date: '2024-11-01',
-          type: 'expense',
-          amount: 18000,
-          description: 'Зарплата мастерам',
-          category: 'Расходы'
-        },
-        {
-          id: 3,
-          date: '2024-11-02',
-          type: 'income',
-          amount: 62000,
-          description: 'Оплата заказов',
-          orderId: 402,
-          category: 'Доходы'
-        },
-        {
-          id: 4,
-          date: '2024-11-02',
-          type: 'expense',
-          amount: 15000,
-          description: 'Аренда помещения',
-          category: 'Расходы'
-        },
-        {
-          id: 5,
-          date: '2024-11-03',
-          type: 'income',
-          amount: 63000,
-          description: 'Оплата заказов',
-          orderId: 403,
-          category: 'Доходы'
-        },
-      ],
+    const loadData = async () => {
+      setLoading(true)
+      try {
+        const response = await apiClient.getCashByCity(cityName, { limit: 1000 })
+        if (response.success && response.data) {
+          const transactionsData: Transaction[] = response.data.data || response.data
+          setTransactions(transactionsData)
+
+          // Рассчитываем статистику
+          const income = transactionsData
+            .filter(t => t.name === 'приход')
+            .reduce((sum, t) => sum + Number(t.amount), 0)
+          const expenses = transactionsData
+            .filter(t => t.name === 'расход')
+            .reduce((sum, t) => sum + Number(t.amount), 0)
+          const balance = income - expenses
+
+          setCityStats({
+            totalIncome: income,
+            totalExpenses: expenses,
+            balance
+          })
+        }
+      } catch (error) {
+        console.error('Error loading city transactions:', error)
+        const errorMessage = error instanceof Error ? error.message : 'Ошибка при загрузке транзакций'
+        toast.error(errorMessage)
+      } finally {
+        setLoading(false)
+      }
     }
 
-    const cityTransactions = mockTransactions[cityName] || []
-    setTransactions(cityTransactions)
-
-    // Рассчитываем статистику
-    const income = cityTransactions
-      .filter(t => t.type === 'income')
-      .reduce((sum, t) => sum + t.amount, 0)
-    const expenses = cityTransactions
-      .filter(t => t.type === 'expense')
-      .reduce((sum, t) => sum + t.amount, 0)
-    const balance = income - expenses
-
-    setCityStats({
-      totalIncome: income,
-      totalExpenses: expenses,
-      balance
-    })
-
-    setLoading(false)
+    loadData()
   }, [cityName])
 
   const formatCurrency = (amount: number) => {
@@ -386,36 +190,36 @@ export default function CityTransactionsPage() {
                       <TableCell className="text-gray-600">
                         <div className="flex items-center gap-2">
                           <Calendar className="h-4 w-4 text-gray-400" />
-                          {formatDate(transaction.date)}
+                          {formatDate(transaction.createdAt)}
                         </div>
                       </TableCell>
                       <TableCell>
                         <span className={`px-3 py-1 rounded-full text-xs font-medium ${
-                          transaction.type === 'income' 
+                          transaction.name === 'приход' 
                             ? 'bg-green-100 text-green-800' 
                             : 'bg-red-100 text-red-800'
                         }`}>
-                          {transaction.type === 'income' ? 'Приход' : 'Расход'}
+                          {transaction.name === 'приход' ? 'Приход' : 'Расход'}
                         </span>
                       </TableCell>
                       <TableCell className="text-gray-900">
                         <div className="flex items-center gap-2">
                           <FileText className="h-4 w-4 text-gray-400" />
-                          {transaction.description}
+                          {transaction.note || '-'}
                         </div>
                       </TableCell>
                       <TableCell className="text-gray-600">
-                        {transaction.orderId ? `#${transaction.orderId}` : '-'}
+                        {transaction.paymentPurpose ? `${transaction.paymentPurpose}` : '-'}
                       </TableCell>
                       <TableCell className="text-gray-600">
-                        {transaction.category || '-'}
+                        {transaction.city}
                       </TableCell>
                       <TableCell className={`text-right font-medium ${
-                        transaction.type === 'income' 
+                        transaction.name === 'приход' 
                           ? 'text-green-600' 
                           : 'text-red-600'
                       }`}>
-                        {transaction.type === 'income' ? '+' : '-'}{formatCurrency(transaction.amount)}
+                        {transaction.name === 'приход' ? '+' : '-'}{formatCurrency(Number(transaction.amount))}
                       </TableCell>
                     </TableRow>
                   ))
