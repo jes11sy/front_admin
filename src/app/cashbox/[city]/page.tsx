@@ -3,6 +3,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Label } from '@/components/ui/label'
 import { useRouter, useParams } from 'next/navigation'
@@ -44,6 +45,9 @@ export default function CityTransactionsPage() {
   const [totalPages, setTotalPages] = useState(1)
   const [totalTransactions, setTotalTransactions] = useState(0)
   const [itemsPerPage, setItemsPerPage] = useState(50)
+  const [typeFilter, setTypeFilter] = useState('')
+  const [startDate, setStartDate] = useState('')
+  const [endDate, setEndDate] = useState('')
 
   const PAGE_SIZES = [
     { value: '20', label: '20' },
@@ -51,36 +55,77 @@ export default function CityTransactionsPage() {
     { value: '100', label: '100' },
   ]
 
+  const TRANSACTION_TYPES = [
+    { value: '', label: 'Все типы' },
+    { value: 'приход', label: 'Приход' },
+    { value: 'расход', label: 'Расход' },
+  ]
+
   useEffect(() => {
     const loadData = async () => {
       setLoading(true)
       try {
-        const response = await apiClient.getCashByCity(cityName, { page: currentPage, limit: itemsPerPage })
-        if (response.success && response.data) {
-          const transactionsData: Transaction[] = response.data.data || response.data
-          const pagination = response.data.pagination
-          
-          if (pagination) {
-            setTotalPages(pagination.totalPages || 1)
-            setTotalTransactions(pagination.total || transactionsData.length)
-          }
-          
-          setTransactions(transactionsData)
-
-          // Рассчитываем статистику
-          const income = transactionsData
-            .filter(t => t.name === 'приход')
-            .reduce((sum, t) => sum + Number(t.amount), 0)
-          const expenses = transactionsData
-            .filter(t => t.name === 'расход')
-            .reduce((sum, t) => sum + Number(t.amount), 0)
-          const balance = income - expenses
-
-          setCityStats({
-            totalIncome: income,
-            totalExpenses: expenses,
-            balance
+        // Загружаем ВСЕ транзакции для правильной пагинации и статистики
+        let allTransactions: Transaction[] = []
+        let page = 1
+        let hasMore = true
+        
+        while (hasMore) {
+          const resp = await apiClient.getCashByCity(cityName, { 
+            page, 
+            limit: 100,
+            type: typeFilter || undefined
           })
+          if (resp.success && resp.data) {
+            const pageData = resp.data.data || resp.data
+            allTransactions.push(...pageData)
+            
+            const pag = resp.data.pagination
+            if (pag && page < pag.totalPages) {
+              page++
+            } else {
+              hasMore = false
+            }
+          } else {
+            hasMore = false
+          }
+        }
+        
+        // Фильтруем по датам если нужно
+        let filteredData = allTransactions
+        if (startDate || endDate) {
+          filteredData = allTransactions.filter((t: Transaction) => {
+            if (!t.createdAt) return true
+            const transactionDate = new Date(t.createdAt).toISOString().split('T')[0]
+            const matchStart = !startDate || transactionDate >= startDate
+            const matchEnd = !endDate || transactionDate <= endDate
+            return matchStart && matchEnd
+          })
+        }
+        
+        // Применяем пагинацию к отфильтрованным данным
+        const startIndex = (currentPage - 1) * itemsPerPage
+        const endIndex = startIndex + itemsPerPage
+        const paginatedData = filteredData.slice(startIndex, endIndex)
+        
+        setTransactions(paginatedData)
+        setTotalTransactions(filteredData.length)
+        setTotalPages(Math.ceil(filteredData.length / itemsPerPage))
+
+        // Рассчитываем статистику по отфильтрованным данным
+        const income = filteredData
+          .filter(t => t.name === 'приход')
+          .reduce((sum, t) => sum + Number(t.amount), 0)
+        const expenses = filteredData
+          .filter(t => t.name === 'расход')
+          .reduce((sum, t) => sum + Number(t.amount), 0)
+        const balance = income - expenses
+
+        setCityStats({
+          totalIncome: income,
+          totalExpenses: expenses,
+          balance
+        })
         }
       } catch (error) {
         console.error('Error loading city transactions:', error)
@@ -92,7 +137,7 @@ export default function CityTransactionsPage() {
     }
 
     loadData()
-  }, [cityName, currentPage, itemsPerPage])
+  }, [cityName, currentPage, itemsPerPage, typeFilter, startDate, endDate])
 
   const handlePageChange = (page: number) => {
     setCurrentPage(page)
@@ -191,6 +236,70 @@ export default function CityTransactionsPage() {
             </CardTitle>
           </CardHeader>
           <CardContent className="p-4">
+            {/* Фильтры */}
+            <div className="mb-4 flex items-center gap-3 pb-4 border-b border-gray-200">
+              <div className="w-48">
+                <Select
+                  value={typeFilter}
+                  onValueChange={(value) => {
+                    setTypeFilter(value)
+                    setCurrentPage(1)
+                  }}
+                  disabled={loading}
+                >
+                  <SelectTrigger className="bg-white">
+                    <SelectValue placeholder="Все типы" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {TRANSACTION_TYPES.map((type) => (
+                      <SelectItem key={type.value} value={type.value}>
+                        {type.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="flex items-center gap-2">
+                <Label className="text-sm text-gray-600">От:</Label>
+                <Input
+                  type="date"
+                  value={startDate}
+                  onChange={(e) => {
+                    setStartDate(e.target.value)
+                    setCurrentPage(1)
+                  }}
+                  className="w-40 bg-white"
+                />
+              </div>
+              <div className="flex items-center gap-2">
+                <Label className="text-sm text-gray-600">До:</Label>
+                <Input
+                  type="date"
+                  value={endDate}
+                  onChange={(e) => {
+                    setEndDate(e.target.value)
+                    setCurrentPage(1)
+                  }}
+                  className="w-40 bg-white"
+                />
+              </div>
+              {(typeFilter || startDate || endDate) && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    setTypeFilter('')
+                    setStartDate('')
+                    setEndDate('')
+                    setCurrentPage(1)
+                  }}
+                  className="bg-white"
+                >
+                  Сбросить фильтры
+                </Button>
+              )}
+            </div>
+
             <Table>
               <TableHeader className="bg-gray-50/50">
                 <TableRow>

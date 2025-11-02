@@ -32,16 +32,10 @@ interface Order {
   operator?: { login: string }
 }
 
-interface OrderStats {
-  totalOrders: number
-  newOrders: number
-  inProgress: number
-  completed: number
-  cancelled: number
-}
-
 export default function OrdersPage() {
   const [searchQuery, setSearchQuery] = useState('')
+  const [statusFilter, setStatusFilter] = useState('')
+  const [masterFilter, setMasterFilter] = useState('')
   const [ordersData, setOrdersData] = useState<{
     orders: Order[]
     pagination: {
@@ -51,13 +45,6 @@ export default function OrdersPage() {
       totalPages: number
     }
   } | null>(null)
-  const [stats, setStats] = useState<OrderStats>({
-    totalOrders: 0,
-    newOrders: 0,
-    inProgress: 0,
-    completed: 0,
-    cancelled: 0,
-  })
   const [isLoading, setIsLoading] = useState(true)
   const [page, setPage] = useState(1)
   const [limit, setLimit] = useState(50)
@@ -66,6 +53,18 @@ export default function OrdersPage() {
     { value: '20', label: '20' },
     { value: '50', label: '50' },
     { value: '100', label: '100' },
+  ]
+
+  const ORDER_STATUSES = [
+    { value: '', label: 'Все статусы' },
+    { value: 'Ожидает', label: 'Ожидает' },
+    { value: 'Принял', label: 'Принял' },
+    { value: 'В пути', label: 'В пути' },
+    { value: 'В работе', label: 'В работе' },
+    { value: 'Готово', label: 'Готово' },
+    { value: 'Отказ', label: 'Отказ' },
+    { value: 'Модерн', label: 'Модерн' },
+    { value: 'Незаказ', label: 'Незаказ' },
   ]
 
   // Загрузка заказов и статистики из API
@@ -77,7 +76,9 @@ export default function OrdersPage() {
         const response = await apiClient.getOrders({ 
           page, 
           limit,
-          search: searchQuery || undefined
+          search: searchQuery || undefined,
+          status: statusFilter || undefined,
+          masterId: masterFilter ? parseInt(masterFilter) : undefined
         })
         
         if (response.success && response.data) {
@@ -93,16 +94,6 @@ export default function OrdersPage() {
             orders,
             pagination
           })
-          
-          // Вычисляем статистику по текущей странице (или используем данные с бэка если есть)
-          const calculatedStats = {
-            totalOrders: pagination.total,
-            newOrders: orders.filter((o: Order) => o.statusOrder === 'Ожидает' || o.statusOrder === 'Принял').length,
-            inProgress: orders.filter((o: Order) => o.statusOrder === 'В пути' || o.statusOrder === 'В работе').length,
-            completed: orders.filter((o: Order) => o.statusOrder === 'Готово').length,
-            cancelled: orders.filter((o: Order) => o.statusOrder === 'Отказ' || o.statusOrder === 'Незаказ').length,
-          }
-          setStats(calculatedStats)
         }
       } catch (error) {
         console.error('Error loading orders:', error)
@@ -114,11 +105,21 @@ export default function OrdersPage() {
     }
 
     loadOrders()
-  }, [page, limit, searchQuery])
+  }, [page, limit, searchQuery, statusFilter, masterFilter])
 
   const handleSearch = (value: string) => {
     setSearchQuery(value)
     setPage(1) // Сброс на первую страницу при поиске
+  }
+
+  const handleStatusChange = (value: string) => {
+    setStatusFilter(value)
+    setPage(1) // Сброс на первую страницу при изменении фильтра
+  }
+
+  const handleMasterChange = (value: string) => {
+    setMasterFilter(value)
+    setPage(1) // Сброс на первую страницу при изменении фильтра
   }
 
   const handlePageChange = (newPage: number) => {
@@ -159,60 +160,52 @@ export default function OrdersPage() {
   return (
     <div className="min-h-screen" style={{backgroundColor: '#114643'}}>
       <div className="container mx-auto px-4 py-8 max-w-7xl">
-        {/* Статистика заказов */}
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-6 mb-8">
-          <Card className="border-0 shadow-lg">
-            <CardContent className="pt-6">
-              <div className="text-sm text-gray-500 mb-2">Всего заказов</div>
-              <div className="text-3xl font-bold text-gray-800">{stats.totalOrders}</div>
-            </CardContent>
-          </Card>
-
-          <Card className="border-0 shadow-lg">
-            <CardContent className="pt-6">
-              <div className="text-sm text-gray-500 mb-2">Новые</div>
-              <div className="text-3xl font-bold text-blue-600">{stats.newOrders}</div>
-            </CardContent>
-          </Card>
-
-          <Card className="border-0 shadow-lg">
-            <CardContent className="pt-6">
-              <div className="text-sm text-gray-500 mb-2">В работе</div>
-              <div className="text-3xl font-bold text-yellow-600">{stats.inProgress}</div>
-            </CardContent>
-          </Card>
-
-          <Card className="border-0 shadow-lg">
-            <CardContent className="pt-6">
-              <div className="text-sm text-gray-500 mb-2">Завершено</div>
-              <div className="text-3xl font-bold text-green-600">{stats.completed}</div>
-            </CardContent>
-          </Card>
-
-          <Card className="border-0 shadow-lg">
-            <CardContent className="pt-6">
-              <div className="text-sm text-gray-500 mb-2">Отменено</div>
-              <div className="text-3xl font-bold text-red-600">{stats.cancelled}</div>
-            </CardContent>
-          </Card>
-        </div>
-
         {/* Таблица заказов */}
         <Card className="border-0 shadow-lg">
           <CardContent className="p-4">
-            <div className="mb-4 flex items-center justify-between">
-              <div className="relative max-w-sm">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-                <Input
-                  type="text"
-                  placeholder="Поиск по ID, клиенту, телефону или адресу..."
-                  value={searchQuery}
-                  onChange={(e) => handleSearch(e.target.value)}
-                  className="pl-10"
-                />
-              </div>
-              <div className="text-sm text-gray-600">
-                Всего заказов: <span className="font-semibold">{ordersData?.pagination.total || 0}</span>
+            {/* Фильтры */}
+            <div className="mb-4 space-y-3">
+              <div className="flex items-center gap-3">
+                <div className="relative flex-1 max-w-md">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                  <Input
+                    type="text"
+                    placeholder="Поиск по ID, клиенту, телефону или адресу..."
+                    value={searchQuery}
+                    onChange={(e) => handleSearch(e.target.value)}
+                    className="pl-10"
+                  />
+                </div>
+                <div className="w-48">
+                  <Select
+                    value={statusFilter}
+                    onValueChange={handleStatusChange}
+                    disabled={isLoading}
+                  >
+                    <SelectTrigger className="bg-white">
+                      <SelectValue placeholder="Все статусы" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {ORDER_STATUSES.map((status) => (
+                        <SelectItem key={status.value} value={status.value}>
+                          {status.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="w-48">
+                  <Input
+                    type="text"
+                    placeholder="ID мастера..."
+                    value={masterFilter}
+                    onChange={(e) => handleMasterChange(e.target.value)}
+                    className="bg-white"
+                  />
+                </div>
+                <div className="ml-auto text-sm text-gray-600">
+                  Всего заказов: <span className="font-semibold">{ordersData?.pagination.total || 0}</span>
+                </div>
               </div>
             </div>
 
