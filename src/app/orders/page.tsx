@@ -42,7 +42,15 @@ interface OrderStats {
 
 export default function OrdersPage() {
   const [searchQuery, setSearchQuery] = useState('')
-  const [orders, setOrders] = useState<Order[]>([])
+  const [ordersData, setOrdersData] = useState<{
+    orders: Order[]
+    pagination: {
+      page: number
+      limit: number
+      total: number
+      totalPages: number
+    }
+  } | null>(null)
   const [stats, setStats] = useState<OrderStats>({
     totalOrders: 0,
     newOrders: 0,
@@ -51,11 +59,8 @@ export default function OrdersPage() {
     cancelled: 0,
   })
   const [isLoading, setIsLoading] = useState(true)
-  const [currentPage, setCurrentPage] = useState(1)
-  const [totalPages, setTotalPages] = useState(1)
-  const [totalOrders, setTotalOrders] = useState(0)
-  const [allOrders, setAllOrders] = useState<Order[]>([])
-  const [ordersPerPage, setOrdersPerPage] = useState(50)
+  const [page, setPage] = useState(1)
+  const [limit, setLimit] = useState(50)
 
   const PAGE_SIZES = [
     { value: '20', label: '20' },
@@ -63,76 +68,41 @@ export default function OrdersPage() {
     { value: '100', label: '100' },
   ]
 
-  // Загрузка заказов из API
+  // Загрузка заказов и статистики из API
   useEffect(() => {
     const loadOrders = async () => {
       setIsLoading(true)
       try {
-        // Загружаем текущую страницу для отображения
+        // Загружаем ТОЛЬКО текущую страницу
         const response = await apiClient.getOrders({ 
-          page: currentPage, 
-          limit: ordersPerPage,
+          page, 
+          limit,
           search: searchQuery || undefined
         })
+        
         if (response.success && response.data) {
-          const ordersData = response.data.orders || response.data
-          const total = response.data.total || ordersData.length
-          const pages = response.data.totalPages || Math.ceil(total / ordersPerPage)
-          
-          setOrders(ordersData)
-          setTotalOrders(total)
-          setTotalPages(pages)
-          
-          // Загружаем ВСЕ заказы для статистики (только если это первая загрузка)
-          if (allOrders.length === 0 && !searchQuery) {
-            // Загружаем все страницы
-            const allOrdersData: Order[] = []
-            let currentPageForAll = 1
-            let hasMorePages = true
-            
-            while (hasMorePages) {
-              const allResponse = await apiClient.getOrders({ 
-                page: currentPageForAll, 
-                limit: 100 
-              })
-              if (allResponse.success && allResponse.data) {
-                const pageData = allResponse.data.orders || allResponse.data
-                allOrdersData.push(...pageData)
-                
-                const pagination = allResponse.data.pagination
-                if (pagination && currentPageForAll < pagination.totalPages) {
-                  currentPageForAll++
-                } else {
-                  hasMorePages = false
-                }
-              } else {
-                hasMorePages = false
-              }
-            }
-            
-            setAllOrders(allOrdersData)
-            
-            // Вычисляем статистику по ВСЕМ заказам
-            const calculatedStats = {
-              totalOrders: allOrdersData.length,
-              newOrders: allOrdersData.filter((o: Order) => o.statusOrder === 'Ожидает' || o.statusOrder === 'Принял').length,
-              inProgress: allOrdersData.filter((o: Order) => o.statusOrder === 'В пути' || o.statusOrder === 'В работе').length,
-              completed: allOrdersData.filter((o: Order) => o.statusOrder === 'Готово').length,
-              cancelled: allOrdersData.filter((o: Order) => o.statusOrder === 'Отказ' || o.statusOrder === 'Незаказ').length,
-            }
-            setStats(calculatedStats)
-          } else {
-            // Используем уже загруженные данные для статистики
-            const statsData = searchQuery ? ordersData : allOrders
-            const calculatedStats = {
-              totalOrders: searchQuery ? total : allOrders.length,
-              newOrders: statsData.filter((o: Order) => o.statusOrder === 'Ожидает' || o.statusOrder === 'Принял').length,
-              inProgress: statsData.filter((o: Order) => o.statusOrder === 'В пути' || o.statusOrder === 'В работе').length,
-              completed: statsData.filter((o: Order) => o.statusOrder === 'Готово').length,
-              cancelled: statsData.filter((o: Order) => o.statusOrder === 'Отказ' || o.statusOrder === 'Незаказ').length,
-            }
-            setStats(calculatedStats)
+          const orders = response.data.orders || response.data
+          const pagination = response.data.pagination || {
+            page: page,
+            limit: limit,
+            total: orders.length,
+            totalPages: Math.ceil(orders.length / limit)
           }
+          
+          setOrdersData({
+            orders,
+            pagination
+          })
+          
+          // Вычисляем статистику по текущей странице (или используем данные с бэка если есть)
+          const calculatedStats = {
+            totalOrders: pagination.total,
+            newOrders: orders.filter((o: Order) => o.statusOrder === 'Ожидает' || o.statusOrder === 'Принял').length,
+            inProgress: orders.filter((o: Order) => o.statusOrder === 'В пути' || o.statusOrder === 'В работе').length,
+            completed: orders.filter((o: Order) => o.statusOrder === 'Готово').length,
+            cancelled: orders.filter((o: Order) => o.statusOrder === 'Отказ' || o.statusOrder === 'Незаказ').length,
+          }
+          setStats(calculatedStats)
         }
       } catch (error) {
         console.error('Error loading orders:', error)
@@ -144,18 +114,15 @@ export default function OrdersPage() {
     }
 
     loadOrders()
-  }, [currentPage, searchQuery, ordersPerPage])
-
-  // Поиск теперь делается на сервере, используем orders напрямую
-  const filteredOrders = orders
+  }, [page, limit, searchQuery])
 
   const handleSearch = (value: string) => {
     setSearchQuery(value)
-    setCurrentPage(1) // Сброс на первую страницу при поиске
+    setPage(1) // Сброс на первую страницу при поиске
   }
 
-  const handlePageChange = (page: number) => {
-    setCurrentPage(page)
+  const handlePageChange = (newPage: number) => {
+    setPage(newPage)
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
@@ -245,7 +212,7 @@ export default function OrdersPage() {
                 />
               </div>
               <div className="text-sm text-gray-600">
-                Всего заказов: <span className="font-semibold">{totalOrders}</span>
+                Всего заказов: <span className="font-semibold">{ordersData?.pagination.total || 0}</span>
               </div>
             </div>
 
@@ -277,7 +244,7 @@ export default function OrdersPage() {
                       Загрузка...
                     </TableCell>
                   </TableRow>
-                ) : filteredOrders.map((order) => (
+                ) : ordersData?.orders.map((order) => (
                   <TableRow 
                     key={order.id}
                     className="cursor-pointer hover:bg-gray-100"
@@ -312,28 +279,28 @@ export default function OrdersPage() {
               </Table>
             </div>
 
-            {filteredOrders.length === 0 && !isLoading && (
+            {ordersData?.orders.length === 0 && !isLoading && (
               <div className="text-center py-8 text-gray-500">
                 {searchQuery ? 'Заказы не найдены. Попробуйте изменить поисковый запрос.' : 'Нет заказов.'}
               </div>
             )}
 
             {/* Пагинация */}
-            {!isLoading && orders.length > 0 && (
+            {ordersData?.pagination && (
               <div className="flex flex-col sm:flex-row items-center justify-between mt-6 gap-4 border-t border-gray-200 pt-4">
                 <div className="flex items-center gap-4">
                   <div className="text-sm text-gray-600">
-                    Показано {((currentPage - 1) * ordersPerPage) + 1} - {Math.min(currentPage * ordersPerPage, totalOrders)} из {totalOrders} заказов
+                    Показано {((ordersData.pagination.page - 1) * ordersData.pagination.limit) + 1} - {Math.min(ordersData.pagination.page * ordersData.pagination.limit, ordersData.pagination.total)} из {ordersData.pagination.total} заказов
                   </div>
                   <div className="flex items-center gap-2">
                     <Label htmlFor="page-size" className="text-sm text-gray-600">
                       На странице:
                     </Label>
                     <Select
-                      value={ordersPerPage.toString()}
+                      value={limit.toString()}
                       onValueChange={(value) => {
-                        setOrdersPerPage(parseInt(value))
-                        setCurrentPage(1)
+                        setLimit(parseInt(value))
+                        setPage(1)
                       }}
                       disabled={isLoading}
                     >
@@ -350,10 +317,10 @@ export default function OrdersPage() {
                     </Select>
                   </div>
                 </div>
-                {totalPages > 1 && (
+                {ordersData.pagination.totalPages > 1 && (
                   <OptimizedPagination
-                    currentPage={currentPage}
-                    totalPages={totalPages}
+                    currentPage={ordersData.pagination.page}
+                    totalPages={ordersData.pagination.totalPages}
                     onPageChange={handlePageChange}
                     showFirstLast={true}
                     showPrevNext={true}
