@@ -6,13 +6,40 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { useRouter, useParams } from 'next/navigation'
 import { useState, useEffect } from 'react'
+import { apiClient } from '@/lib/api'
+import { toast } from 'sonner'
+
+interface AvitoAccountData {
+  id: string
+  accountName: string
+  clientId: string
+  clientSecret: string
+  userId: string
+  proxyType: string
+  proxyIp: string
+  proxyPort: string
+  proxyLogin: string
+  proxyPassword: string
+}
+
+interface FormData {
+  accountName: string
+  clientId: string
+  clientSecret: string
+  userId: string
+  proxyType: string
+  proxyIp: string
+  proxyPort: string
+  proxyLogin: string
+  proxyPassword: string
+}
 
 export default function EditAvitoAccountPage() {
   const router = useRouter()
   const params = useParams()
   const accountId = params.id
 
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<FormData>({
     accountName: '',
     clientId: '',
     clientSecret: '',
@@ -23,81 +50,64 @@ export default function EditAvitoAccountPage() {
     proxyLogin: '',
     proxyPassword: ''
   })
+  const [isLoading, setIsLoading] = useState(true)
 
   // Загрузка данных аккаунта
   useEffect(() => {
-    // TODO: Загрузить данные с API
-    // Мок-данные для примера
-    const mockAccounts: { [key: string]: any } = {
-      '1': {
-        accountName: 'Account_Moscow_1',
-        clientId: 'client_12345',
-        clientSecret: 'secret_abc123',
-        userId: 'user_001',
-        proxyType: 'http',
-        proxyIp: '192.168.1.100',
-        proxyPort: '8080',
-        proxyLogin: 'proxy_user',
-        proxyPassword: 'proxy_pass'
-      },
-      '2': {
-        accountName: 'Account_SPB_2',
-        clientId: 'client_67890',
-        clientSecret: 'secret_def456',
-        userId: 'user_002',
-        proxyType: 'socks5',
-        proxyIp: '192.168.1.101',
-        proxyPort: '1080',
-        proxyLogin: 'proxy_user2',
-        proxyPassword: 'proxy_pass2'
-      },
-      '3': {
-        accountName: 'Account_Kazan_3',
-        clientId: 'client_11111',
-        clientSecret: 'secret_ghi789',
-        userId: 'user_003',
-        proxyType: 'https',
-        proxyIp: '192.168.1.102',
-        proxyPort: '443',
-        proxyLogin: 'proxy_user3',
-        proxyPassword: 'proxy_pass3'
-      },
-      '4': {
-        accountName: 'Account_Moscow_4',
-        clientId: 'client_22222',
-        clientSecret: 'secret_jkl012',
-        userId: 'user_004',
-        proxyType: 'http',
-        proxyIp: '192.168.1.103',
-        proxyPort: '8080',
-        proxyLogin: 'proxy_user4',
-        proxyPassword: 'proxy_pass4'
-      },
+    const loadAccount = async () => {
+      setIsLoading(true)
+      try {
+        const response = await apiClient.getAvitoAccount(accountId as string)
+        if (response.success && response.data) {
+          const account = response.data as AvitoAccountData
+          setFormData({
+            accountName: account.accountName || '',
+            clientId: account.clientId || '',
+            clientSecret: account.clientSecret || '',
+            userId: account.userId || '',
+            proxyType: account.proxyType || 'http',
+            proxyIp: account.proxyIp || '',
+            proxyPort: account.proxyPort || '',
+            proxyLogin: account.proxyLogin || '',
+            proxyPassword: account.proxyPassword || ''
+          })
+        } else {
+          toast.error(response.error || 'Не удалось загрузить данные аккаунта')
+        }
+      } catch (error) {
+        console.error('Error loading account:', error)
+        const errorMessage = error instanceof Error ? error.message : 'Ошибка при загрузке данных'
+        toast.error(errorMessage)
+      } finally {
+        setIsLoading(false)
+      }
     }
 
-    const account = mockAccounts[accountId as string]
-    if (account) {
-      setFormData({
-        accountName: account.accountName,
-        clientId: account.clientId,
-        clientSecret: account.clientSecret,
-        userId: account.userId,
-        proxyType: account.proxyType,
-        proxyIp: account.proxyIp,
-        proxyPort: account.proxyPort,
-        proxyLogin: account.proxyLogin,
-        proxyPassword: account.proxyPassword
-      })
+    if (accountId) {
+      loadAccount()
     }
   }, [accountId])
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    // TODO: Отправить данные на API
-    console.log('Updated form data:', formData)
+    setIsLoading(true)
     
-    // Вернуться к списку
-    router.push('/avito')
+    try {
+      const response = await apiClient.updateAvitoAccount(accountId as string, formData)
+      
+      if (response.success) {
+        toast.success('Аккаунт Avito успешно обновлен')
+        router.push('/avito')
+      } else {
+        toast.error(response.error || 'Не удалось обновить аккаунт')
+      }
+    } catch (error) {
+      console.error('Error updating account:', error)
+      const errorMessage = error instanceof Error ? error.message : 'Ошибка при обновлении аккаунта'
+      toast.error(errorMessage)
+    } finally {
+      setIsLoading(false)
+    }
   }
 
   return (
@@ -242,14 +252,16 @@ export default function EditAvitoAccountPage() {
                 <Button 
                   type="submit"
                   className="bg-gradient-to-r from-teal-600 to-emerald-600 hover:from-teal-700 hover:to-emerald-700 text-white"
+                  disabled={isLoading}
                 >
-                  Сохранить изменения
+                  {isLoading ? 'Загрузка...' : 'Сохранить изменения'}
                 </Button>
                 <Button 
                   type="button"
                   variant="outline"
                   onClick={() => router.push('/avito')}
                   className="bg-white"
+                  disabled={isLoading}
                 >
                   Отмена
                 </Button>

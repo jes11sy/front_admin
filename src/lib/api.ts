@@ -426,6 +426,45 @@ class ApiClient {
     })
   }
 
+  // Avito аккаунты
+  async getAvitoAccounts(params?: {
+    search?: string
+  }) {
+    const searchParams = new URLSearchParams()
+    if (params?.search) searchParams.append('search', params.search)
+
+    const query = searchParams.toString()
+    return this.request<any>(`/avito${query ? `?${query}` : ''}`)
+  }
+
+  async getAvitoAccount(id: string) {
+    return this.request<any>(`/avito/${id}`)
+  }
+
+  async createAvitoAccount(data: any) {
+    return this.request<any>('/avito', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    })
+  }
+
+  async updateAvitoAccount(id: string, data: any) {
+    return this.request<any>(`/avito/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    })
+  }
+
+  async deleteAvitoAccount(id: string) {
+    return this.request<any>(`/avito/${id}`, {
+      method: 'DELETE',
+    })
+  }
+
+  async getAvitoStats() {
+    return this.request<any>('/avito/stats')
+  }
+
   // Отчеты (заглушки для будущей реализации)
   async getGlobalStatistics() {
     return this.request<any>('/reports/global')

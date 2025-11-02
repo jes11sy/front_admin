@@ -1,5 +1,4 @@
-'use client'
-
+'use client' 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -9,12 +8,27 @@ import { useState, useEffect } from 'react'
 import { apiClient } from '@/lib/api'
 import { toast } from 'sonner'
 
+interface PhoneData {
+  id: string
+  phoneNumber: string
+  campaign: string
+  city: string
+  accountName?: string
+}
+
+interface FormData {
+  phoneNumber: string
+  campaign: string
+  city: string
+  accountName: string
+}
+
 export default function EditPhoneNumberPage() {
   const router = useRouter()
   const params = useParams()
   const phoneId = params.id
 
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<FormData>({
     phoneNumber: '',
     campaign: '',
     city: '',
@@ -30,7 +44,7 @@ export default function EditPhoneNumberPage() {
       try {
         const response = await apiClient.getPhone(phoneId as string)
         if (response.success && response.data) {
-          const phone = response.data
+          const phone = response.data as PhoneData
           setFormData({
             phoneNumber: phone.phoneNumber || '',
             campaign: phone.campaign || '',
@@ -38,11 +52,12 @@ export default function EditPhoneNumberPage() {
             accountName: phone.accountName || ''
           })
         } else {
-          toast.error('Не удалось загрузить данные телефонного номера')
+          toast.error(response.error || 'Не удалось загрузить данные телефонного номера')
         }
       } catch (error) {
         console.error('Error loading phone:', error)
-        toast.error('Ошибка при загрузке данных')
+        const errorMessage = error instanceof Error ? error.message : 'Ошибка при загрузке данных'
+        toast.error(errorMessage)
       } finally {
         setIsLoading(false)
       }
@@ -66,7 +81,7 @@ export default function EditPhoneNumberPage() {
     setIsLoading(true)
     
     try {
-      const updateData = {
+      const updateData: Partial<FormData> = {
         phoneNumber: formData.phoneNumber,
         campaign: formData.campaign,
         city: formData.city,
@@ -79,11 +94,12 @@ export default function EditPhoneNumberPage() {
         toast.success('Телефонный номер успешно обновлен')
         router.push('/telephony')
       } else {
-        toast.error('Не удалось обновить телефонный номер')
+        toast.error(response.error || 'Не удалось обновить телефонный номер')
       }
     } catch (error) {
       console.error('Error updating phone:', error)
-      toast.error('Ошибка при обновлении телефонного номера')
+      const errorMessage = error instanceof Error ? error.message : 'Ошибка при обновлении телефонного номера'
+      toast.error(errorMessage)
     } finally {
       setIsLoading(false)
     }

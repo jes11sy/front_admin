@@ -6,10 +6,24 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { useRouter } from 'next/navigation'
 import { useState } from 'react'
+import { apiClient } from '@/lib/api'
+import { toast } from 'sonner'
+
+interface FormData {
+  accountName: string
+  clientId: string
+  clientSecret: string
+  userId: string
+  proxyType: string
+  proxyIp: string
+  proxyPort: string
+  proxyLogin: string
+  proxyPassword: string
+}
 
 export default function AddAvitoAccountPage() {
   const router = useRouter()
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<FormData>({
     accountName: '',
     clientId: '',
     clientSecret: '',
@@ -20,14 +34,28 @@ export default function AddAvitoAccountPage() {
     proxyLogin: '',
     proxyPassword: ''
   })
+  const [isLoading, setIsLoading] = useState(false)
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    // TODO: Отправить данные на API
-    console.log('Form data:', formData)
+    setIsLoading(true)
     
-    // Вернуться к списку
-    router.push('/avito')
+    try {
+      const response = await apiClient.createAvitoAccount(formData)
+      
+      if (response.success) {
+        toast.success('Аккаунт Avito успешно добавлен')
+        router.push('/avito')
+      } else {
+        toast.error(response.error || 'Не удалось добавить аккаунт')
+      }
+    } catch (error) {
+      console.error('Error creating Avito account:', error)
+      const errorMessage = error instanceof Error ? error.message : 'Ошибка при добавлении аккаунта'
+      toast.error(errorMessage)
+    } finally {
+      setIsLoading(false)
+    }
   }
 
   return (
@@ -172,14 +200,16 @@ export default function AddAvitoAccountPage() {
                 <Button 
                   type="submit"
                   className="bg-gradient-to-r from-teal-600 to-emerald-600 hover:from-teal-700 hover:to-emerald-700 text-white"
+                  disabled={isLoading}
                 >
-                  Добавить аккаунт
+                  {isLoading ? 'Добавление...' : 'Добавить аккаунт'}
                 </Button>
                 <Button 
                   type="button"
                   variant="outline"
                   onClick={() => router.push('/avito')}
                   className="bg-white"
+                  disabled={isLoading}
                 >
                   Отмена
                 </Button>

@@ -4,7 +4,9 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Star, Wifi, Shield, Zap, Plus } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { apiClient } from '@/lib/api'
+import { toast } from 'sonner'
 
 interface AvitoAccount {
   id: number
@@ -18,54 +20,57 @@ interface AvitoAccount {
   contactsCount: number
 }
 
-export default function AvitoPage() {
-  // Мок-данные для статистики
-  const stats = {
-    accountsCount: 12,
-    adsCount: 324,
-    viewsCount: 15420,
-    contactsCount: 892,
-    totalBalance: 45600,
-    ordersCount: 156,
-    orderPrice: 3500,
-  }
+interface AvitoStats {
+  accountsCount: number
+  adsCount: number
+  viewsCount: number
+  contactsCount: number
+  totalBalance: number
+  ordersCount: number
+  orderPrice: number
+}
 
-  // Мок-данные для таблицы
-  const [accounts] = useState<AvitoAccount[]>([
-    {
-      id: 1,
-      accountName: 'Avito_Moscow_1',
-      connectionStatus: 'online',
-      proxyStatus: 'active',
-      cpa: 450,
-      balance: 5200,
-      adsCount: 45,
-      viewsCount: 2340,
-      contactsCount: 123
-    },
-    {
-      id: 2,
-      accountName: 'Avito_SPB_1',
-      connectionStatus: 'online',
-      proxyStatus: 'active',
-      cpa: 380,
-      balance: 3800,
-      adsCount: 32,
-      viewsCount: 1890,
-      contactsCount: 98
-    },
-    {
-      id: 3,
-      accountName: 'Avito_Kazan_1',
-      connectionStatus: 'offline',
-      proxyStatus: 'inactive',
-      cpa: 420,
-      balance: 1200,
-      adsCount: 28,
-      viewsCount: 1560,
-      contactsCount: 87
-    },
-  ])
+export default function AvitoPage() {
+  const [stats, setStats] = useState<AvitoStats>({
+    accountsCount: 0,
+    adsCount: 0,
+    viewsCount: 0,
+    contactsCount: 0,
+    totalBalance: 0,
+    ordersCount: 0,
+    orderPrice: 0,
+  })
+
+  const [accounts, setAccounts] = useState<AvitoAccount[]>([])
+  const [isLoading, setIsLoading] = useState(true)
+
+  // Загрузка данных с API
+  useEffect(() => {
+    const loadData = async () => {
+      setIsLoading(true)
+      try {
+        // Загружаем аккаунты
+        const accountsResponse = await apiClient.getAvitoAccounts()
+        if (accountsResponse.success && accountsResponse.data) {
+          setAccounts(accountsResponse.data)
+        }
+
+        // Загружаем статистику
+        const statsResponse = await apiClient.getAvitoStats()
+        if (statsResponse.success && statsResponse.data) {
+          setStats(statsResponse.data)
+        }
+      } catch (error) {
+        console.error('Error loading Avito data:', error)
+        const errorMessage = error instanceof Error ? error.message : 'Ошибка при загрузке данных'
+        toast.error(errorMessage)
+      } finally {
+        setIsLoading(false)
+      }
+    }
+
+    loadData()
+  }, [])
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('ru-RU', {
@@ -214,7 +219,13 @@ export default function AvitoPage() {
               </TableBody>
             </Table>
 
-            {accounts.length === 0 && (
+            {isLoading && (
+              <div className="text-center py-12 text-gray-500">
+                Загрузка...
+              </div>
+            )}
+
+            {!isLoading && accounts.length === 0 && (
               <div className="text-center py-12 text-gray-400">
                 Нет аккаунтов
               </div>
