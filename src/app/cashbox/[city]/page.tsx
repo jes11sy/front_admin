@@ -45,7 +45,7 @@ export default function CityTransactionsPage() {
   const [totalPages, setTotalPages] = useState(1)
   const [totalTransactions, setTotalTransactions] = useState(0)
   const [itemsPerPage, setItemsPerPage] = useState(50)
-  const [typeFilter, setTypeFilter] = useState('')
+  const [typeFilter, setTypeFilter] = useState('all')
   const [startDate, setStartDate] = useState('')
   const [endDate, setEndDate] = useState('')
 
@@ -56,7 +56,7 @@ export default function CityTransactionsPage() {
   ]
 
   const TRANSACTION_TYPES = [
-    { value: '', label: 'Все типы' },
+    { value: 'all', label: 'Все типы' },
     { value: 'приход', label: 'Приход' },
     { value: 'расход', label: 'Расход' },
   ]
@@ -74,7 +74,7 @@ export default function CityTransactionsPage() {
           const resp = await apiClient.getCashByCity(cityName, { 
             page, 
             limit: 100,
-            type: typeFilter || undefined
+            type: typeFilter !== 'all' ? typeFilter : undefined
           })
           if (resp.success && resp.data) {
             const pageData = resp.data.data || resp.data
@@ -282,12 +282,12 @@ export default function CityTransactionsPage() {
                   className="w-40 bg-white"
                 />
               </div>
-              {(typeFilter || startDate || endDate) && (
+              {(typeFilter !== 'all' || startDate || endDate) && (
                 <Button
                   variant="outline"
                   size="sm"
                   onClick={() => {
-                    setTypeFilter('')
+                    setTypeFilter('all')
                     setStartDate('')
                     setEndDate('')
                     setCurrentPage(1)

@@ -34,7 +34,7 @@ interface Order {
 
 export default function OrdersPage() {
   const [searchQuery, setSearchQuery] = useState('')
-  const [statusFilter, setStatusFilter] = useState('')
+  const [statusFilter, setStatusFilter] = useState('all')
   const [masterFilter, setMasterFilter] = useState('')
   const [ordersData, setOrdersData] = useState<{
     orders: Order[]
@@ -56,7 +56,7 @@ export default function OrdersPage() {
   ]
 
   const ORDER_STATUSES = [
-    { value: '', label: 'Все статусы' },
+    { value: 'all', label: 'Все статусы' },
     { value: 'Ожидает', label: 'Ожидает' },
     { value: 'Принял', label: 'Принял' },
     { value: 'В пути', label: 'В пути' },
@@ -77,7 +77,7 @@ export default function OrdersPage() {
           page, 
           limit,
           search: searchQuery || undefined,
-          status: statusFilter || undefined,
+          status: statusFilter !== 'all' ? statusFilter : undefined,
           masterId: masterFilter ? parseInt(masterFilter) : undefined
         })
         
