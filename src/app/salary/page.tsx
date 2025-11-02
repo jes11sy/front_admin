@@ -5,10 +5,18 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Search, Download, DollarSign, User } from 'lucide-react'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { apiClient } from '@/lib/api'
+import { toast } from 'sonner'
+
+interface Director {
+  id: number
+  name: string
+  cities: string[]
+}
 
 interface SalaryRecord {
-  id: number
+  id: string
   city: string
   directorName: string
   turnover: number
@@ -17,45 +25,96 @@ interface SalaryRecord {
 
 export default function SalaryPage() {
   const [searchQuery, setSearchQuery] = useState('')
+  const [salaryRecords, setSalaryRecords] = useState<SalaryRecord[]>([])
+  const [isLoading, setIsLoading] = useState(true)
 
-  // Мок-данные для зарплаты
-  const [salaryRecords] = useState<SalaryRecord[]>([
-    {
-      id: 1,
-      city: 'Москва',
-      directorName: 'Козлова Анна',
-      turnover: 2500000,
-      salary: 140000
-    },
-    {
-      id: 2,
-      city: 'Санкт-Петербург',
-      directorName: 'Петров Иван',
-      turnover: 1800000,
-      salary: 120000
-    },
-    {
-      id: 3,
-      city: 'Казань',
-      directorName: 'Сидоров Алексей',
-      turnover: 1200000,
-      salary: 95000
-    },
-    {
-      id: 4,
-      city: 'Екатеринбург',
-      directorName: 'Волкова Мария',
-      turnover: 1500000,
-      salary: 110000
-    },
-    {
-      id: 5,
-      city: 'Новосибирск',
-      directorName: 'Смирнов Дмитрий',
-      turnover: 900000,
-      salary: 80000
-    },
-  ])
+  useEffect(() => {
+    const loadData = async () => {
+      setIsLoading(true)
+      try {
+        // Загружаем директоров
+        const directorsResponse = await apiClient.getDirectors()
+        if (!directorsResponse.success || !directorsResponse.data) {
+          toast.error('Не удалось загрузить данных директоров')
+          return
+        }
+
+        const directors: Director[] = directorsResponse.data
+
+        // Загружаем все транзакции кассы
+        const allTransactions: any[] = []
+        let currentPage = 1
+        let hasMore = true
+        
+        while (hasMore) {
+          const cashResponse = await apiClient.getCashTransactions({ 
+            page: currentPage, 
+            limit: 100 
+          })
+          if (cashResponse.success && cashResponse.data) {
+            const pageData = cashResponse.data.data || cashResponse.data
+            allTransactions.push(...pageData)
+            
+            const pagination = cashResponse.data.pagination
+            if (pagination && currentPage < pagination.totalPages) {
+              currentPage++
+            } else {
+              hasMore = false
+            }
+          } else {
+            hasMore = false
+          }
+        }
+
+        // Группируем транзакции по городам и считаем чистую прибыль
+        const cityTurnover = new Map<string, number>()
+        
+        allTransactions.forEach((transaction: any) => {
+          const city = transaction.city || 'Не указан'
+          const amount = Number(transaction.amount)
+          
+          if (!cityTurnover.has(city)) {
+            cityTurnover.set(city, 0)
+          }
+          
+          const currentBalance = cityTurnover.get(city)!
+          if (transaction.name === 'приход') {
+            cityTurnover.set(city, currentBalance + amount)
+          } else if (transaction.name === 'расход') {
+            cityTurnover.set(city, currentBalance - amount)
+          }
+        })
+
+        // Создаем записи зарплаты для каждого директора по каждому городу
+        const records: SalaryRecord[] = []
+        directors.forEach((director) => {
+          director.cities.forEach((city) => {
+            const turnover = cityTurnover.get(city) || 0
+            const salary = turnover * 0.07 // 7% от оборота
+            
+            records.push({
+              id: `${director.id}-${city}`,
+              city,
+              directorName: director.name,
+              turnover,
+              salary
+            })
+          })
+        })
+
+        setSalaryRecords(records)
+      } catch (error) {
+        console.error('Error loading salary data:', error)
+        const errorMessage = error instanceof Error ? error.message : 'Ошибка при загрузке данных'
+        toast.error(errorMessage)
+      } finally {
+        setIsLoading(false)
+      }
+    }
+
+    loadData()
+  }, [])
+
 
   const filteredRecords = salaryRecords.filter(record =>
     record.directorName.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -134,10 +193,16 @@ export default function SalaryPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredRecords.length === 0 ? (
+                {isLoading ? (
                   <TableRow>
                     <TableCell colSpan={4} className="text-center py-8 text-gray-500">
-                      Записи не найдены. Попробуйте изменить поисковый запрос.
+                      Загрузка...
+                    </TableCell>
+                  </TableRow>
+                ) : filteredRecords.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={4} className="text-center py-8 text-gray-500">
+                      {searchQuery ? 'Записи не найдены. Попробуйте изменить поисковый запрос.' : 'Нет данных.'}
                     </TableCell>
                   </TableRow>
                 ) : (

@@ -648,6 +648,15 @@ class ApiClient {
     return this.request<any>(`/handover${query ? `?${query}` : ''}`)
   }
 
+  // Директора (Users Service)
+  async getDirectors() {
+    return this.request<any>('/directors')
+  }
+
+  async getDirector(id: string) {
+    return this.request<any>(`/directors/${id}`)
+  }
+
   // Отчеты (заглушки для будущей реализации)
   async getGlobalStatistics() {
     return this.request<any>('/reports/global')
