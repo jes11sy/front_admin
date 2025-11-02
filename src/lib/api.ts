@@ -373,23 +373,6 @@ class ApiClient {
     })
   }
 
-  // Директора
-  async getDirectors(params?: {
-    search?: string
-  }) {
-    const searchParams = new URLSearchParams()
-    if (params?.search) searchParams.append('search', params.search)
-
-    const query = searchParams.toString()
-    return this.request<any>(`/directors${query ? `?${query}` : ''}`)
-  }
-
-  async updateDirector(id: string, data: any) {
-    return this.request<any>(`/directors/${id}`, {
-      method: 'PUT',
-      body: JSON.stringify(data),
-    })
-  }
 
   // Телефонные номера
   async getPhones(params?: {
@@ -657,7 +640,33 @@ class ApiClient {
     return this.request<any>(`/directors/${id}`)
   }
 
-  // Отчеты (заглушки для будущей реализации)
+  // Отчеты (Reports Service)
+  async getCitiesReport(params?: {
+    startDate?: string
+    endDate?: string
+    city?: string
+  }) {
+    const searchParams = new URLSearchParams()
+    if (params?.startDate) searchParams.append('startDate', params.startDate)
+    if (params?.endDate) searchParams.append('endDate', params.endDate)
+    if (params?.city) searchParams.append('city', params.city)
+
+    const query = searchParams.toString()
+    return this.request<any>(`/reports/cities${query ? `?${query}` : ''}`)
+  }
+
+  async getCitiesAnalytics(params?: {
+    startDate?: string
+    endDate?: string
+  }) {
+    const searchParams = new URLSearchParams()
+    if (params?.startDate) searchParams.append('startDate', params.startDate)
+    if (params?.endDate) searchParams.append('endDate', params.endDate)
+
+    const query = searchParams.toString()
+    return this.request<any>(`/analytics/cities${query ? `?${query}` : ''}`)
+  }
+
   async getGlobalStatistics() {
     return this.request<any>('/reports/global')
   }

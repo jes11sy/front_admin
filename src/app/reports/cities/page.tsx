@@ -2,44 +2,67 @@
 
 import { Card, CardContent } from '@/components/ui/card'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { apiClient } from '@/lib/api'
+import { toast } from 'sonner'
+
+interface ApiCityReport {
+  city: string
+  orders: {
+    closedOrders: number
+    refusals: number
+    notOrders: number
+    totalClean: number
+    totalMasterChange: number
+    avgCheck: number
+  }
+  cash: {
+    totalAmount: number
+  }
+}
+
+interface CityReport {
+  city: string
+  completedOrders: number
+  revenue: number
+  companyIncome: number
+  balance: number
+}
 
 export default function CitiesReportPage() {
-  // Мок-данные для отчета по городам
-  const [citiesData] = useState([
-    {
-      id: 1,
-      city: 'Москва',
-      completedOrders: 78,
-      revenue: 450000,
-      companyIncome: 315000,
-      balance: 270000
-    },
-    {
-      id: 2,
-      city: 'Санкт-Петербург',
-      completedOrders: 68,
-      revenue: 380000,
-      companyIncome: 266000,
-      balance: 228000
-    },
-    {
-      id: 3,
-      city: 'Казань',
-      completedOrders: 40,
-      revenue: 220000,
-      companyIncome: 154000,
-      balance: 132000
-    },
-    {
-      id: 4,
-      city: 'Новосибирск',
-      completedOrders: 34,
-      revenue: 180000,
-      companyIncome: 126000,
-      balance: 108000
-    },
-  ])
+  const [citiesData, setCitiesData] = useState<CityReport[]>([])
+  const [isLoading, setIsLoading] = useState(true)
+
+  useEffect(() => {
+    const loadData = async () => {
+      setIsLoading(true)
+      try {
+        const response = await apiClient.getCitiesReport()
+        if (response.success && response.data) {
+          // Преобразуем данные из API в формат для отображения
+          const mappedData: CityReport[] = response.data.map((item: ApiCityReport) => ({
+            city: item.city,
+            completedOrders: item.orders.closedOrders,
+            revenue: item.orders.totalClean, // Оборот = сумма чистыми
+            companyIncome: item.orders.totalClean - item.orders.totalMasterChange, // Доход компании = чистыми - сдача мастера
+            balance: item.cash.totalAmount // Касса
+          }))
+          setCitiesData(mappedData)
+        } else {
+          toast.error('Не удалось загрузить отчет по городам')
+        }
+      } catch (error) {
+        console.error('Error loading cities report:', error)
+        const errorMessage = error instanceof Error ? error.message : 'Ошибка при загрузке данных'
+        toast.error(errorMessage)
+      } finally {
+        setIsLoading(false)
+      }
+    }
+
+    loadData()
+  }, [])
+
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('ru-RU', {
@@ -72,27 +95,41 @@ export default function CitiesReportPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {citiesData.map((city) => {
-                  const averageCheck = getAverageCheck(city.revenue, city.completedOrders)
-                  return (
-                    <TableRow key={city.id}>
-                      <TableCell className="font-medium text-gray-900">{city.city}</TableCell>
-                      <TableCell className="text-center text-gray-600">{city.completedOrders}</TableCell>
-                      <TableCell className="text-right font-medium text-gray-700">
-                        {formatCurrency(averageCheck)}
-                      </TableCell>
-                      <TableCell className="text-right font-medium text-green-600">
-                        {formatCurrency(city.revenue)}
-                      </TableCell>
-                      <TableCell className="text-right font-medium text-blue-600">
-                        {formatCurrency(city.companyIncome)}
-                      </TableCell>
-                      <TableCell className="text-right font-bold text-teal-700">
-                        {formatCurrency(city.balance)}
-                      </TableCell>
-                    </TableRow>
-                  )
-                })}
+                {isLoading ? (
+                  <TableRow>
+                    <TableCell colSpan={6} className="text-center py-8 text-gray-500">
+                      Загрузка...
+                    </TableCell>
+                  </TableRow>
+                ) : citiesData.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={6} className="text-center py-8 text-gray-500">
+                      Нет данных для отображения
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  citiesData.map((city) => {
+                    const averageCheck = getAverageCheck(city.revenue, city.completedOrders)
+                    return (
+                      <TableRow key={city.city}>
+                        <TableCell className="font-medium text-gray-900">{city.city}</TableCell>
+                        <TableCell className="text-center text-gray-600">{city.completedOrders}</TableCell>
+                        <TableCell className="text-right font-medium text-gray-700">
+                          {formatCurrency(averageCheck)}
+                        </TableCell>
+                        <TableCell className="text-right font-medium text-green-600">
+                          {formatCurrency(city.revenue)}
+                        </TableCell>
+                        <TableCell className="text-right font-medium text-blue-600">
+                          {formatCurrency(city.companyIncome)}
+                        </TableCell>
+                        <TableCell className="text-right font-bold text-teal-700">
+                          {formatCurrency(city.balance)}
+                        </TableCell>
+                      </TableRow>
+                    )
+                  })
+                )}
               </TableBody>
             </Table>
           </CardContent>
