@@ -3,7 +3,8 @@
 import { Card, CardContent } from '@/components/ui/card'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Input } from '@/components/ui/input'
-import { Search } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import { Search, Calendar } from 'lucide-react'
 import { useState, useEffect } from 'react'
 import { apiClient } from '@/lib/api'
 import { toast } from 'sonner'
@@ -27,16 +28,61 @@ interface MasterReport {
   salary: number
 }
 
+type DatePeriod = 'day' | 'week' | 'month' | 'custom'
+
 export default function MastersReportPage() {
   const [searchQuery, setSearchQuery] = useState('')
   const [mastersData, setMastersData] = useState<MasterReport[]>([])
   const [isLoading, setIsLoading] = useState(true)
+  const [period, setPeriod] = useState<DatePeriod>('day')
+  const [startDate, setStartDate] = useState('')
+  const [endDate, setEndDate] = useState('')
+
+  // Функция для получения дат периода
+  const getDateRange = (selectedPeriod: DatePeriod) => {
+    const now = new Date()
+    let start: Date
+    let end: Date = now
+
+    switch (selectedPeriod) {
+      case 'day':
+        start = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+        end = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59)
+        break
+      case 'week':
+        const dayOfWeek = now.getDay()
+        const diffToMonday = dayOfWeek === 0 ? -6 : 1 - dayOfWeek
+        start = new Date(now.getFullYear(), now.getMonth(), now.getDate() + diffToMonday)
+        start.setHours(0, 0, 0, 0)
+        end = new Date(start)
+        end.setDate(start.getDate() + 6)
+        end.setHours(23, 59, 59)
+        break
+      case 'month':
+        start = new Date(now.getFullYear(), now.getMonth(), 1)
+        end = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59)
+        break
+      case 'custom':
+        return { start: startDate, end: endDate }
+      default:
+        start = now
+    }
+
+    return {
+      start: start.toISOString().split('T')[0],
+      end: end.toISOString().split('T')[0]
+    }
+  }
 
   useEffect(() => {
     const loadData = async () => {
       setIsLoading(true)
       try {
-        const response = await apiClient.getMastersReport()
+        const dateRange = getDateRange(period)
+        const response = await apiClient.getMastersReport({
+          startDate: dateRange.start,
+          endDate: dateRange.end
+        })
         if (response.success && response.data) {
           // Преобразуем данные из API в формат для отображения
           const mappedData: MasterReport[] = response.data.map((item: ApiMasterReport) => ({
@@ -61,13 +107,15 @@ export default function MastersReportPage() {
     }
 
     loadData()
-  }, [])
+  }, [period, startDate, endDate])
 
-
-  const filteredMasters = mastersData.filter(master =>
-    master.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    master.city.toLowerCase().includes(searchQuery.toLowerCase())
-  )
+  // Фильтруем: убираем мастеров с 0 заказами + поиск
+  const filteredMasters = mastersData
+    .filter(master => master.ordersCompleted > 0) // Убираем мастеров с 0 заказами
+    .filter(master =>
+      master.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      master.city.toLowerCase().includes(searchQuery.toLowerCase())
+    )
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('ru-RU', {
@@ -88,6 +136,74 @@ export default function MastersReportPage() {
       <div className="container mx-auto px-4 py-8 max-w-7xl">
         <Card className="border-0 shadow-lg">
           <CardContent className="p-4">
+            {/* Фильтры по датам */}
+            <div className="flex flex-wrap items-center gap-3 mb-4 pb-4 border-b border-gray-200">
+              <div className="flex items-center gap-2">
+                <Calendar className="h-4 w-4 text-gray-500" />
+                <span className="text-sm font-medium text-gray-700">Период:</span>
+              </div>
+              <div className="flex gap-2">
+                <Button
+                  variant={period === 'day' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setPeriod('day')}
+                  className={period === 'day' ? 'bg-gradient-to-r from-teal-600 to-emerald-600' : 'bg-white'}
+                >
+                  День
+                </Button>
+                <Button
+                  variant={period === 'week' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setPeriod('week')}
+                  className={period === 'week' ? 'bg-gradient-to-r from-teal-600 to-emerald-600' : 'bg-white'}
+                >
+                  Неделя
+                </Button>
+                <Button
+                  variant={period === 'month' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setPeriod('month')}
+                  className={period === 'month' ? 'bg-gradient-to-r from-teal-600 to-emerald-600' : 'bg-white'}
+                >
+                  Месяц
+                </Button>
+                <Button
+                  variant={period === 'custom' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setPeriod('custom')}
+                  className={period === 'custom' ? 'bg-gradient-to-r from-teal-600 to-emerald-600' : 'bg-white'}
+                >
+                  Выбрать даты
+                </Button>
+              </div>
+              {period === 'custom' && (
+                <div className="flex items-center gap-2">
+                  <Input
+                    type="date"
+                    value={startDate}
+                    onChange={(e) => setStartDate(e.target.value)}
+                    className="w-40 bg-white"
+                  />
+                  <span className="text-gray-500">—</span>
+                  <Input
+                    type="date"
+                    value={endDate}
+                    onChange={(e) => setEndDate(e.target.value)}
+                    className="w-40 bg-white"
+                  />
+                </div>
+              )}
+              {period !== 'custom' && (
+                <div className="ml-auto text-sm text-gray-600">
+                  {(() => {
+                    const range = getDateRange(period)
+                    return `${range.start} — ${range.end}`
+                  })()}
+                </div>
+              )}
+            </div>
+
+            {/* Поиск */}
             <div className="mb-4">
               <div className="relative max-w-sm">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
@@ -96,7 +212,7 @@ export default function MastersReportPage() {
                   placeholder="Поиск по имени или городу..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-10"
+                  className="pl-10 bg-white"
                 />
               </div>
             </div>
