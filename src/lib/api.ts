@@ -426,7 +426,7 @@ class ApiClient {
     })
   }
 
-  // Avito аккаунты
+  // Avito аккаунты (CRUD через AccountsController)
   async getAvitoAccounts(params?: {
     search?: string
   }) {
@@ -470,6 +470,37 @@ class ApiClient {
   async syncAvitoStats(id: string) {
     return this.request<any>(`/accounts/${id}/sync-stats`, {
       method: 'POST',
+    })
+  }
+
+  // Avito чаты и мессенджер (через MessengerController)
+  async getAvitoChats(params?: {
+    avitoAccountName?: string
+    unreadOnly?: boolean
+    limit?: number
+  }) {
+    const searchParams = new URLSearchParams()
+    if (params?.avitoAccountName) searchParams.append('avitoAccountName', params.avitoAccountName)
+    if (params?.unreadOnly) searchParams.append('unreadOnly', 'true')
+    if (params?.limit) searchParams.append('limit', params.limit.toString())
+
+    const query = searchParams.toString()
+    return this.request<any>(`/avito-messenger/chats${query ? `?${query}` : ''}`)
+  }
+
+  async getAvitoMessages(chatId: string, avitoAccountName?: string, limit: number = 100) {
+    const searchParams = new URLSearchParams()
+    if (avitoAccountName) searchParams.append('avitoAccountName', avitoAccountName)
+    searchParams.append('limit', limit.toString())
+
+    const query = searchParams.toString()
+    return this.request<any>(`/avito-messenger/chats/${chatId}/messages${query ? `?${query}` : ''}`)
+  }
+
+  async sendAvitoMessage(chatId: string, text: string, avitoAccountName: string) {
+    return this.request<any>(`/avito-messenger/chats/${chatId}/messages`, {
+      method: 'POST',
+      body: JSON.stringify({ text, avitoAccountName }),
     })
   }
 
