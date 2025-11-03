@@ -308,6 +308,44 @@ export default function AvitoPage() {
             {isCheckingConnections ? 'Проверка...' : 'Проверить подключения и прокси'}
           </Button>
 
+          <Button 
+            variant="outline" 
+            className="bg-white hover:bg-purple-50 border-purple-200"
+            onClick={async () => {
+              try {
+                toast.info('Синхронизация статистики...')
+                const response = await apiClient.syncAllAvitoStats()
+                if (response.success) {
+                  toast.success('Статистика синхронизирована!')
+                  // Перезагружаем аккаунты
+                  const accountsResponse = await apiClient.getAvitoAccounts()
+                  if (accountsResponse.success && accountsResponse.data) {
+                    setAccounts(accountsResponse.data)
+                    const accountsData = accountsResponse.data
+                    const calculatedStats = {
+                      accountsCount: accountsData.length,
+                      adsCount: accountsData.reduce((sum: number, acc: AvitoAccount) => sum + (acc.adsCount || 0), 0),
+                      viewsCount: accountsData.reduce((sum: number, acc: AvitoAccount) => sum + (acc.viewsCount || 0), 0),
+                      contactsCount: accountsData.reduce((sum: number, acc: AvitoAccount) => sum + (acc.contactsCount || 0), 0),
+                      totalCPA: accountsData.reduce((sum: number, acc: AvitoAccount) => sum + (acc.cpa || 0), 0),
+                      ordersCount: 0,
+                      orderPrice: 0,
+                    }
+                    setStats(calculatedStats)
+                  }
+                } else {
+                  toast.error('Ошибка синхронизации')
+                }
+              } catch (error) {
+                console.error('Sync error:', error)
+                toast.error('Ошибка синхронизации статистики')
+              }
+            }}
+          >
+            <Download className="h-4 w-4 mr-2 text-purple-600" />
+            Синхронизировать статистику
+          </Button>
+
           <Button variant="outline" disabled className="bg-gray-50">
             <Zap className="h-4 w-4 mr-2" />
             Топ-робот

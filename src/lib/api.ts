@@ -476,6 +476,13 @@ class ApiClient {
     })
   }
 
+  async syncAllAvitoStats() {
+    return this.request<any>('/accounts/sync-all-stats', {
+      method: 'POST',
+      body: JSON.stringify({}),
+    })
+  }
+
   // Avito чаты и мессенджер (через MessengerController)
   async getAvitoChats(params?: {
     avitoAccountName?: string
