@@ -14,7 +14,6 @@ interface AvitoAccount {
   connectionStatus?: 'online' | 'offline'
   proxyStatus?: 'active' | 'inactive'
   cpa?: number
-  balance?: number
   adsCount?: number
   viewsCount?: number
   contactsCount?: number
@@ -27,7 +26,7 @@ interface AvitoStats {
   adsCount: number
   viewsCount: number
   contactsCount: number
-  totalBalance: number
+  totalCPA: number
   ordersCount: number
   orderPrice: number
 }
@@ -38,7 +37,7 @@ export default function AvitoPage() {
     adsCount: 0,
     viewsCount: 0,
     contactsCount: 0,
-    totalBalance: 0,
+    totalCPA: 0,
     ordersCount: 0,
     orderPrice: 0,
   })
@@ -134,7 +133,7 @@ export default function AvitoPage() {
             adsCount: accountsData.reduce((sum: number, acc: AvitoAccount) => sum + (acc.adsCount || 0), 0),
             viewsCount: accountsData.reduce((sum: number, acc: AvitoAccount) => sum + (acc.viewsCount || 0), 0),
             contactsCount: accountsData.reduce((sum: number, acc: AvitoAccount) => sum + (acc.contactsCount || 0), 0),
-            totalBalance: accountsData.reduce((sum: number, acc: AvitoAccount) => sum + (acc.balance || 0), 0),
+            totalCPA: accountsData.reduce((sum: number, acc: AvitoAccount) => sum + (acc.cpa || 0), 0),
             ordersCount: 0, // Данные заказов пока недоступны
             orderPrice: 0, // Данные цены заказа пока недоступны
           }
@@ -231,8 +230,8 @@ export default function AvitoPage() {
 
           <Card className="border-0 shadow-lg">
             <CardContent className="pt-6">
-              <div className="text-sm text-gray-500 mb-2">Общий баланс</div>
-              <div className="text-3xl font-bold text-green-600">{formatCurrency(stats.totalBalance)}</div>
+              <div className="text-sm text-gray-500 mb-2">Общий CPA</div>
+              <div className="text-3xl font-bold text-green-600">{formatCurrency(stats.totalCPA)}</div>
             </CardContent>
           </Card>
 
