@@ -1,10 +1,10 @@
 'use client'
 
 import { Card, CardContent } from '@/components/ui/card'
-import { Star, Wifi, Shield, Zap, Plus } from 'lucide-react'
+import { Star, Wifi, Shield, Zap, Plus, Clock } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { apiClient } from '@/lib/api'
 import { toast } from 'sonner'
 
@@ -45,6 +45,77 @@ export default function AvitoPage() {
 
   const [accounts, setAccounts] = useState<AvitoAccount[]>([])
   const [isLoading, setIsLoading] = useState(true)
+  const [isCheckingConnections, setIsCheckingConnections] = useState(false)
+  const [, setCurrentTime] = useState(Date.now())
+
+  // Константа для интервала проверки (12 часов в миллисекундах)
+  const CHECK_INTERVAL = 12 * 60 * 60 * 1000
+
+  // Функция для проверки всех подключений и прокси
+  const checkAllConnectionsAndProxies = useCallback(async () => {
+    if (isCheckingConnections) return
+    
+    setIsCheckingConnections(true)
+    try {
+      // Запускаем проверки параллельно
+      await Promise.all([
+        apiClient.checkAllAvitoConnections(),
+        apiClient.checkAllAvitoProxies()
+      ])
+      
+      // Обновляем список аккаунтов после проверки
+      const accountsResponse = await apiClient.getAvitoAccounts()
+      if (accountsResponse.success && accountsResponse.data) {
+        setAccounts(accountsResponse.data)
+      }
+      
+      // Сохраняем время последней проверки
+      localStorage.setItem('lastAvitoCheck', Date.now().toString())
+      setCurrentTime(Date.now()) // Обновляем UI
+      
+      toast.success('Проверка подключений и прокси завершена')
+    } catch (error) {
+      console.error('Error checking connections:', error)
+      toast.error('Ошибка при проверке подключений')
+    } finally {
+      setIsCheckingConnections(false)
+    }
+  }, [isCheckingConnections])
+
+  // Проверка необходимости автоматической проверки
+  const shouldRunAutoCheck = () => {
+    const lastCheck = localStorage.getItem('lastAvitoCheck')
+    if (!lastCheck) return true
+    
+    const timeSinceLastCheck = Date.now() - parseInt(lastCheck)
+    return timeSinceLastCheck >= CHECK_INTERVAL
+  }
+
+  // Автоматическая проверка каждые 12 часов
+  useEffect(() => {
+    // Проверяем при загрузке страницы
+    if (shouldRunAutoCheck()) {
+      checkAllConnectionsAndProxies()
+    }
+
+    // Устанавливаем интервал для регулярной проверки
+    const intervalId = setInterval(() => {
+      if (shouldRunAutoCheck()) {
+        checkAllConnectionsAndProxies()
+      }
+    }, CHECK_INTERVAL)
+
+    return () => clearInterval(intervalId)
+  }, [checkAllConnectionsAndProxies, CHECK_INTERVAL])
+
+  // Обновление времени для отображения каждую минуту
+  useEffect(() => {
+    const timeUpdateInterval = setInterval(() => {
+      setCurrentTime(Date.now())
+    }, 60000) // Обновляем каждую минуту
+
+    return () => clearInterval(timeUpdateInterval)
+  }, [])
 
   // Загрузка данных с API
   useEffect(() => {
@@ -93,6 +164,35 @@ export default function AvitoPage() {
 
   const formatNumber = (num: number) => {
     return new Intl.NumberFormat('ru-RU').format(num)
+  }
+
+  const getLastCheckTime = () => {
+    const lastCheck = localStorage.getItem('lastAvitoCheck')
+    if (!lastCheck) return 'Никогда'
+    
+    const date = new Date(parseInt(lastCheck))
+    return date.toLocaleString('ru-RU', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    })
+  }
+
+  const getNextCheckTime = () => {
+    const lastCheck = localStorage.getItem('lastAvitoCheck')
+    if (!lastCheck) return 'Скоро'
+    
+    const nextCheck = parseInt(lastCheck) + CHECK_INTERVAL
+    const date = new Date(nextCheck)
+    return date.toLocaleString('ru-RU', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    })
   }
 
   return (
@@ -163,9 +263,14 @@ export default function AvitoPage() {
             Вечный онлайн
           </Button>
 
-          <Button variant="outline" className="bg-white hover:bg-blue-50 border-blue-200">
+          <Button 
+            variant="outline" 
+            className="bg-white hover:bg-blue-50 border-blue-200"
+            onClick={checkAllConnectionsAndProxies}
+            disabled={isCheckingConnections}
+          >
             <Shield className="h-4 w-4 mr-2 text-blue-600" />
-            Проверка прокси
+            {isCheckingConnections ? 'Проверка...' : 'Проверить подключения и прокси'}
           </Button>
 
           <Button variant="outline" disabled className="bg-gray-50">
@@ -177,7 +282,16 @@ export default function AvitoPage() {
         {/* Таблица аккаунтов */}
         <Card className="border-0 shadow-lg">
           <CardContent className="p-4">
-            <div className="flex items-center justify-end mb-4">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex flex-col gap-1">
+                <div className="flex items-center gap-2 text-sm text-gray-600">
+                  <Clock className="h-4 w-4" />
+                  <span>Последняя проверка: <strong>{getLastCheckTime()}</strong></span>
+                </div>
+                <div className="text-xs text-gray-500 ml-6">
+                  Следующая проверка: {getNextCheckTime()}
+                </div>
+              </div>
               <Button 
                 className="bg-gradient-to-r from-teal-600 to-emerald-600 hover:from-teal-700 hover:to-emerald-700 text-white"
                 onClick={() => window.location.href = '/avito/add'}
@@ -195,7 +309,6 @@ export default function AvitoPage() {
                   <TableHead className="text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">Подключение</TableHead>
                   <TableHead className="text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">Прокси</TableHead>
                   <TableHead className="text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">CPA</TableHead>
-                  <TableHead className="text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">Баланс</TableHead>
                   <TableHead className="text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">Объявл.</TableHead>
                   <TableHead className="text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">Просм.</TableHead>
                   <TableHead className="text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">Контакты</TableHead>
@@ -221,7 +334,6 @@ export default function AvitoPage() {
                       }`} />
                     </TableCell>
                     <TableCell className="text-right text-gray-900">{account.cpa ? formatCurrency(account.cpa) : '-'}</TableCell>
-                    <TableCell className="text-right font-medium text-green-600">{account.balance ? formatCurrency(account.balance) : '-'}</TableCell>
                     <TableCell className="text-center text-gray-600">{account.adsCount || 0}</TableCell>
                     <TableCell className="text-center text-gray-600">{account.viewsCount ? formatNumber(account.viewsCount) : 0}</TableCell>
                     <TableCell className="text-center text-gray-600">{account.contactsCount || 0}</TableCell>

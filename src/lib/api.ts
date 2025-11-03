@@ -450,8 +450,26 @@ class ApiClient {
     })
   }
 
+  async checkAvitoProxy(id: string) {
+    return this.request<any>(`/accounts/${id}/check-proxy`, {
+      method: 'POST',
+    })
+  }
+
   async syncAvitoStats(id: string) {
     return this.request<any>(`/accounts/${id}/sync-stats`, {
+      method: 'POST',
+    })
+  }
+
+  async checkAllAvitoConnections() {
+    return this.request<any>('/accounts/check-all-connections', {
+      method: 'POST',
+    })
+  }
+
+  async checkAllAvitoProxies() {
+    return this.request<any>('/accounts/check-all-proxies', {
       method: 'POST',
     })
   }
