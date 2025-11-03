@@ -267,7 +267,7 @@ export default function AvitoPage() {
           <Card className="border-0 shadow-lg">
             <CardContent className="pt-6">
               <div className="text-sm text-gray-500 mb-2">Общий CPA</div>
-              <div className="text-3xl font-bold text-green-600">{formatCurrency(stats.totalCPA)}</div>
+              <div className="text-3xl font-bold text-green-600">{formatCurrency(stats.totalCPA / 100)}</div>
             </CardContent>
           </Card>
 
@@ -368,7 +368,7 @@ export default function AvitoPage() {
                         account.proxyStatus === 'active' ? 'bg-blue-500' : 'bg-gray-300'
                       }`} />
                     </TableCell>
-                    <TableCell className="text-right text-gray-900">{account.cpa ? formatCurrency(account.cpa) : '-'}</TableCell>
+                    <TableCell className="text-right text-gray-900">{account.cpa ? formatCurrency(account.cpa / 100) : '-'}</TableCell>
                     <TableCell className="text-center text-gray-600">{account.adsCount || 0}</TableCell>
                     <TableCell className="text-center text-gray-600">{account.viewsCount ? formatNumber(account.viewsCount) : 0}</TableCell>
                     <TableCell className="text-center text-gray-600">{account.contactsCount || 0}</TableCell>

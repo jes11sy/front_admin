@@ -465,12 +465,14 @@ class ApiClient {
   async checkAllAvitoConnections() {
     return this.request<any>('/accounts/check-all-connections', {
       method: 'POST',
+      body: JSON.stringify({}),
     })
   }
 
   async checkAllAvitoProxies() {
     return this.request<any>('/accounts/check-all-proxies', {
       method: 'POST',
+      body: JSON.stringify({}),
     })
   }
 
