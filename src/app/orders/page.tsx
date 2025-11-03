@@ -78,7 +78,7 @@ export default function OrdersPage() {
           limit,
           search: searchQuery || undefined,
           status: statusFilter !== 'all' ? statusFilter : undefined,
-          masterId: masterFilter ? parseInt(masterFilter) : undefined
+          master: masterFilter || undefined
         })
         
         if (response.success && response.data) {
@@ -197,7 +197,7 @@ export default function OrdersPage() {
                 <div className="w-48">
                   <Input
                     type="text"
-                    placeholder="ID мастера..."
+                    placeholder="Имя мастера..."
                     value={masterFilter}
                     onChange={(e) => handleMasterChange(e.target.value)}
                     className="bg-white"

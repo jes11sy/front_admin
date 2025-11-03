@@ -29,6 +29,8 @@ interface CityStats {
   balance: number
 }
 
+type DateFilter = 'day' | 'week' | 'month' | 'custom' | 'all'
+
 export default function CityTransactionsPage() {
   const router = useRouter()
   const params = useParams()
@@ -46,6 +48,7 @@ export default function CityTransactionsPage() {
   const [totalTransactions, setTotalTransactions] = useState(0)
   const [itemsPerPage, setItemsPerPage] = useState(50)
   const [typeFilter, setTypeFilter] = useState('all')
+  const [dateFilter, setDateFilter] = useState<DateFilter>('all')
   const [startDate, setStartDate] = useState('')
   const [endDate, setEndDate] = useState('')
 
@@ -61,10 +64,81 @@ export default function CityTransactionsPage() {
     { value: 'расход', label: 'Расход' },
   ]
 
+  // Функция для получения диапазона дат в зависимости от фильтра
+  const getDateRange = () => {
+    const now = new Date()
+    let start: Date | null = null
+    let end: Date = now
+
+    switch (dateFilter) {
+      case 'day':
+        start = new Date(now)
+        start.setHours(0, 0, 0, 0)
+        return {
+          startDate: start.toISOString().split('T')[0],
+          endDate: end.toISOString().split('T')[0]
+        }
+      case 'week':
+        start = new Date(now)
+        start.setDate(now.getDate() - 7)
+        start.setHours(0, 0, 0, 0)
+        return {
+          startDate: start.toISOString().split('T')[0],
+          endDate: end.toISOString().split('T')[0]
+        }
+      case 'month':
+        start = new Date(now)
+        start.setMonth(now.getMonth() - 1)
+        start.setHours(0, 0, 0, 0)
+        return {
+          startDate: start.toISOString().split('T')[0],
+          endDate: end.toISOString().split('T')[0]
+        }
+      case 'custom':
+        return { startDate, endDate }
+      case 'all':
+      default:
+        return { startDate: '', endDate: '' }
+    }
+  }
+
+  const handleDateFilterChange = (filter: DateFilter) => {
+    setDateFilter(filter)
+    if (filter !== 'custom') {
+      const range = getDateRange()
+      setStartDate(range.startDate)
+      setEndDate(range.endDate)
+    } else {
+      setStartDate('')
+      setEndDate('')
+    }
+    setCurrentPage(1)
+  }
+
+  const handleCustomDateApply = () => {
+    if (startDate || endDate) {
+      setDateFilter('custom')
+      setCurrentPage(1)
+    }
+  }
+
+  const getFilterLabel = () => {
+    switch (dateFilter) {
+      case 'day': return 'За сегодня'
+      case 'week': return 'За неделю'
+      case 'month': return 'За месяц'
+      case 'custom': return 'За период'
+      case 'all': return 'За всё время'
+      default: return 'За период'
+    }
+  }
+
   useEffect(() => {
     const loadData = async () => {
       setLoading(true)
       try {
+        const dateRange = getDateRange()
+        
         // Загружаем ВСЕ транзакции для правильной пагинации и статистики
         let allTransactions: Transaction[] = []
         let page = 1
@@ -74,7 +148,9 @@ export default function CityTransactionsPage() {
           const resp = await apiClient.getCashByCity(cityName, { 
             page, 
             limit: 100,
-            type: typeFilter !== 'all' ? typeFilter : undefined
+            type: typeFilter !== 'all' ? typeFilter : undefined,
+            startDate: dateRange.startDate || undefined,
+            endDate: dateRange.endDate || undefined
           })
           if (resp.success && resp.data) {
             const pageData = resp.data.data || resp.data
@@ -91,17 +167,8 @@ export default function CityTransactionsPage() {
           }
         }
         
-        // Фильтруем по датам если нужно
+        // Данные уже отфильтрованы сервером, но для локальной фильтрации оставим код на случай необходимости
         let filteredData = allTransactions
-        if (startDate || endDate) {
-          filteredData = allTransactions.filter((t: Transaction) => {
-            if (!t.createdAt) return true
-            const transactionDate = new Date(t.createdAt).toISOString().split('T')[0]
-            const matchStart = !startDate || transactionDate >= startDate
-            const matchEnd = !endDate || transactionDate <= endDate
-            return matchStart && matchEnd
-          })
-        }
         
         // Применяем пагинацию к отфильтрованным данным
         const startIndex = (currentPage - 1) * itemsPerPage
@@ -136,7 +203,7 @@ export default function CityTransactionsPage() {
     }
 
     loadData()
-  }, [cityName, currentPage, itemsPerPage, typeFilter, startDate, endDate])
+  }, [cityName, currentPage, itemsPerPage, typeFilter, dateFilter, startDate, endDate])
 
   const handlePageChange = (page: number) => {
     setCurrentPage(page)
@@ -196,7 +263,7 @@ export default function CityTransactionsPage() {
               <div className="text-3xl font-bold text-green-600">
                 {formatCurrency(cityStats.totalIncome)}
               </div>
-              <p className="text-xs text-gray-500 mt-1">За период</p>
+              <p className="text-xs text-gray-500 mt-1">{getFilterLabel()}</p>
             </CardContent>
           </Card>
 
@@ -209,7 +276,7 @@ export default function CityTransactionsPage() {
               <div className="text-3xl font-bold text-red-600">
                 {formatCurrency(cityStats.totalExpenses)}
               </div>
-              <p className="text-xs text-gray-500 mt-1">За период</p>
+              <p className="text-xs text-gray-500 mt-1">{getFilterLabel()}</p>
             </CardContent>
           </Card>
 
@@ -236,67 +303,111 @@ export default function CityTransactionsPage() {
           </CardHeader>
           <CardContent className="p-4">
             {/* Фильтры */}
-            <div className="mb-4 flex items-center gap-3 pb-4 border-b border-gray-200">
-              <div className="w-48">
-                <Select
-                  value={typeFilter}
-                  onValueChange={(value) => {
-                    setTypeFilter(value)
-                    setCurrentPage(1)
-                  }}
-                  disabled={loading}
-                >
-                  <SelectTrigger className="bg-white">
-                    <SelectValue placeholder="Все типы" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {TRANSACTION_TYPES.map((type) => (
-                      <SelectItem key={type.value} value={type.value}>
-                        {type.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="flex items-center gap-2">
-                <Label className="text-sm text-gray-600">От:</Label>
-                <Input
-                  type="date"
-                  value={startDate}
-                  onChange={(e) => {
-                    setStartDate(e.target.value)
-                    setCurrentPage(1)
-                  }}
-                  className="w-40 bg-white"
-                />
-              </div>
-              <div className="flex items-center gap-2">
-                <Label className="text-sm text-gray-600">До:</Label>
-                <Input
-                  type="date"
-                  value={endDate}
-                  onChange={(e) => {
-                    setEndDate(e.target.value)
-                    setCurrentPage(1)
-                  }}
-                  className="w-40 bg-white"
-                />
-              </div>
-              {(typeFilter !== 'all' || startDate || endDate) && (
+            <div className="mb-4 space-y-4 pb-4 border-b border-gray-200">
+              {/* Быстрые фильтры по периоду */}
+              <div className="flex flex-wrap items-center gap-2">
+                <Calendar className="h-5 w-5 text-gray-600" />
+                <span className="text-sm font-semibold text-gray-700 mr-2">Период:</span>
                 <Button
-                  variant="outline"
+                  variant={dateFilter === 'all' ? 'default' : 'outline'}
                   size="sm"
-                  onClick={() => {
-                    setTypeFilter('all')
-                    setStartDate('')
-                    setEndDate('')
-                    setCurrentPage(1)
-                  }}
-                  className="bg-white"
+                  onClick={() => handleDateFilterChange('all')}
+                  className={dateFilter === 'all' ? 'bg-teal-600 hover:bg-teal-700' : ''}
                 >
-                  Сбросить фильтры
+                  Всё время
                 </Button>
-              )}
+                <Button
+                  variant={dateFilter === 'day' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => handleDateFilterChange('day')}
+                  className={dateFilter === 'day' ? 'bg-teal-600 hover:bg-teal-700' : ''}
+                >
+                  День
+                </Button>
+                <Button
+                  variant={dateFilter === 'week' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => handleDateFilterChange('week')}
+                  className={dateFilter === 'week' ? 'bg-teal-600 hover:bg-teal-700' : ''}
+                >
+                  Неделя
+                </Button>
+                <Button
+                  variant={dateFilter === 'month' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => handleDateFilterChange('month')}
+                  className={dateFilter === 'month' ? 'bg-teal-600 hover:bg-teal-700' : ''}
+                >
+                  Месяц
+                </Button>
+              </div>
+
+              {/* Фильтры типа и пользовательских дат */}
+              <div className="flex flex-wrap items-center gap-3">
+                <div className="w-48">
+                  <Select
+                    value={typeFilter}
+                    onValueChange={(value) => {
+                      setTypeFilter(value)
+                      setCurrentPage(1)
+                    }}
+                    disabled={loading}
+                  >
+                    <SelectTrigger className="bg-white">
+                      <SelectValue placeholder="Все типы" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {TRANSACTION_TYPES.map((type) => (
+                        <SelectItem key={type.value} value={type.value}>
+                          {type.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Label className="text-sm text-gray-600">От:</Label>
+                  <Input
+                    type="date"
+                    value={startDate}
+                    onChange={(e) => {
+                      setStartDate(e.target.value)
+                      setDateFilter('custom')
+                      setCurrentPage(1)
+                    }}
+                    className="w-40 bg-white"
+                  />
+                </div>
+                <div className="flex items-center gap-2">
+                  <Label className="text-sm text-gray-600">До:</Label>
+                  <Input
+                    type="date"
+                    value={endDate}
+                    onChange={(e) => {
+                      setEndDate(e.target.value)
+                      setDateFilter('custom')
+                      setCurrentPage(1)
+                    }}
+                    className="w-40 bg-white"
+                  />
+                </div>
+                {(typeFilter !== 'all' || dateFilter !== 'all') && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      setTypeFilter('all')
+                      setDateFilter('all')
+                      setStartDate('')
+                      setEndDate('')
+                      setCurrentPage(1)
+                    }}
+                    className="bg-white"
+                  >
+                    Сбросить фильтры
+                  </Button>
+                )}
+              </div>
             </div>
 
             <Table>

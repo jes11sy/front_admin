@@ -4,7 +4,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
-import { Search, Download, TrendingUp, TrendingDown, DollarSign } from 'lucide-react'
+import { Search, Download, TrendingUp, TrendingDown, DollarSign, Calendar } from 'lucide-react'
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { apiClient } from '@/lib/api'
@@ -32,6 +32,8 @@ interface Stats {
   balance: number
 }
 
+type DateFilter = 'day' | 'week' | 'month' | 'custom' | 'all'
+
 export default function CashboxPage() {
   const router = useRouter()
   const [searchQuery, setSearchQuery] = useState('')
@@ -42,6 +44,45 @@ export default function CashboxPage() {
     balance: 0,
   })
   const [isLoading, setIsLoading] = useState(true)
+  const [dateFilter, setDateFilter] = useState<DateFilter>('all')
+  const [startDate, setStartDate] = useState('')
+  const [endDate, setEndDate] = useState('')
+
+  // Функция для получения диапазона дат в зависимости от фильтра
+  const getDateRange = () => {
+    const now = new Date()
+    let start: Date | null = null
+    let end: Date = now
+
+    switch (dateFilter) {
+      case 'day':
+        start = new Date(now)
+        start.setHours(0, 0, 0, 0)
+        break
+      case 'week':
+        start = new Date(now)
+        start.setDate(now.getDate() - 7)
+        start.setHours(0, 0, 0, 0)
+        break
+      case 'month':
+        start = new Date(now)
+        start.setMonth(now.getMonth() - 1)
+        start.setHours(0, 0, 0, 0)
+        break
+      case 'custom':
+        if (startDate) start = new Date(startDate)
+        if (endDate) end = new Date(endDate)
+        break
+      case 'all':
+      default:
+        return { startDate: undefined, endDate: undefined }
+    }
+
+    return {
+      startDate: start ? start.toISOString().split('T')[0] : undefined,
+      endDate: end.toISOString().split('T')[0]
+    }
+  }
 
   // Загрузка данных из API
   useEffect(() => {
@@ -57,13 +98,20 @@ export default function CashboxPage() {
       
       setIsLoading(true)
       try {
+        const dateRange = getDateRange()
+        
         // Загружаем ВСЕ транзакции для группировки по городам
         let allTransactions: CashTransaction[] = []
         let page = 1
         let hasMore = true
         
         while (hasMore) {
-          const response = await apiClient.getCashTransactions({ page, limit: 100 })
+          const response = await apiClient.getCashTransactions({ 
+            page, 
+            limit: 100,
+            startDate: dateRange.startDate,
+            endDate: dateRange.endDate
+          })
           if (response.success && response.data) {
             const pageData: CashTransaction[] = response.data.data || response.data
             allTransactions.push(...pageData)
@@ -121,11 +169,36 @@ export default function CashboxPage() {
     }
 
     loadData()
-  }, [])
+  }, [dateFilter, startDate, endDate])
 
   const filteredCities = cityBalances.filter(city =>
     city.city.toLowerCase().includes(searchQuery.toLowerCase())
   )
+
+  const handleDateFilterChange = (filter: DateFilter) => {
+    setDateFilter(filter)
+    if (filter !== 'custom') {
+      setStartDate('')
+      setEndDate('')
+    }
+  }
+
+  const handleCustomDateApply = () => {
+    if (startDate || endDate) {
+      setDateFilter('custom')
+    }
+  }
+
+  const getFilterLabel = () => {
+    switch (dateFilter) {
+      case 'day': return 'За сегодня'
+      case 'week': return 'За неделю'
+      case 'month': return 'За месяц'
+      case 'custom': return 'Пользовательский период'
+      case 'all': return 'За всё время'
+      default: return 'За всё время'
+    }
+  }
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('ru-RU', {
@@ -146,6 +219,78 @@ export default function CashboxPage() {
   return (
     <div className="min-h-screen" style={{backgroundColor: '#114643'}}>
       <div className="container mx-auto px-4 py-8 max-w-7xl">
+        {/* Фильтры по датам */}
+        <Card className="border-0 shadow-lg mb-6">
+          <CardContent className="p-4">
+            <div className="flex flex-col gap-4">
+              <div className="flex items-center gap-2">
+                <Calendar className="h-5 w-5 text-gray-600" />
+                <span className="text-sm font-semibold text-gray-700">Период:</span>
+              </div>
+              
+              <div className="flex flex-wrap items-center gap-2">
+                <Button
+                  variant={dateFilter === 'all' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => handleDateFilterChange('all')}
+                  className={dateFilter === 'all' ? 'bg-teal-600 hover:bg-teal-700' : ''}
+                >
+                  Всё время
+                </Button>
+                <Button
+                  variant={dateFilter === 'day' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => handleDateFilterChange('day')}
+                  className={dateFilter === 'day' ? 'bg-teal-600 hover:bg-teal-700' : ''}
+                >
+                  День
+                </Button>
+                <Button
+                  variant={dateFilter === 'week' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => handleDateFilterChange('week')}
+                  className={dateFilter === 'week' ? 'bg-teal-600 hover:bg-teal-700' : ''}
+                >
+                  Неделя
+                </Button>
+                <Button
+                  variant={dateFilter === 'month' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => handleDateFilterChange('month')}
+                  className={dateFilter === 'month' ? 'bg-teal-600 hover:bg-teal-700' : ''}
+                >
+                  Месяц
+                </Button>
+                
+                <div className="flex items-center gap-2 ml-4">
+                  <span className="text-sm text-gray-600">от:</span>
+                  <Input
+                    type="date"
+                    value={startDate}
+                    onChange={(e) => setStartDate(e.target.value)}
+                    className="w-40"
+                  />
+                  <span className="text-sm text-gray-600">до:</span>
+                  <Input
+                    type="date"
+                    value={endDate}
+                    onChange={(e) => setEndDate(e.target.value)}
+                    className="w-40"
+                  />
+                  <Button
+                    size="sm"
+                    onClick={handleCustomDateApply}
+                    disabled={!startDate && !endDate}
+                    className="bg-teal-600 hover:bg-teal-700"
+                  >
+                    Применить
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
         {/* Статистика */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
           <Card className="border-0 shadow-lg">
@@ -155,7 +300,7 @@ export default function CashboxPage() {
                 <TrendingUp className="h-4 w-4 text-green-600" />
               </div>
               <div className="text-3xl font-bold text-green-600">{formatCurrency(stats.totalIncome)}</div>
-              <p className="text-xs text-gray-500 mt-1">За месяц</p>
+              <p className="text-xs text-gray-500 mt-1">{getFilterLabel()}</p>
             </CardContent>
           </Card>
 
@@ -166,7 +311,7 @@ export default function CashboxPage() {
                 <TrendingDown className="h-4 w-4 text-red-600" />
               </div>
               <div className="text-3xl font-bold text-red-600">{formatCurrency(stats.totalExpenses)}</div>
-              <p className="text-xs text-gray-500 mt-1">За месяц</p>
+              <p className="text-xs text-gray-500 mt-1">{getFilterLabel()}</p>
             </CardContent>
           </Card>
 

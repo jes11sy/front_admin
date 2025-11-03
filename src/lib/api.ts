@@ -560,6 +560,8 @@ class ApiClient {
     type?: string
     city?: string
     name?: string
+    startDate?: string
+    endDate?: string
   }) {
     const searchParams = new URLSearchParams()
     if (params?.page) searchParams.append('page', params.page.toString())
@@ -567,6 +569,8 @@ class ApiClient {
     if (params?.type) searchParams.append('type', params.type)
     if (params?.city) searchParams.append('city', params.city)
     if (params?.name) searchParams.append('name', params.name)
+    if (params?.startDate) searchParams.append('startDate', params.startDate)
+    if (params?.endDate) searchParams.append('endDate', params.endDate)
 
     const query = searchParams.toString()
     return this.request<any>(`/cash${query ? `?${query}` : ''}`)
@@ -605,12 +609,16 @@ class ApiClient {
     page?: number
     limit?: number
     type?: string
+    startDate?: string
+    endDate?: string
   }) {
     const searchParams = new URLSearchParams()
     searchParams.append('city', city)
     if (params?.page) searchParams.append('page', params.page.toString())
     if (params?.limit) searchParams.append('limit', params.limit.toString())
     if (params?.type) searchParams.append('type', params.type)
+    if (params?.startDate) searchParams.append('startDate', params.startDate)
+    if (params?.endDate) searchParams.append('endDate', params.endDate)
 
     const query = searchParams.toString()
     return this.request<any>(`/cash${query ? `?${query}` : ''}`)
