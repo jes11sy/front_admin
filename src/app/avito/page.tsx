@@ -56,23 +56,64 @@ export default function AvitoPage() {
     
     setIsCheckingConnections(true)
     try {
-      // Запускаем проверки параллельно
-      await Promise.all([
+      // Запускаем проверки последовательно с обработкой ошибок
+      const results = await Promise.allSettled([
         apiClient.checkAllAvitoConnections(),
         apiClient.checkAllAvitoProxies()
       ])
       
+      const connectionResult = results[0]
+      const proxyResult = results[1]
+      
+      let successMessage = ''
+      let hasErrors = false
+      
+      if (connectionResult.status === 'fulfilled') {
+        successMessage += 'Подключения проверены. '
+      } else {
+        hasErrors = true
+        console.error('Connection check failed:', connectionResult.reason)
+      }
+      
+      if (proxyResult.status === 'fulfilled') {
+        successMessage += 'Прокси проверены.'
+      } else {
+        hasErrors = true
+        console.error('Proxy check failed:', proxyResult.reason)
+      }
+      
       // Обновляем список аккаунтов после проверки
-      const accountsResponse = await apiClient.getAvitoAccounts()
-      if (accountsResponse.success && accountsResponse.data) {
-        setAccounts(accountsResponse.data)
+      try {
+        const accountsResponse = await apiClient.getAvitoAccounts()
+        if (accountsResponse.success && accountsResponse.data) {
+          setAccounts(accountsResponse.data)
+          
+          // Пересчитываем статистику
+          const accountsData = accountsResponse.data
+          const calculatedStats = {
+            accountsCount: accountsData.length,
+            adsCount: accountsData.reduce((sum: number, acc: AvitoAccount) => sum + (acc.adsCount || 0), 0),
+            viewsCount: accountsData.reduce((sum: number, acc: AvitoAccount) => sum + (acc.viewsCount || 0), 0),
+            contactsCount: accountsData.reduce((sum: number, acc: AvitoAccount) => sum + (acc.contactsCount || 0), 0),
+            totalCPA: accountsData.reduce((sum: number, acc: AvitoAccount) => sum + (acc.cpa || 0), 0),
+            ordersCount: 0,
+            orderPrice: 0,
+          }
+          setStats(calculatedStats)
+        }
+      } catch (error) {
+        console.error('Failed to reload accounts:', error)
       }
       
       // Сохраняем время последней проверки
       localStorage.setItem('lastAvitoCheck', Date.now().toString())
       setCurrentTime(Date.now()) // Обновляем UI
       
-      toast.success('Проверка подключений и прокси завершена')
+      if (hasErrors) {
+        toast.warning('Проверка завершена с ошибками')
+      } else {
+        toast.success(successMessage)
+      }
     } catch (error) {
       console.error('Error checking connections:', error)
       toast.error('Ошибка при проверке подключений')
@@ -90,13 +131,8 @@ export default function AvitoPage() {
     return timeSinceLastCheck >= CHECK_INTERVAL
   }
 
-  // Автоматическая проверка каждые 12 часов
+  // Автоматическая проверка каждые 12 часов (отключена, только по кнопке)
   useEffect(() => {
-    // Проверяем при загрузке страницы
-    if (shouldRunAutoCheck()) {
-      checkAllConnectionsAndProxies()
-    }
-
     // Устанавливаем интервал для регулярной проверки
     const intervalId = setInterval(() => {
       if (shouldRunAutoCheck()) {
