@@ -17,6 +17,8 @@ interface AvitoAccount {
   adsCount?: number
   viewsCount?: number
   contactsCount?: number
+  viewsToday?: number
+  contactsToday?: number
   lastSyncAt?: string
   createdAt?: string
 }
@@ -26,9 +28,9 @@ interface AvitoStats {
   adsCount: number
   viewsCount: number
   contactsCount: number
+  viewsToday: number
+  contactsToday: number
   totalCPA: number
-  ordersCount: number
-  orderPrice: number
 }
 
 export default function AvitoPage() {
@@ -37,9 +39,9 @@ export default function AvitoPage() {
     adsCount: 0,
     viewsCount: 0,
     contactsCount: 0,
+    viewsToday: 0,
+    contactsToday: 0,
     totalCPA: 0,
-    ordersCount: 0,
-    orderPrice: 0,
   })
 
   const [accounts, setAccounts] = useState<AvitoAccount[]>([])
@@ -95,9 +97,9 @@ export default function AvitoPage() {
             adsCount: accountsData.reduce((sum: number, acc: AvitoAccount) => sum + (acc.adsCount || 0), 0),
             viewsCount: accountsData.reduce((sum: number, acc: AvitoAccount) => sum + (acc.viewsCount || 0), 0),
             contactsCount: accountsData.reduce((sum: number, acc: AvitoAccount) => sum + (acc.contactsCount || 0), 0),
+            viewsToday: accountsData.reduce((sum: number, acc: AvitoAccount) => sum + (acc.viewsToday || 0), 0),
+            contactsToday: accountsData.reduce((sum: number, acc: AvitoAccount) => sum + (acc.contactsToday || 0), 0),
             totalCPA: accountsData.reduce((sum: number, acc: AvitoAccount) => sum + (acc.cpa || 0), 0),
-            ordersCount: 0,
-            orderPrice: 0,
           }
           setStats(calculatedStats)
         }
@@ -169,9 +171,9 @@ export default function AvitoPage() {
             adsCount: accountsData.reduce((sum: number, acc: AvitoAccount) => sum + (acc.adsCount || 0), 0),
             viewsCount: accountsData.reduce((sum: number, acc: AvitoAccount) => sum + (acc.viewsCount || 0), 0),
             contactsCount: accountsData.reduce((sum: number, acc: AvitoAccount) => sum + (acc.contactsCount || 0), 0),
+            viewsToday: accountsData.reduce((sum: number, acc: AvitoAccount) => sum + (acc.viewsToday || 0), 0),
+            contactsToday: accountsData.reduce((sum: number, acc: AvitoAccount) => sum + (acc.contactsToday || 0), 0),
             totalCPA: accountsData.reduce((sum: number, acc: AvitoAccount) => sum + (acc.cpa || 0), 0),
-            ordersCount: 0, // Данные заказов пока недоступны
-            orderPrice: 0, // Данные цены заказа пока недоступны
           }
           setStats(calculatedStats)
         } else {
@@ -235,7 +237,7 @@ export default function AvitoPage() {
       <div className="container mx-auto px-4 py-8 max-w-7xl">
         
         {/* Статистика */}
-        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-6 mb-8">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-6 mb-8">
           <Card className="border-0 shadow-lg">
             <CardContent className="pt-6">
               <div className="text-sm text-gray-500 mb-2">Аккаунты</div>
@@ -253,14 +255,24 @@ export default function AvitoPage() {
           <Card className="border-0 shadow-lg">
             <CardContent className="pt-6">
               <div className="text-sm text-gray-500 mb-2">Просмотры</div>
-              <div className="text-3xl font-bold text-gray-800">{formatNumber(stats.viewsCount)}</div>
+              <div className="text-3xl font-bold text-gray-800">
+                {formatNumber(stats.viewsCount)}
+                {stats.viewsToday > 0 && (
+                  <span className="text-lg text-green-600 ml-2">(+{formatNumber(stats.viewsToday)})</span>
+                )}
+              </div>
             </CardContent>
           </Card>
 
           <Card className="border-0 shadow-lg">
             <CardContent className="pt-6">
               <div className="text-sm text-gray-500 mb-2">Контакты</div>
-              <div className="text-3xl font-bold text-gray-800">{formatNumber(stats.contactsCount)}</div>
+              <div className="text-3xl font-bold text-gray-800">
+                {formatNumber(stats.contactsCount)}
+                {stats.contactsToday > 0 && (
+                  <span className="text-lg text-green-600 ml-2">(+{stats.contactsToday})</span>
+                )}
+              </div>
             </CardContent>
           </Card>
 
@@ -268,20 +280,6 @@ export default function AvitoPage() {
             <CardContent className="pt-6">
               <div className="text-sm text-gray-500 mb-2">Общий CPA</div>
               <div className="text-3xl font-bold text-green-600">{formatCurrency(stats.totalCPA / 100)}</div>
-            </CardContent>
-          </Card>
-
-          <Card className="border-0 shadow-lg">
-            <CardContent className="pt-6">
-              <div className="text-sm text-gray-500 mb-2">Заказы</div>
-              <div className="text-3xl font-bold text-gray-800">{stats.ordersCount}</div>
-            </CardContent>
-          </Card>
-
-          <Card className="border-0 shadow-lg bg-gradient-to-br from-yellow-50 to-yellow-100">
-            <CardContent className="pt-6">
-              <div className="text-sm text-yellow-700 mb-2">Цена заказа</div>
-              <div className="text-3xl font-bold text-yellow-700">{formatCurrency(stats.orderPrice)}</div>
             </CardContent>
           </Card>
         </div>
@@ -327,9 +325,9 @@ export default function AvitoPage() {
                       adsCount: accountsData.reduce((sum: number, acc: AvitoAccount) => sum + (acc.adsCount || 0), 0),
                       viewsCount: accountsData.reduce((sum: number, acc: AvitoAccount) => sum + (acc.viewsCount || 0), 0),
                       contactsCount: accountsData.reduce((sum: number, acc: AvitoAccount) => sum + (acc.contactsCount || 0), 0),
+                      viewsToday: accountsData.reduce((sum: number, acc: AvitoAccount) => sum + (acc.viewsToday || 0), 0),
+                      contactsToday: accountsData.reduce((sum: number, acc: AvitoAccount) => sum + (acc.contactsToday || 0), 0),
                       totalCPA: accountsData.reduce((sum: number, acc: AvitoAccount) => sum + (acc.cpa || 0), 0),
-                      ordersCount: 0,
-                      orderPrice: 0,
                     }
                     setStats(calculatedStats)
                   }
@@ -408,8 +406,18 @@ export default function AvitoPage() {
                     </TableCell>
                     <TableCell className="text-right text-gray-900">{account.cpa ? formatCurrency(account.cpa / 100) : '-'}</TableCell>
                     <TableCell className="text-center text-gray-600">{account.adsCount || 0}</TableCell>
-                    <TableCell className="text-center text-gray-600">{account.viewsCount ? formatNumber(account.viewsCount) : 0}</TableCell>
-                    <TableCell className="text-center text-gray-600">{account.contactsCount || 0}</TableCell>
+                    <TableCell className="text-center text-gray-600">
+                      {account.viewsCount ? formatNumber(account.viewsCount) : 0}
+                      {account.viewsToday ? (
+                        <span className="text-green-600 ml-1">(+{formatNumber(account.viewsToday)})</span>
+                      ) : null}
+                    </TableCell>
+                    <TableCell className="text-center text-gray-600">
+                      {account.contactsCount || 0}
+                      {account.contactsToday ? (
+                        <span className="text-green-600 ml-1">(+{account.contactsToday})</span>
+                      ) : null}
+                    </TableCell>
                   </TableRow>
                 ))}
               </TableBody>
