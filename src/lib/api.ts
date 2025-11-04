@@ -695,6 +695,23 @@ class ApiClient {
     })
   }
 
+  async updateDirector(id: string, data: {
+    name?: string
+    login?: string
+    password?: string
+    cities?: string[]
+    tgId?: string
+    passportDoc?: string
+    contractDoc?: string
+    statusWork?: string
+    note?: string
+  }) {
+    return this.request<any>(`/directors/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    })
+  }
+
   // Отчеты (Reports Service)
   async getCitiesReport(params?: {
     startDate?: string

@@ -140,12 +140,41 @@ export default function EditDirectorPage() {
         updateData.password = formData.password
       }
 
-      // TODO: Загрузка файлов паспорта и договора через files-service
+      // Загрузка файлов паспорта и договора через files-service
       if (passportFile) {
-        console.log('Passport file to upload:', passportFile)
+        const passportFormData = new FormData()
+        passportFormData.append('file', passportFile)
+        
+        const passportResponse = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/files/upload?folder=directors/passports`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${await apiClient.getAccessToken()}`
+          },
+          body: passportFormData
+        })
+        
+        if (passportResponse.ok) {
+          const passportData = await passportResponse.json()
+          updateData.passportDoc = passportData.data?.key
+        }
       }
+
       if (contractFile) {
-        console.log('Contract file to upload:', contractFile)
+        const contractFormData = new FormData()
+        contractFormData.append('file', contractFile)
+        
+        const contractResponse = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/files/upload?folder=directors/contracts`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${await apiClient.getAccessToken()}`
+          },
+          body: contractFormData
+        })
+        
+        if (contractResponse.ok) {
+          const contractData = await contractResponse.json()
+          updateData.contractDoc = contractData.data?.key
+        }
       }
 
       const response = await apiClient.updateDirector(directorId as string, updateData)
