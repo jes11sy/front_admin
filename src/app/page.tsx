@@ -4,9 +4,8 @@ import { useState, useEffect } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Users, UserCheck, Wrench, ShoppingCart, TrendingUp, DollarSign, TrendingDown, Tag } from 'lucide-react'
 import { apiClient } from '@/lib/api'
-import AuthGuard from "@/components/auth-guard"
 
-function HomePageContent() {
+export default function HomePage() {
   const [stats, setStats] = useState<{
     callCenterEmployees: number
     directors: number
@@ -213,13 +212,5 @@ function HomePageContent() {
         </div>
       </div>
     </div>
-  )
-}
-
-export default function HomePage() {
-  return (
-    <AuthGuard>
-      <HomePageContent />
-    </AuthGuard>
   )
 }
