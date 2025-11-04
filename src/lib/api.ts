@@ -55,6 +55,10 @@ class ApiClient {
     }
   }
 
+  async getAccessToken(): Promise<string | null> {
+    return this.token
+  }
+
   /**
    * Обновление токена доступа через refresh token
    */
@@ -673,6 +677,22 @@ class ApiClient {
 
   async getDirector(id: string) {
     return this.request<any>(`/directors/${id}`)
+  }
+
+  async createDirector(data: {
+    name: string
+    login: string
+    password: string
+    cities: string[]
+    tgId?: string
+    passportDoc?: string
+    contractDoc?: string
+    note?: string
+  }) {
+    return this.request<any>('/directors', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    })
   }
 
   // Отчеты (Reports Service)

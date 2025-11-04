@@ -7,6 +7,8 @@ import { Label } from '@/components/ui/label'
 import { RefreshCw, Upload, X } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { useState } from 'react'
+import { apiClient } from '@/lib/api'
+import { toast } from 'sonner'
 
 export default function AddDirectorPage() {
   const router = useRouter()
@@ -23,6 +25,7 @@ export default function AddDirectorPage() {
   const [errors, setErrors] = useState<{ cities?: string }>({})
   const [citySearch, setCitySearch] = useState('')
   const [showCityDropdown, setShowCityDropdown] = useState(false)
+  const [isSubmitting, setIsSubmitting] = useState(false)
 
   const availableCities = ['Саратов', 'Энгельс', 'Ульяновск']
 
@@ -72,7 +75,7 @@ export default function AddDirectorPage() {
   }
 
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     
     if (formData.cities.length === 0) {
@@ -81,14 +84,74 @@ export default function AddDirectorPage() {
     }
     
     setErrors({})
+    setIsSubmitting(true)
     
-    // TODO: Отправить данные на API
-    console.log('Form data:', formData)
-    console.log('Passport file:', passportFile)
-    console.log('Contract file:', contractFile)
-    
-    // Вернуться к списку
-    router.push('/employees/directors')
+    try {
+      let passportDocUrl: string | undefined
+      let contractDocUrl: string | undefined
+
+      // Загрузка паспорта
+      if (passportFile) {
+        const passportFormData = new FormData()
+        passportFormData.append('file', passportFile)
+        
+        const passportResponse = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/files/upload?folder=directors/passports`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${await apiClient.getAccessToken()}`
+          },
+          body: passportFormData
+        })
+        
+        if (passportResponse.ok) {
+          const passportData = await passportResponse.json()
+          passportDocUrl = passportData.data?.key
+        }
+      }
+
+      // Загрузка договора
+      if (contractFile) {
+        const contractFormData = new FormData()
+        contractFormData.append('file', contractFile)
+        
+        const contractResponse = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/files/upload?folder=directors/contracts`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${await apiClient.getAccessToken()}`
+          },
+          body: contractFormData
+        })
+        
+        if (contractResponse.ok) {
+          const contractData = await contractResponse.json()
+          contractDocUrl = contractData.data?.key
+        }
+      }
+
+      // Создание директора
+      const response = await apiClient.createDirector({
+        name: formData.name,
+        login: formData.login,
+        password: formData.password,
+        cities: formData.cities,
+        tgId: formData.tgId || undefined,
+        passportDoc: passportDocUrl,
+        contractDoc: contractDocUrl,
+        note: formData.note || undefined
+      })
+
+      if (response.success) {
+        toast.success('Директор успешно добавлен!')
+        router.push('/employees/directors')
+      } else {
+        toast.error(response.error || 'Ошибка при добавлении директора')
+      }
+    } catch (error: any) {
+      console.error('Error creating director:', error)
+      toast.error(error.message || 'Произошла ошибка при добавлении директора')
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
   return (
@@ -332,9 +395,10 @@ export default function AddDirectorPage() {
               <div className="flex gap-4 pt-4">
                 <Button 
                   type="submit"
-                  className="bg-gradient-to-r from-teal-600 to-emerald-600 hover:from-teal-700 hover:to-emerald-700 text-white"
+                  disabled={isSubmitting}
+                  className="bg-gradient-to-r from-teal-600 to-emerald-600 hover:from-teal-700 hover:to-emerald-700 text-white disabled:opacity-50"
                 >
-                  Добавить директора
+                  {isSubmitting ? 'Добавление...' : 'Добавить директора'}
                 </Button>
                 <Button 
                   type="button"
