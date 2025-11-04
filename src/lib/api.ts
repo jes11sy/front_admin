@@ -727,6 +727,25 @@ class ApiClient {
   async getCityStatistics(cityId?: string) {
     return this.request<any>(`/reports/cities${cityId ? `/${cityId}` : ''}`)
   }
+
+  async getDashboardStats() {
+    return this.request<{
+      employees: {
+        callCenter: number
+        directors: number
+        masters: number
+      }
+      orders: number
+      finance: {
+        revenue: number
+        profit: number
+        expenses: number
+      }
+      avito: {
+        orderPrice: number
+      }
+    }>('/stats/dashboard')
+  }
 }
 
 export const apiClient = new ApiClient(API_BASE_URL)

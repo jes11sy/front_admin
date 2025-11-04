@@ -1,20 +1,51 @@
 'use client'
 
+import { useState, useEffect } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Users, UserCheck, Wrench, ShoppingCart, TrendingUp, DollarSign, TrendingDown, Tag } from 'lucide-react'
+import { apiClient } from '@/lib/api'
+import AuthGuard from "@/components/auth-guard"
 
-export default function HomePage() {
-  // Мок-данные для тестирования визуала
-  const stats = {
-    callCenterEmployees: 12,
-    directors: 8,
-    masters: 45,
-    orders: 324,
-    revenue: 1250000,
-    profit: 450000,
-    expenses: 800000,
-    avitoOrderPrice: 3500,
-  }
+function HomePageContent() {
+  const [stats, setStats] = useState<{
+    callCenterEmployees: number
+    directors: number
+    masters: number
+    orders: number
+    revenue: number
+    profit: number
+    expenses: number
+    avitoOrderPrice: number
+  } | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    const loadStats = async () => {
+      try {
+        setLoading(true)
+        const response = await apiClient.getDashboardStats()
+        
+        setStats({
+          callCenterEmployees: response.employees.callCenter,
+          directors: response.employees.directors,
+          masters: response.employees.masters,
+          orders: response.orders,
+          revenue: response.finance.revenue,
+          profit: response.finance.profit,
+          expenses: response.finance.expenses,
+          avitoOrderPrice: response.avito.orderPrice,
+        })
+      } catch (err) {
+        console.error('Ошибка загрузки статистики:', err)
+        setError(err instanceof Error ? err.message : 'Ошибка загрузки данных')
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    loadStats()
+  }, [])
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('ru-RU', {
@@ -23,6 +54,30 @@ export default function HomePage() {
       minimumFractionDigits: 0,
       maximumFractionDigits: 0,
     }).format(amount)
+  }
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center" style={{backgroundColor: '#114643'}}>
+        <div className="text-white text-xl">Загрузка...</div>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen flex items-center justify-center" style={{backgroundColor: '#114643'}}>
+        <div className="text-red-400 text-xl">Ошибка: {error}</div>
+      </div>
+    )
+  }
+
+  if (!stats) {
+    return (
+      <div className="min-h-screen flex items-center justify-center" style={{backgroundColor: '#114643'}}>
+        <div className="text-white text-xl">Нет данных</div>
+      </div>
+    )
   }
 
   return (
@@ -158,5 +213,13 @@ export default function HomePage() {
         </div>
       </div>
     </div>
+  )
+}
+
+export default function HomePage() {
+  return (
+    <AuthGuard>
+      <HomePageContent />
+    </AuthGuard>
   )
 }
