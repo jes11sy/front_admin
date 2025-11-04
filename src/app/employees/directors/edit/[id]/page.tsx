@@ -21,8 +21,7 @@ export default function EditDirectorPage() {
     login: '',
     password: '',
     tgId: '',
-    note: '',
-    status: 'active'
+    note: ''
   })
   const [passportFile, setPassportFile] = useState<File | null>(null)
   const [contractFile, setContractFile] = useState<File | null>(null)
@@ -54,8 +53,7 @@ export default function EditDirectorPage() {
             login: director.login || '',
             password: '',
             tgId: director.tgId || '',
-            note: director.note || '',
-            status: director.statusWork || 'active'
+            note: director.note || ''
           })
           setExistingPassport(director.passportDoc || null)
           setExistingContract(director.contractDoc || null)
@@ -132,7 +130,6 @@ export default function EditDirectorPage() {
         login: formData.login,
         tgId: formData.tgId,
         note: formData.note,
-        statusWork: formData.status,
       }
 
       // Добавляем пароль только если он был изменен
@@ -359,20 +356,6 @@ export default function EditDirectorPage() {
                   placeholder="@username или ID"
                   className="mt-1"
                 />
-              </div>
-
-              {/* Статус */}
-              <div>
-                <Label htmlFor="status" className="text-gray-700">Статус *</Label>
-                <select
-                  id="status"
-                  value={formData.status}
-                  onChange={(e) => setFormData({ ...formData, status: e.target.value })}
-                  className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent"
-                >
-                  <option value="active">Активен</option>
-                  <option value="inactive">Неактивен</option>
-                </select>
               </div>
 
               {/* Фото паспорта */}

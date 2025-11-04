@@ -703,7 +703,6 @@ class ApiClient {
     tgId?: string
     passportDoc?: string
     contractDoc?: string
-    statusWork?: string
     note?: string
   }) {
     return this.request<any>(`/directors/${id}`, {
