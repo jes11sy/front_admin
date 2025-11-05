@@ -23,7 +23,7 @@ export default function EditMasterPage() {
     tgId: '',
     chatId: '',
     note: '',
-    status: 'active'
+    status: 'работает'
   })
   const [passportFile, setPassportFile] = useState<File | null>(null)
   const [contractFile, setContractFile] = useState<File | null>(null)
@@ -57,7 +57,7 @@ export default function EditMasterPage() {
             tgId: master.tgId || '',
             chatId: master.chatId || '',
             note: master.note || '',
-            status: master.statusWork || 'active'
+            status: master.statusWork || 'работает'
           })
           setExistingPassport(master.passportDoc || null)
           setExistingContract(master.contractDoc || null)
@@ -356,8 +356,10 @@ export default function EditMasterPage() {
                   onChange={(e) => setFormData({ ...formData, status: e.target.value })}
                   className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent"
                 >
-                  <option value="active">Активен</option>
-                  <option value="inactive">Неактивен</option>
+                  <option value="работает">Работает</option>
+                  <option value="уволен">Уволен</option>
+                  <option value="отпуск">Отпуск</option>
+                  <option value="больничный">Больничный</option>
                 </select>
               </div>
 
