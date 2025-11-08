@@ -66,9 +66,17 @@ export default function SalaryPage() {
         start = now
     }
 
+    // Используем локальные даты без конвертации в UTC
+    const formatLocalDate = (date: Date) => {
+      const year = date.getFullYear()
+      const month = String(date.getMonth() + 1).padStart(2, '0')
+      const day = String(date.getDate()).padStart(2, '0')
+      return `${year}-${month}-${day}`
+    }
+
     return {
-      start: start.toISOString().split('T')[0],
-      end: end.toISOString().split('T')[0]
+      start: formatLocalDate(start),
+      end: formatLocalDate(end)
     }
   }
 
@@ -88,56 +96,23 @@ export default function SalaryPage() {
         // Получаем диапазон дат
         const dateRange = getDateRange(period)
 
-        // Загружаем ВСЕ транзакции кассы с фильтрацией по датам и типу
-        const allTransactions: any[] = []
-        let currentPage = 1
-        let hasMore = true
-        
-        while (hasMore) {
-          const cashResponse = await apiClient.getCashTransactions({ 
-            page: currentPage, 
-            limit: 100,
-            type: 'приход' // Фильтруем только приходы
-          })
-          if (cashResponse.success && cashResponse.data) {
-            const pageData = cashResponse.data.data || cashResponse.data
-            
-            // Фильтруем по датам на клиенте (если бэк не поддерживает)
-            const filteredData = pageData.filter((t: any) => {
-              if (!t.createdAt) return true
-              const transactionDate = new Date(t.createdAt).toISOString().split('T')[0]
-              return transactionDate >= dateRange.start && transactionDate <= dateRange.end
-            })
-            
-            allTransactions.push(...filteredData)
-            
-            const pagination = cashResponse.data.pagination
-            if (pagination && currentPage < pagination.totalPages) {
-              currentPage++
-            } else {
-              hasMore = false
-            }
-          } else {
-            hasMore = false
-          }
+        // Загружаем отчет по городам (там уже есть правильный расчет оборота из orders.clean)
+        const citiesReportResponse = await apiClient.getCitiesReport({
+          startDate: dateRange.start,
+          endDate: dateRange.end
+        })
+
+        if (!citiesReportResponse.success || !citiesReportResponse.data) {
+          toast.error('Не удалось загрузить отчет по городам')
+          return
         }
 
-        // Группируем транзакции по городам и считаем ТОЛЬКО приходы (оборот)
+        // Создаем Map для быстрого поиска оборота по городу
         const cityTurnover = new Map<string, number>()
         
-        allTransactions.forEach((transaction: any) => {
-          const city = transaction.city || 'Не указан'
-          const amount = Number(transaction.amount)
-          
-          if (!cityTurnover.has(city)) {
-            cityTurnover.set(city, 0)
-          }
-          
-          // Оборот = сумма ВСЕХ приходов (без вычета расходов)
-          if (transaction.name === 'приход') {
-            const currentTurnover = cityTurnover.get(city)!
-            cityTurnover.set(city, currentTurnover + amount)
-          }
+        citiesReportResponse.data.forEach((cityData: any) => {
+          // Оборот = totalClean (сумма чистыми из orders.clean)
+          cityTurnover.set(cityData.city, cityData.orders.totalClean || 0)
         })
 
         // Создаем записи зарплаты для каждого директора по каждому городу
