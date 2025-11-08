@@ -61,22 +61,35 @@ export default function SalaryPage() {
         end = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59)
         break
       case 'custom':
-        return { start: startDate, end: endDate }
+        // Для пользовательских дат добавляем время
+        const customStart = startDate ? `${startDate} 00:00:00` : ''
+        const customEnd = endDate ? `${endDate} 23:59:59` : ''
+        return { start: customStart, end: customEnd }
       default:
         start = now
     }
 
-    // Используем локальные даты без конвертации в UTC
-    const formatLocalDate = (date: Date) => {
+    // Форматируем дату с учетом времени для корректной фильтрации
+    const formatLocalDateTime = (date: Date, isEndOfDay: boolean = false) => {
       const year = date.getFullYear()
       const month = String(date.getMonth() + 1).padStart(2, '0')
       const day = String(date.getDate()).padStart(2, '0')
-      return `${year}-${month}-${day}`
+      const hours = String(date.getHours()).padStart(2, '0')
+      const minutes = String(date.getMinutes()).padStart(2, '0')
+      const seconds = String(date.getSeconds()).padStart(2, '0')
+      
+      // Для конца дня всегда используем 23:59:59
+      if (isEndOfDay) {
+        return `${year}-${month}-${day} 23:59:59`
+      }
+      
+      // Для начала дня используем 00:00:00
+      return `${year}-${month}-${day} 00:00:00`
     }
 
     return {
-      start: formatLocalDate(start),
-      end: formatLocalDate(end)
+      start: formatLocalDateTime(start, false),
+      end: formatLocalDateTime(end, true)
     }
   }
 
@@ -245,12 +258,17 @@ export default function SalaryPage() {
                   />
                 </div>
               )}
-              <div className="ml-auto text-sm text-gray-600">
-                {(() => {
-                  const range = getDateRange(period)
-                  return `${range.start} — ${range.end}`
-                })()}
-              </div>
+              {period !== 'custom' && (
+                <div className="ml-auto text-sm text-gray-600">
+                  {(() => {
+                    const range = getDateRange(period)
+                    // Показываем только дату без времени для удобства
+                    const startDisplay = range.start.split(' ')[0]
+                    const endDisplay = range.end.split(' ')[0]
+                    return `${startDisplay} — ${endDisplay}`
+                  })()}
+                </div>
+              )}
             </div>
 
             <div className="flex items-center justify-between gap-4 mb-4">

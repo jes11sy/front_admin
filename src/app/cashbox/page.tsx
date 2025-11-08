@@ -58,29 +58,50 @@ export default function CashboxPage() {
       case 'day':
         start = new Date(now)
         start.setHours(0, 0, 0, 0)
+        end = new Date(now)
+        end.setHours(23, 59, 59)
         break
       case 'week':
         start = new Date(now)
         start.setDate(now.getDate() - 7)
         start.setHours(0, 0, 0, 0)
+        end.setHours(23, 59, 59)
         break
       case 'month':
         start = new Date(now)
         start.setMonth(now.getMonth() - 1)
         start.setHours(0, 0, 0, 0)
+        end.setHours(23, 59, 59)
         break
       case 'custom':
-        if (startDate) start = new Date(startDate)
-        if (endDate) end = new Date(endDate)
+        if (startDate) {
+          start = new Date(startDate)
+          start.setHours(0, 0, 0, 0)
+        }
+        if (endDate) {
+          end = new Date(endDate)
+          end.setHours(23, 59, 59)
+        }
         break
       case 'all':
       default:
         return { startDate: undefined, endDate: undefined }
     }
 
+    // Форматируем даты с временем для корректной фильтрации
+    const formatDateTime = (date: Date) => {
+      const year = date.getFullYear()
+      const month = String(date.getMonth() + 1).padStart(2, '0')
+      const day = String(date.getDate()).padStart(2, '0')
+      const hours = String(date.getHours()).padStart(2, '0')
+      const minutes = String(date.getMinutes()).padStart(2, '0')
+      const seconds = String(date.getSeconds()).padStart(2, '0')
+      return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`
+    }
+
     return {
-      startDate: start ? start.toISOString().split('T')[0] : undefined,
-      endDate: end.toISOString().split('T')[0]
+      startDate: start ? formatDateTime(start) : undefined,
+      endDate: formatDateTime(end)
     }
   }
 
