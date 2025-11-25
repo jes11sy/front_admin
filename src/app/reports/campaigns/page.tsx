@@ -130,12 +130,6 @@ export default function CampaignsReportPage() {
       <div className="container mx-auto px-4 py-8 max-w-7xl">
         <Card className="border-0 shadow-lg">
           <CardContent className="p-4">
-            {/* Заголовок */}
-            <div className="mb-6">
-              <h1 className="text-2xl font-bold text-gray-800">Отчет по рекламным кампаниям</h1>
-              <p className="text-sm text-gray-500 mt-1">Статистика по РК и мастерам Авито</p>
-            </div>
-
             {/* Фильтры по датам */}
             <div className="flex flex-wrap items-center gap-3 mb-4 pb-4 border-b border-gray-200">
               <div className="flex items-center gap-2">
@@ -291,39 +285,6 @@ export default function CampaignsReportPage() {
                     )}
                   </div>
                 ))}
-              </div>
-            )}
-
-            {/* Общие итоги по всем городам */}
-            {!isLoading && citiesData.length > 0 && (
-              <div className="mt-8 pt-6 border-t-2 border-gray-300">
-                <h3 className="text-lg font-bold text-gray-800 mb-4">Итого по всем городам</h3>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div className="bg-gray-50 rounded-lg p-4 border-2 border-gray-200">
-                    <div className="text-sm text-gray-500 mb-1">Всего заказов</div>
-                    <div className="text-2xl font-bold text-gray-800">
-                      {citiesData.reduce((sum, city) => 
-                        sum + city.campaigns.reduce((citySum, campaign) => citySum + campaign.ordersCount, 0), 0
-                      )}
-                    </div>
-                  </div>
-                  <div className="bg-green-50 rounded-lg p-4 border-2 border-green-200">
-                    <div className="text-sm text-gray-500 mb-1">Общий оборот</div>
-                    <div className="text-2xl font-bold text-green-600">
-                      {formatCurrency(citiesData.reduce((sum, city) => 
-                        sum + city.campaigns.reduce((citySum, campaign) => citySum + campaign.revenue, 0), 0
-                      ))}
-                    </div>
-                  </div>
-                  <div className="bg-blue-50 rounded-lg p-4 border-2 border-blue-200">
-                    <div className="text-sm text-gray-500 mb-1">Общая выручка</div>
-                    <div className="text-2xl font-bold text-blue-600">
-                      {formatCurrency(citiesData.reduce((sum, city) => 
-                        sum + city.campaigns.reduce((citySum, campaign) => citySum + campaign.profit, 0), 0
-                      ))}
-                    </div>
-                  </div>
-                </div>
               </div>
             )}
           </CardContent>
