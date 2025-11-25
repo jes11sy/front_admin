@@ -8,12 +8,14 @@ import { useRouter } from 'next/navigation'
 import { useState } from 'react'
 import { apiClient } from '@/lib/api'
 import { toast } from 'sonner'
+import { BrowserAuthModal } from '@/components/BrowserAuthModal'
 
 interface FormData {
   name: string
   userId: string
   avitoLogin: string
   avitoPassword: string
+  cookies: string
   useParser: boolean
   proxyType: string
   proxyHost: string
@@ -31,6 +33,7 @@ export default function AddAvitoAccountPage() {
     userId: '',
     avitoLogin: '',
     avitoPassword: '',
+    cookies: '',
     useParser: false,
     proxyType: 'http',
     proxyHost: '',
@@ -41,6 +44,8 @@ export default function AddAvitoAccountPage() {
     onlineKeepAliveInterval: 300
   })
   const [isLoading, setIsLoading] = useState(false)
+  const [showBrowserAuth, setShowBrowserAuth] = useState(false)
+  const [tempAccountId, setTempAccountId] = useState<number | null>(null)
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -55,16 +60,21 @@ export default function AddAvitoAccountPage() {
       const response = await apiClient.createAvitoAccount(apiData)
       
       if (response.success && response.data?.id) {
-        toast.success('Аккаунт создан! Перенаправляем на авторизацию Avito...')
-        
-        // Перенаправляем на OAuth авторизацию
-        setTimeout(() => {
-          // Убираем /api/v1 из URL если он уже есть в NEXT_PUBLIC_API_URL
-          const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'https://api.lead-shem.ru/api/v1'
-          const apiUrl = baseUrl.endsWith('/api/v1') ? baseUrl.replace('/api/v1', '') : baseUrl
-          const avitoAuthUrl = `${apiUrl}/api/v1/auth/avito/authorize/${response.data.id}`
-          window.location.href = avitoAuthUrl
-        }, 1500)
+        if (formData.useParser) {
+          // Если используем парсер - открываем браузер для авторизации
+          toast.success('Аккаунт создан! Открываем браузер для авторизации...')
+          setTempAccountId(response.data.id)
+          setShowBrowserAuth(true)
+        } else {
+          // Если OAuth - перенаправляем на авторизацию Avito
+          toast.success('Аккаунт создан! Перенаправляем на авторизацию Avito...')
+          setTimeout(() => {
+            const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'https://api.lead-shem.ru/api/v1'
+            const apiUrl = baseUrl.endsWith('/api/v1') ? baseUrl.replace('/api/v1', '') : baseUrl
+            const avitoAuthUrl = `${apiUrl}/api/v1/auth/avito/authorize/${response.data.id}`
+            window.location.href = avitoAuthUrl
+          }, 1500)
+        }
       } else {
         toast.error(response.error || 'Не удалось добавить аккаунт')
       }
@@ -77,9 +87,42 @@ export default function AddAvitoAccountPage() {
     }
   }
 
+  const handleBrowserAuthSuccess = async (cookies: string) => {
+    if (!tempAccountId) return
+    
+    try {
+      // Обновляем аккаунт с полученными cookies
+      await apiClient.updateAvitoAccount(tempAccountId.toString(), { cookies })
+      toast.success('✅ Аккаунт успешно авторизован!')
+      router.push('/avito')
+    } catch (error) {
+      console.error('Error updating cookies:', error)
+      toast.error('Ошибка сохранения cookies')
+    }
+  }
+
   return (
-    <div className="min-h-screen" style={{backgroundColor: '#114643'}}>
-      <div className="container mx-auto px-4 py-8 max-w-4xl">
+    <>
+      {showBrowserAuth && tempAccountId && (
+        <BrowserAuthModal
+          accountId={tempAccountId}
+          proxyConfig={{
+            protocol: formData.proxyType,
+            host: formData.proxyHost,
+            port: parseInt(formData.proxyPort.toString()),
+            username: formData.proxyLogin,
+            password: formData.proxyPassword,
+          }}
+          onSuccess={handleBrowserAuthSuccess}
+          onClose={() => {
+            setShowBrowserAuth(false)
+            setTempAccountId(null)
+          }}
+        />
+      )}
+      
+      <div className="min-h-screen" style={{backgroundColor: '#114643'}}>
+        <div className="container mx-auto px-4 py-8 max-w-4xl">
         <Card className="border-0 shadow-lg">
           <CardHeader>
             <CardTitle className="text-2xl text-gray-800">Добавить аккаунт Авито</CardTitle>
@@ -158,16 +201,18 @@ export default function AddAvitoAccountPage() {
                   </div>
 
                   <div>
-                    <Label htmlFor="avitoPassword" className="text-gray-700">Пароль Avito *</Label>
-                    <Input
-                      id="avitoPassword"
-                      type="password"
+                    <Label htmlFor="cookies" className="text-gray-700">Cookies (получить через скрипт) *</Label>
+                    <textarea
+                      id="cookies"
                       required={formData.useParser}
-                      value={formData.avitoPassword}
-                      onChange={(e) => setFormData({ ...formData, avitoPassword: e.target.value })}
-                      placeholder="Пароль от аккаунта Avito"
-                      className="mt-1"
+                      value={formData.cookies}
+                      onChange={(e) => setFormData({ ...formData, cookies: e.target.value })}
+                      placeholder='[{"name":"...","value":"..."}]'
+                      className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500 min-h-[100px] font-mono text-xs"
                     />
+                    <p className="text-xs text-gray-500 mt-1">
+                      Запустите: <code className="bg-gray-200 px-1 rounded">node scripts/get-cookies.js</code> и вставьте результат
+                    </p>
                   </div>
                 </div>
               )}
@@ -309,6 +354,7 @@ export default function AddAvitoAccountPage() {
         </Card>
       </div>
     </div>
+    </>
   )
 }
 

@@ -8,6 +8,7 @@ import { useRouter, useParams } from 'next/navigation'
 import { useState, useEffect } from 'react'
 import { apiClient } from '@/lib/api'
 import { toast } from 'sonner'
+import { BrowserAuthModal } from '@/components/BrowserAuthModal'
 
 interface AvitoAccountData {
   id: string
@@ -33,6 +34,7 @@ interface FormData {
   userId: string
   avitoLogin: string
   avitoPassword: string
+  cookies: string
   useParser: boolean
   proxyType: string
   proxyHost: string
@@ -53,6 +55,7 @@ export default function EditAvitoAccountPage() {
     userId: '',
     avitoLogin: '',
     avitoPassword: '',
+    cookies: '',
     useParser: false,
     proxyType: 'http',
     proxyHost: '',
@@ -64,6 +67,7 @@ export default function EditAvitoAccountPage() {
   })
   const [isLoading, setIsLoading] = useState(true)
   const [isAuthorized, setIsAuthorized] = useState(false)
+  const [showBrowserAuth, setShowBrowserAuth] = useState(false)
 
   // Проверка OAuth результата
   useEffect(() => {
@@ -94,6 +98,7 @@ export default function EditAvitoAccountPage() {
             userId: account.userId || '',
             avitoLogin: account.avitoLogin || '',
             avitoPassword: '', // Не показываем пароль
+            cookies: '', // Не показываем cookies
             useParser: account.useParser ?? false,
             proxyType: account.proxyType || 'http',
             proxyHost: account.proxyHost || '',
@@ -150,16 +155,51 @@ export default function EditAvitoAccountPage() {
   }
 
   const handleOAuthAuthorize = () => {
-    // Убираем /api/v1 из URL если он уже есть в NEXT_PUBLIC_API_URL
-    const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'https://api.lead-shem.ru/api/v1'
-    const apiUrl = baseUrl.endsWith('/api/v1') ? baseUrl.replace('/api/v1', '') : baseUrl
-    const avitoAuthUrl = `${apiUrl}/api/v1/auth/avito/authorize/${accountId}`
-    window.location.href = avitoAuthUrl
+    if (formData.useParser) {
+      // Если используем парсер - открываем браузер
+      setShowBrowserAuth(true)
+    } else {
+      // Если OAuth - перенаправляем
+      const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'https://api.lead-shem.ru/api/v1'
+      const apiUrl = baseUrl.endsWith('/api/v1') ? baseUrl.replace('/api/v1', '') : baseUrl
+      const avitoAuthUrl = `${apiUrl}/api/v1/auth/avito/authorize/${accountId}`
+      window.location.href = avitoAuthUrl
+    }
+  }
+
+  const handleBrowserAuthSuccess = async (cookies: string) => {
+    try {
+      // Обновляем аккаунт с полученными cookies
+      await apiClient.updateAvitoAccount(accountId as string, { cookies })
+      toast.success('✅ Аккаунт успешно авторизован!')
+      setShowBrowserAuth(false)
+      // Перезагружаем данные аккаунта
+      window.location.reload()
+    } catch (error) {
+      console.error('Error updating cookies:', error)
+      toast.error('Ошибка сохранения cookies')
+    }
   }
 
   return (
-    <div className="min-h-screen" style={{backgroundColor: '#114643'}}>
-      <div className="container mx-auto px-4 py-8 max-w-4xl">
+    <>
+      {showBrowserAuth && (
+        <BrowserAuthModal
+          accountId={parseInt(accountId as string)}
+          proxyConfig={{
+            protocol: formData.proxyType,
+            host: formData.proxyHost,
+            port: parseInt(formData.proxyPort.toString()),
+            username: formData.proxyLogin,
+            password: formData.proxyPassword,
+          }}
+          onSuccess={handleBrowserAuthSuccess}
+          onClose={() => setShowBrowserAuth(false)}
+        />
+      )}
+      
+      <div className="min-h-screen" style={{backgroundColor: '#114643'}}>
+        <div className="container mx-auto px-4 py-8 max-w-4xl">
         <Card className="border-0 shadow-lg">
           <CardHeader>
             <CardTitle className="text-2xl text-gray-800">Редактировать аккаунт Авито</CardTitle>
@@ -260,15 +300,17 @@ export default function EditAvitoAccountPage() {
                   </div>
 
                   <div>
-                    <Label htmlFor="avitoPassword" className="text-gray-700">Пароль Avito (оставьте пустым чтобы не менять)</Label>
-                    <Input
-                      id="avitoPassword"
-                      type="password"
-                      value={formData.avitoPassword}
-                      onChange={(e) => setFormData({ ...formData, avitoPassword: e.target.value })}
-                      placeholder="Новый пароль (опционально)"
-                      className="mt-1"
+                    <Label htmlFor="cookies" className="text-gray-700">Cookies (оставьте пустым чтобы не менять)</Label>
+                    <textarea
+                      id="cookies"
+                      value={formData.cookies}
+                      onChange={(e) => setFormData({ ...formData, cookies: e.target.value })}
+                      placeholder='[{"name":"...","value":"..."}] или оставьте пустым'
+                      className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500 min-h-[100px] font-mono text-xs"
                     />
+                    <p className="text-xs text-gray-500 mt-1">
+                      Для обновления: <code className="bg-gray-200 px-1 rounded">node scripts/get-cookies.js</code>
+                    </p>
                   </div>
                 </div>
               )}
@@ -410,6 +452,7 @@ export default function EditAvitoAccountPage() {
         </Card>
       </div>
     </div>
+    </>
   )
 }
 
