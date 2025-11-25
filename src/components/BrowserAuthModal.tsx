@@ -151,33 +151,13 @@ export function BrowserAuthModal({ accountId, proxyConfig, onSuccess, onClose }:
           )}
           
           {wsUrl && (
-            <div className="w-full h-full p-4">
-              <div className="bg-white rounded border-2 border-gray-300 h-full flex items-center justify-center">
-                <div className="text-center p-8">
-                  <div className="mb-4">
-                    <svg className="w-16 h-16 mx-auto text-teal-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                    </svg>
-                  </div>
-                  <h3 className="text-lg font-semibold text-gray-800 mb-2">Браузер запущен на сервере</h3>
-                  <p className="text-sm text-gray-600 mb-4">
-                    Откройте Avito в отдельной вкладке и авторизуйтесь там.<br/>
-                    После успешной авторизации нажмите "Завершить".
-                  </p>
-                  <a 
-                    href="https://www.avito.ru/profile/login" 
-                    target="_blank" 
-                    rel="noopener noreferrer"
-                    className="inline-block px-6 py-3 bg-teal-600 text-white rounded-lg hover:bg-teal-700 transition-colors"
-                  >
-                    Открыть Avito →
-                  </a>
-                  <p className="text-xs text-gray-500 mt-4">
-                    WebSocket: {wsUrl}
-                  </p>
-                </div>
-              </div>
-            </div>
+            <iframe
+              ref={iframeRef}
+              src={wsUrl}
+              className="w-full h-full border-0"
+              title="Remote Browser (VNC)"
+              allow="fullscreen"
+            />
           )}
         </div>
 
