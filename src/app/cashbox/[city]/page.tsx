@@ -165,31 +165,17 @@ export default function CityTransactionsPage() {
         const dateRange = getDateRange()
         
         // Загружаем ВСЕ транзакции для правильной пагинации и статистики
-        let allTransactions: Transaction[] = []
-        let page = 1
-        let hasMore = true
+        const resp = await apiClient.getCashByCity(cityName, { 
+          page: 1, 
+          limit: 10000,
+          type: typeFilter !== 'all' ? typeFilter : undefined,
+          startDate: dateRange.startDate || undefined,
+          endDate: dateRange.endDate || undefined
+        })
         
-        while (hasMore) {
-          const resp = await apiClient.getCashByCity(cityName, { 
-            page, 
-            limit: 100,
-            type: typeFilter !== 'all' ? typeFilter : undefined,
-            startDate: dateRange.startDate || undefined,
-            endDate: dateRange.endDate || undefined
-          })
-          if (resp.success && resp.data) {
-            const pageData = resp.data.data || resp.data
-            allTransactions.push(...pageData)
-            
-            const pag = resp.data.pagination
-            if (pag && page < pag.totalPages) {
-              page++
-            } else {
-              hasMore = false
-            }
-          } else {
-            hasMore = false
-          }
+        let allTransactions: Transaction[] = []
+        if (resp.success && resp.data) {
+          allTransactions = resp.data.data || resp.data
         }
         
         // Данные уже отфильтрованы сервером, но для локальной фильтрации оставим код на случай необходимости

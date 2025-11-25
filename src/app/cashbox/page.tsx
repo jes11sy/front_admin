@@ -122,30 +122,16 @@ export default function CashboxPage() {
         const dateRange = getDateRange()
         
         // Загружаем ВСЕ транзакции для группировки по городам
-        let allTransactions: CashTransaction[] = []
-        let page = 1
-        let hasMore = true
+        const response = await apiClient.getCashTransactions({ 
+          page: 1, 
+          limit: 10000,
+          startDate: dateRange.startDate,
+          endDate: dateRange.endDate
+        })
         
-        while (hasMore) {
-          const response = await apiClient.getCashTransactions({ 
-            page, 
-            limit: 100,
-            startDate: dateRange.startDate,
-            endDate: dateRange.endDate
-          })
-          if (response.success && response.data) {
-            const pageData: CashTransaction[] = response.data.data || response.data
-            allTransactions.push(...pageData)
-            
-            const pagination = response.data.pagination
-            if (pagination && page < pagination.totalPages) {
-              page++
-            } else {
-              hasMore = false
-            }
-          } else {
-            hasMore = false
-          }
+        let allTransactions: CashTransaction[] = []
+        if (response.success && response.data) {
+          allTransactions = response.data.data || response.data
         }
         
         // Группируем по городам
