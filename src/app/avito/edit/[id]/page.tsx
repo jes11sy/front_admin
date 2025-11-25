@@ -12,26 +12,29 @@ import { toast } from 'sonner'
 interface AvitoAccountData {
   id: string
   name: string
-  clientId: string
-  clientSecret: string
+  clientId: string | null
+  clientSecret: string | null
   userId: string
   proxyType: string
   proxyHost: string
   proxyPort: number
   proxyLogin: string
   proxyPassword: string
+  connectionStatus?: string
+  eternalOnlineEnabled?: boolean
+  onlineKeepAliveInterval?: number
 }
 
 interface FormData {
   name: string
-  clientId: string
-  clientSecret: string
   userId: string
   proxyType: string
   proxyHost: string
   proxyPort: number | string
   proxyLogin: string
   proxyPassword: string
+  eternalOnlineEnabled: boolean
+  onlineKeepAliveInterval: number
 }
 
 export default function EditAvitoAccountPage() {
@@ -41,16 +44,33 @@ export default function EditAvitoAccountPage() {
 
   const [formData, setFormData] = useState<FormData>({
     name: '',
-    clientId: '',
-    clientSecret: '',
     userId: '',
     proxyType: 'http',
     proxyHost: '',
     proxyPort: '',
     proxyLogin: '',
-    proxyPassword: ''
+    proxyPassword: '',
+    eternalOnlineEnabled: true,
+    onlineKeepAliveInterval: 300
   })
   const [isLoading, setIsLoading] = useState(true)
+  const [isAuthorized, setIsAuthorized] = useState(false)
+
+  // Проверка OAuth результата
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search)
+    const oauthStatus = urlParams.get('oauth')
+    
+    if (oauthStatus === 'success') {
+      toast.success('✅ Аккаунт успешно авторизован через Avito!')
+      // Очищаем параметр из URL
+      window.history.replaceState({}, '', window.location.pathname)
+    } else if (oauthStatus === 'error') {
+      const message = urlParams.get('message') || 'Неизвестная ошибка'
+      toast.error(`❌ Ошибка авторизации: ${message}`)
+      window.history.replaceState({}, '', window.location.pathname)
+    }
+  }, [])
 
   // Загрузка данных аккаунта
   useEffect(() => {
@@ -62,15 +82,17 @@ export default function EditAvitoAccountPage() {
           const account = response.data as AvitoAccountData
           setFormData({
             name: account.name || '',
-            clientId: account.clientId || '',
-            clientSecret: account.clientSecret || '',
             userId: account.userId || '',
             proxyType: account.proxyType || 'http',
             proxyHost: account.proxyHost || '',
             proxyPort: account.proxyPort || '',
             proxyLogin: account.proxyLogin || '',
-            proxyPassword: account.proxyPassword || ''
+            proxyPassword: account.proxyPassword || '',
+            eternalOnlineEnabled: account.eternalOnlineEnabled ?? true,
+            onlineKeepAliveInterval: account.onlineKeepAliveInterval || 300
           })
+          // Проверяем авторизован ли аккаунт
+          setIsAuthorized(!!(account.clientId && account.clientSecret))
         } else {
           toast.error(response.error || 'Не удалось загрузить данные аккаунта')
         }
@@ -115,6 +137,11 @@ export default function EditAvitoAccountPage() {
     }
   }
 
+  const handleOAuthAuthorize = () => {
+    const avitoAuthUrl = `${process.env.NEXT_PUBLIC_API_URL || 'https://api.lead-shem.ru'}/api/v1/auth/avito/authorize/${accountId}`
+    window.location.href = avitoAuthUrl
+  }
+
   return (
     <div className="min-h-screen" style={{backgroundColor: '#114643'}}>
       <div className="container mx-auto px-4 py-8 max-w-4xl">
@@ -123,6 +150,37 @@ export default function EditAvitoAccountPage() {
             <CardTitle className="text-2xl text-gray-800">Редактировать аккаунт Авито</CardTitle>
           </CardHeader>
           <CardContent>
+            {/* OAuth статус */}
+            <div className={`mb-6 p-4 rounded-lg border ${
+              isAuthorized 
+                ? 'bg-green-50 border-green-200' 
+                : 'bg-yellow-50 border-yellow-200'
+            }`}>
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="font-semibold text-gray-800">
+                    {isAuthorized ? '✅ Аккаунт авторизован' : '⚠️ Требуется авторизация'}
+                  </h3>
+                  <p className="text-sm text-gray-600 mt-1">
+                    {isAuthorized 
+                      ? 'Аккаунт подключен через OAuth. Токены обновляются автоматически.' 
+                      : 'Для работы с API Avito необходимо пройти OAuth авторизацию.'}
+                  </p>
+                </div>
+                <Button
+                  type="button"
+                  onClick={handleOAuthAuthorize}
+                  className={`${
+                    isAuthorized
+                      ? 'bg-blue-600 hover:bg-blue-700'
+                      : 'bg-orange-600 hover:bg-orange-700'
+                  } text-white`}
+                >
+                  {isAuthorized ? 'Переавторизовать' : 'Авторизовать через Avito'}
+                </Button>
+              </div>
+            </div>
+
             <form onSubmit={handleSubmit} className="space-y-6">
               {/* Имя аккаунта */}
               <div>
@@ -134,34 +192,6 @@ export default function EditAvitoAccountPage() {
                   value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                   placeholder="Например: Avito_Moscow_Main"
-                  className="mt-1"
-                />
-              </div>
-
-              {/* Client ID */}
-              <div>
-                <Label htmlFor="clientId" className="text-gray-700">Client ID *</Label>
-                <Input
-                  id="clientId"
-                  type="text"
-                  required
-                  value={formData.clientId}
-                  onChange={(e) => setFormData({ ...formData, clientId: e.target.value })}
-                  placeholder="Введите Client ID"
-                  className="mt-1"
-                />
-              </div>
-
-              {/* Client Secret */}
-              <div>
-                <Label htmlFor="clientSecret" className="text-gray-700">Client Secret *</Label>
-                <Input
-                  id="clientSecret"
-                  type="text"
-                  required
-                  value={formData.clientSecret}
-                  onChange={(e) => setFormData({ ...formData, clientSecret: e.target.value })}
-                  placeholder="Введите Client Secret"
                   className="mt-1"
                 />
               </div>
@@ -178,6 +208,7 @@ export default function EditAvitoAccountPage() {
                   placeholder="Введите User ID"
                   className="mt-1"
                 />
+                <p className="text-xs text-gray-500 mt-1">ID пользователя в вашей системе</p>
               </div>
 
               {/* Тип прокси */}
@@ -250,6 +281,47 @@ export default function EditAvitoAccountPage() {
                   placeholder="Введите пароль прокси"
                   className="mt-1"
                 />
+              </div>
+
+              {/* Вечный онлайн */}
+              <div className="border-t pt-4">
+                <h3 className="text-lg font-semibold text-gray-800 mb-4">Настройки "Вечного онлайна"</h3>
+                
+                <div className="space-y-4">
+                  <div className="flex items-center gap-3">
+                    <input
+                      id="eternalOnlineEnabled"
+                      type="checkbox"
+                      checked={formData.eternalOnlineEnabled}
+                      onChange={(e) => setFormData({ ...formData, eternalOnlineEnabled: e.target.checked })}
+                      className="w-4 h-4 text-teal-600 border-gray-300 rounded focus:ring-teal-500"
+                    />
+                    <Label htmlFor="eternalOnlineEnabled" className="text-gray-700 cursor-pointer">
+                      Включить автоматический онлайн-статус
+                    </Label>
+                  </div>
+
+                  {formData.eternalOnlineEnabled && (
+                    <div>
+                      <Label htmlFor="onlineKeepAliveInterval" className="text-gray-700">
+                        Интервал обновления (секунды)
+                      </Label>
+                      <Input
+                        id="onlineKeepAliveInterval"
+                        type="number"
+                        min="60"
+                        max="3600"
+                        value={formData.onlineKeepAliveInterval}
+                        onChange={(e) => setFormData({ ...formData, onlineKeepAliveInterval: parseInt(e.target.value) || 300 })}
+                        placeholder="300"
+                        className="mt-1"
+                      />
+                      <p className="text-xs text-gray-500 mt-1">
+                        Рекомендуется: 300 секунд (5 минут). Минимум: 60, Максимум: 3600
+                      </p>
+                    </div>
+                  )}
+                </div>
               </div>
 
               {/* Кнопки */}

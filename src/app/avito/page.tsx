@@ -154,6 +154,18 @@ export default function AvitoPage() {
     return () => clearInterval(timeUpdateInterval)
   }, [])
 
+  // Проверка OAuth результата
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search)
+    const oauthStatus = urlParams.get('oauth')
+    
+    if (oauthStatus === 'error') {
+      const message = urlParams.get('message') || 'Неизвестная ошибка'
+      toast.error(`❌ Ошибка авторизации: ${message}`)
+      window.history.replaceState({}, '', window.location.pathname)
+    }
+  }, [])
+
   // Загрузка данных с API
   useEffect(() => {
     const loadData = async () => {

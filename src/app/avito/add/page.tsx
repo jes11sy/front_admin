@@ -11,28 +11,28 @@ import { toast } from 'sonner'
 
 interface FormData {
   name: string
-  clientId: string
-  clientSecret: string
   userId: string
   proxyType: string
   proxyHost: string
   proxyPort: number | string
   proxyLogin: string
   proxyPassword: string
+  eternalOnlineEnabled: boolean
+  onlineKeepAliveInterval: number
 }
 
 export default function AddAvitoAccountPage() {
   const router = useRouter()
   const [formData, setFormData] = useState<FormData>({
     name: '',
-    clientId: '',
-    clientSecret: '',
     userId: '',
     proxyType: 'http',
     proxyHost: '',
     proxyPort: '',
     proxyLogin: '',
-    proxyPassword: ''
+    proxyPassword: '',
+    eternalOnlineEnabled: true,
+    onlineKeepAliveInterval: 300
   })
   const [isLoading, setIsLoading] = useState(false)
 
@@ -48,9 +48,14 @@ export default function AddAvitoAccountPage() {
       }
       const response = await apiClient.createAvitoAccount(apiData)
       
-      if (response.success) {
-        toast.success('Аккаунт Avito успешно добавлен')
-        router.push('/avito')
+      if (response.success && response.data?.id) {
+        toast.success('Аккаунт создан! Перенаправляем на авторизацию Avito...')
+        
+        // Перенаправляем на OAuth авторизацию
+        setTimeout(() => {
+          const avitoAuthUrl = `${process.env.NEXT_PUBLIC_API_URL || 'https://api.lead-shem.ru'}/api/v1/auth/avito/authorize/${response.data.id}`
+          window.location.href = avitoAuthUrl
+        }, 1500)
       } else {
         toast.error(response.error || 'Не удалось добавить аккаунт')
       }
@@ -72,6 +77,14 @@ export default function AddAvitoAccountPage() {
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-6">
+              {/* Информация об OAuth */}
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
+                <p className="text-sm text-blue-800">
+                  <strong>OAuth авторизация:</strong> После создания аккаунта вы будете перенаправлены на страницу Avito для авторизации. 
+                  Это безопасный способ подключения без необходимости вводить API ключи вручную.
+                </p>
+              </div>
+
               {/* Имя аккаунта */}
               <div>
                 <Label htmlFor="name" className="text-gray-700">Имя аккаунта *</Label>
@@ -82,34 +95,6 @@ export default function AddAvitoAccountPage() {
                   value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                   placeholder="Например: Avito_Moscow_Main"
-                  className="mt-1"
-                />
-              </div>
-
-              {/* Client ID */}
-              <div>
-                <Label htmlFor="clientId" className="text-gray-700">Client ID *</Label>
-                <Input
-                  id="clientId"
-                  type="text"
-                  required
-                  value={formData.clientId}
-                  onChange={(e) => setFormData({ ...formData, clientId: e.target.value })}
-                  placeholder="Введите Client ID"
-                  className="mt-1"
-                />
-              </div>
-
-              {/* Client Secret */}
-              <div>
-                <Label htmlFor="clientSecret" className="text-gray-700">Client Secret *</Label>
-                <Input
-                  id="clientSecret"
-                  type="text"
-                  required
-                  value={formData.clientSecret}
-                  onChange={(e) => setFormData({ ...formData, clientSecret: e.target.value })}
-                  placeholder="Введите Client Secret"
                   className="mt-1"
                 />
               </div>
@@ -126,6 +111,7 @@ export default function AddAvitoAccountPage() {
                   placeholder="Введите User ID"
                   className="mt-1"
                 />
+                <p className="text-xs text-gray-500 mt-1">ID пользователя в вашей системе</p>
               </div>
 
               {/* Тип прокси */}
@@ -200,6 +186,47 @@ export default function AddAvitoAccountPage() {
                 />
               </div>
 
+              {/* Вечный онлайн */}
+              <div className="border-t pt-4">
+                <h3 className="text-lg font-semibold text-gray-800 mb-4">Настройки "Вечного онлайна"</h3>
+                
+                <div className="space-y-4">
+                  <div className="flex items-center gap-3">
+                    <input
+                      id="eternalOnlineEnabled"
+                      type="checkbox"
+                      checked={formData.eternalOnlineEnabled}
+                      onChange={(e) => setFormData({ ...formData, eternalOnlineEnabled: e.target.checked })}
+                      className="w-4 h-4 text-teal-600 border-gray-300 rounded focus:ring-teal-500"
+                    />
+                    <Label htmlFor="eternalOnlineEnabled" className="text-gray-700 cursor-pointer">
+                      Включить автоматический онлайн-статус
+                    </Label>
+                  </div>
+
+                  {formData.eternalOnlineEnabled && (
+                    <div>
+                      <Label htmlFor="onlineKeepAliveInterval" className="text-gray-700">
+                        Интервал обновления (секунды)
+                      </Label>
+                      <Input
+                        id="onlineKeepAliveInterval"
+                        type="number"
+                        min="60"
+                        max="3600"
+                        value={formData.onlineKeepAliveInterval}
+                        onChange={(e) => setFormData({ ...formData, onlineKeepAliveInterval: parseInt(e.target.value) || 300 })}
+                        placeholder="300"
+                        className="mt-1"
+                      />
+                      <p className="text-xs text-gray-500 mt-1">
+                        Рекомендуется: 300 секунд (5 минут). Минимум: 60, Максимум: 3600
+                      </p>
+                    </div>
+                  )}
+                </div>
+              </div>
+
               {/* Кнопки */}
               <div className="flex gap-4 pt-4">
                 <Button 
@@ -207,7 +234,7 @@ export default function AddAvitoAccountPage() {
                   className="bg-gradient-to-r from-teal-600 to-emerald-600 hover:from-teal-700 hover:to-emerald-700 text-white"
                   disabled={isLoading}
                 >
-                  {isLoading ? 'Добавление...' : 'Добавить аккаунт'}
+                  {isLoading ? 'Создание аккаунта...' : 'Создать и авторизовать через Avito'}
                 </Button>
                 <Button 
                   type="button"
