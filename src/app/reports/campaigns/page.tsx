@@ -131,64 +131,68 @@ export default function CampaignsReportPage() {
         <Card className="border-0 shadow-lg">
           <CardContent className="p-4">
             {/* Фильтры по датам */}
-            <div className="flex flex-wrap items-center gap-3 mb-4 pb-4 border-b border-gray-200">
-              <div className="flex items-center gap-2">
-                <Calendar className="h-4 w-4 text-gray-500" />
-                <span className="text-sm font-medium text-gray-700">Период:</span>
-              </div>
-              <div className="flex gap-2">
-                <Button
-                  variant={period === 'day' ? 'default' : 'outline'}
-                  size="sm"
-                  onClick={() => setPeriod('day')}
-                  className={period === 'day' ? 'bg-gradient-to-r from-teal-600 to-emerald-600' : 'bg-white'}
-                >
-                  День
-                </Button>
-                <Button
-                  variant={period === 'week' ? 'default' : 'outline'}
-                  size="sm"
-                  onClick={() => setPeriod('week')}
-                  className={period === 'week' ? 'bg-gradient-to-r from-teal-600 to-emerald-600' : 'bg-white'}
-                >
-                  Неделя
-                </Button>
-                <Button
-                  variant={period === 'month' ? 'default' : 'outline'}
-                  size="sm"
-                  onClick={() => setPeriod('month')}
-                  className={period === 'month' ? 'bg-gradient-to-r from-teal-600 to-emerald-600' : 'bg-white'}
-                >
-                  Месяц
-                </Button>
-                <Button
-                  variant={period === 'custom' ? 'default' : 'outline'}
-                  size="sm"
-                  onClick={() => setPeriod('custom')}
-                  className={period === 'custom' ? 'bg-gradient-to-r from-teal-600 to-emerald-600' : 'bg-white'}
-                >
-                  Выбрать даты
-                </Button>
-              </div>
-              {period === 'custom' && (
+            <div className="mb-4 pb-4 border-b border-gray-200">
+              <div className="flex flex-col sm:flex-row sm:items-center gap-3">
                 <div className="flex items-center gap-2">
+                  <Calendar className="h-4 w-4 text-gray-500" />
+                  <span className="text-sm font-medium text-gray-700">Период:</span>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <Button
+                    variant={period === 'day' ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={() => setPeriod('day')}
+                    className={period === 'day' ? 'bg-gradient-to-r from-teal-600 to-emerald-600' : 'bg-white'}
+                  >
+                    День
+                  </Button>
+                  <Button
+                    variant={period === 'week' ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={() => setPeriod('week')}
+                    className={period === 'week' ? 'bg-gradient-to-r from-teal-600 to-emerald-600' : 'bg-white'}
+                  >
+                    Неделя
+                  </Button>
+                  <Button
+                    variant={period === 'month' ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={() => setPeriod('month')}
+                    className={period === 'month' ? 'bg-gradient-to-r from-teal-600 to-emerald-600' : 'bg-white'}
+                  >
+                    Месяц
+                  </Button>
+                  <Button
+                    variant={period === 'custom' ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={() => setPeriod('custom')}
+                    className={period === 'custom' ? 'bg-gradient-to-r from-teal-600 to-emerald-600' : 'bg-white'}
+                  >
+                    Выбрать даты
+                  </Button>
+                </div>
+              </div>
+              
+              {period === 'custom' && (
+                <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 mt-3">
                   <Input
                     type="date"
                     value={startDate}
                     onChange={(e) => setStartDate(e.target.value)}
-                    className="w-40"
+                    className="w-full sm:w-40"
                   />
-                  <span className="text-gray-500">—</span>
+                  <span className="text-gray-500 hidden sm:inline">—</span>
                   <Input
                     type="date"
                     value={endDate}
                     onChange={(e) => setEndDate(e.target.value)}
-                    className="w-40"
+                    className="w-full sm:w-40"
                   />
                 </div>
               )}
+              
               {period !== 'custom' && (
-                <div className="ml-auto text-sm text-gray-600">
+                <div className="mt-3 text-sm text-gray-600">
                   {(() => {
                     const range = getDateRange(period)
                     // Показываем только дату без времени для удобства
@@ -257,32 +261,6 @@ export default function CampaignsReportPage() {
                         </TableBody>
                       </Table>
                     </div>
-
-                    {/* Итоги по городу */}
-                    {cityData.campaigns.length > 0 && (
-                      <div className="bg-gray-50 px-6 py-4 border-t border-gray-200">
-                        <div className="grid grid-cols-3 gap-4 text-sm">
-                          <div>
-                            <span className="text-gray-500">Всего заказов:</span>
-                            <span className="ml-2 font-bold text-gray-800">
-                              {cityData.campaigns.reduce((sum, item) => sum + item.ordersCount, 0)}
-                            </span>
-                          </div>
-                          <div>
-                            <span className="text-gray-500">Общий оборот:</span>
-                            <span className="ml-2 font-bold text-green-600">
-                              {formatCurrency(cityData.campaigns.reduce((sum, item) => sum + item.revenue, 0))}
-                            </span>
-                          </div>
-                          <div>
-                            <span className="text-gray-500">Общая выручка:</span>
-                            <span className="ml-2 font-bold text-blue-600">
-                              {formatCurrency(cityData.campaigns.reduce((sum, item) => sum + item.profit, 0))}
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-                    )}
                   </div>
                 ))}
               </div>
