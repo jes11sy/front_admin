@@ -740,6 +740,20 @@ class ApiClient {
     return this.request<any>(`/reports/masters${query ? `?${query}` : ''}`)
   }
 
+  async getCampaignsReport(params?: {
+    startDate?: string
+    endDate?: string
+    city?: string
+  }) {
+    const searchParams = new URLSearchParams()
+    if (params?.startDate) searchParams.append('startDate', params.startDate)
+    if (params?.endDate) searchParams.append('endDate', params.endDate)
+    if (params?.city) searchParams.append('city', params.city)
+
+    const query = searchParams.toString()
+    return this.request<any>(`/reports/campaigns${query ? `?${query}` : ''}`)
+  }
+
   async getCitiesAnalytics(params?: {
     startDate?: string
     endDate?: string

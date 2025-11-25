@@ -23,7 +23,8 @@ import {
   UserCheck,
   ShoppingCart,
   Wallet,
-  DollarSign
+  DollarSign,
+  TrendingUp
 } from 'lucide-react'
 
 const navigationItems = [
@@ -48,6 +49,7 @@ const navigationItems = [
     dropdown: [
       { name: 'Отчет по городам', href: '/reports/cities', icon: MapPin },
       { name: 'Отчет по мастерам', href: '/reports/masters', icon: UserCheck },
+      { name: 'Отчет по РК', href: '/reports/campaigns', icon: TrendingUp },
     ]
   },
 ]
