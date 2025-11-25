@@ -15,6 +15,9 @@ interface AvitoAccountData {
   clientId: string | null
   clientSecret: string | null
   userId: string
+  avitoLogin?: string
+  avitoPassword?: string
+  useParser?: boolean
   proxyType: string
   proxyHost: string
   proxyPort: number
@@ -28,6 +31,9 @@ interface AvitoAccountData {
 interface FormData {
   name: string
   userId: string
+  avitoLogin: string
+  avitoPassword: string
+  useParser: boolean
   proxyType: string
   proxyHost: string
   proxyPort: number | string
@@ -45,6 +51,9 @@ export default function EditAvitoAccountPage() {
   const [formData, setFormData] = useState<FormData>({
     name: '',
     userId: '',
+    avitoLogin: '',
+    avitoPassword: '',
+    useParser: false,
     proxyType: 'http',
     proxyHost: '',
     proxyPort: '',
@@ -83,6 +92,9 @@ export default function EditAvitoAccountPage() {
           setFormData({
             name: account.name || '',
             userId: account.userId || '',
+            avitoLogin: account.avitoLogin || '',
+            avitoPassword: '', // Не показываем пароль
+            useParser: account.useParser ?? false,
             proxyType: account.proxyType || 'http',
             proxyHost: account.proxyHost || '',
             proxyPort: account.proxyPort || '',
@@ -138,7 +150,10 @@ export default function EditAvitoAccountPage() {
   }
 
   const handleOAuthAuthorize = () => {
-    const avitoAuthUrl = `${process.env.NEXT_PUBLIC_API_URL || 'https://api.lead-shem.ru'}/api/v1/auth/avito/authorize/${accountId}`
+    // Убираем /api/v1 из URL если он уже есть в NEXT_PUBLIC_API_URL
+    const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'https://api.lead-shem.ru/api/v1'
+    const apiUrl = baseUrl.endsWith('/api/v1') ? baseUrl.replace('/api/v1', '') : baseUrl
+    const avitoAuthUrl = `${apiUrl}/api/v1/auth/avito/authorize/${accountId}`
     window.location.href = avitoAuthUrl
   }
 
@@ -210,6 +225,53 @@ export default function EditAvitoAccountPage() {
                 />
                 <p className="text-xs text-gray-500 mt-1">ID пользователя в вашей системе</p>
               </div>
+
+              {/* Использовать парсер */}
+              <div className="flex items-center space-x-2 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+                <input
+                  id="useParser"
+                  type="checkbox"
+                  checked={formData.useParser}
+                  onChange={(e) => setFormData({ ...formData, useParser: e.target.checked })}
+                  className="w-4 h-4 text-teal-600 border-gray-300 rounded focus:ring-teal-500"
+                />
+                <Label htmlFor="useParser" className="text-gray-700 cursor-pointer">
+                  Использовать парсер (бесплатно, без API Avito)
+                </Label>
+              </div>
+
+              {/* Поля для парсера */}
+              {formData.useParser && (
+                <div className="space-y-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                  <p className="text-sm text-blue-800 mb-4">
+                    <strong>Парсер:</strong> Работает через браузерную автоматизацию. Капчу решают операторы бесплатно!
+                  </p>
+                  
+                  <div>
+                    <Label htmlFor="avitoLogin" className="text-gray-700">Логин Avito (телефон/email)</Label>
+                    <Input
+                      id="avitoLogin"
+                      type="text"
+                      value={formData.avitoLogin}
+                      onChange={(e) => setFormData({ ...formData, avitoLogin: e.target.value })}
+                      placeholder="79001234567 или email@example.com"
+                      className="mt-1"
+                    />
+                  </div>
+
+                  <div>
+                    <Label htmlFor="avitoPassword" className="text-gray-700">Пароль Avito (оставьте пустым чтобы не менять)</Label>
+                    <Input
+                      id="avitoPassword"
+                      type="password"
+                      value={formData.avitoPassword}
+                      onChange={(e) => setFormData({ ...formData, avitoPassword: e.target.value })}
+                      placeholder="Новый пароль (опционально)"
+                      className="mt-1"
+                    />
+                  </div>
+                </div>
+              )}
 
               {/* Тип прокси */}
               <div>
