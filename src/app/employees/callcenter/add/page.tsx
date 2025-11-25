@@ -110,7 +110,7 @@ export default function AddCallCenterEmployeePage() {
         }
       }
 
-      // Создание оператора
+      // Создание оператора1
       const response = await apiClient.createOperator({
         name: formData.name,
         login: formData.login,
