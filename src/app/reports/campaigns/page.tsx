@@ -13,8 +13,8 @@ interface CampaignReport {
   rk: string
   avitoName: string | null
   ordersCount: number
-  revenue: number // Оборот (result)
-  profit: number // Выручка (clean)
+  revenue: number // Оборот (сумма чистыми - clean)
+  profit: number // Выручка (сдача мастера - masterChange)
 }
 
 interface CityReport {
