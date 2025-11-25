@@ -7,6 +7,8 @@ import { Label } from '@/components/ui/label'
 import { RefreshCw, Upload } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { useState } from 'react'
+import { apiClient } from '@/lib/api'
+import { toast } from 'sonner'
 
 export default function AddCallCenterEmployeePage() {
   const router = useRouter()
@@ -19,6 +21,7 @@ export default function AddCallCenterEmployeePage() {
   })
   const [passportFile, setPassportFile] = useState<File | null>(null)
   const [contractFile, setContractFile] = useState<File | null>(null)
+  const [isSubmitting, setIsSubmitting] = useState(false)
 
   const generateLogin = () => {
     if (!formData.name) {
@@ -60,15 +63,77 @@ export default function AddCallCenterEmployeePage() {
     setFormData({ ...formData, password })
   }
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    // TODO: Отправить данные на API
-    console.log('Form data:', formData)
-    console.log('Passport file:', passportFile)
-    console.log('Contract file:', contractFile)
     
-    // Вернуться к списку
-    router.push('/employees/callcenter')
+    setIsSubmitting(true)
+    
+    try {
+      let passportDocUrl: string | undefined
+      let contractDocUrl: string | undefined
+
+      // Загрузка паспорта
+      if (passportFile) {
+        const passportFormData = new FormData()
+        passportFormData.append('file', passportFile)
+        
+        const passportResponse = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/files/upload?folder=callcenter/passports`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${await apiClient.getAccessToken()}`
+          },
+          body: passportFormData
+        })
+        
+        if (passportResponse.ok) {
+          const passportData = await passportResponse.json()
+          passportDocUrl = passportData.data?.key
+        }
+      }
+
+      // Загрузка договора
+      if (contractFile) {
+        const contractFormData = new FormData()
+        contractFormData.append('file', contractFile)
+        
+        const contractResponse = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/files/upload?folder=callcenter/contracts`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${await apiClient.getAccessToken()}`
+          },
+          body: contractFormData
+        })
+        
+        if (contractResponse.ok) {
+          const contractData = await contractResponse.json()
+          contractDocUrl = contractData.data?.key
+        }
+      }
+
+      // Создание оператора
+      const response = await apiClient.createOperator({
+        name: formData.name,
+        login: formData.login,
+        password: formData.password,
+        type: 'operator',
+        sipAddress: formData.sipAddress || undefined,
+        passport: passportDocUrl,
+        contract: contractDocUrl,
+        note: formData.note || undefined
+      })
+
+      if (response.success) {
+        toast.success('Сотрудник кол-центра успешно добавлен!')
+        router.push('/employees/callcenter')
+      } else {
+        toast.error(response.error || 'Ошибка при добавлении сотрудника')
+      }
+    } catch (error: any) {
+      console.error('Error creating operator:', error)
+      toast.error(error.message || 'Произошла ошибка при добавлении сотрудника')
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
   return (
@@ -231,9 +296,10 @@ export default function AddCallCenterEmployeePage() {
               <div className="flex gap-4 pt-4">
                 <Button 
                   type="submit"
-                  className="bg-gradient-to-r from-teal-600 to-emerald-600 hover:from-teal-700 hover:to-emerald-700 text-white"
+                  disabled={isSubmitting}
+                  className="bg-gradient-to-r from-teal-600 to-emerald-600 hover:from-teal-700 hover:to-emerald-700 text-white disabled:opacity-50"
                 >
-                  Добавить сотрудника
+                  {isSubmitting ? 'Добавление...' : 'Добавить сотрудника'}
                 </Button>
                 <Button 
                   type="button"
