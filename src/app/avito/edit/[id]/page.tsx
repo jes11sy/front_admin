@@ -19,6 +19,7 @@ interface AvitoAccountData {
   avitoLogin?: string
   avitoPassword?: string
   useParser?: boolean
+  cookies?: string
   proxyType: string
   proxyHost: string
   proxyPort: number
@@ -108,8 +109,10 @@ export default function EditAvitoAccountPage() {
             eternalOnlineEnabled: account.eternalOnlineEnabled ?? true,
             onlineKeepAliveInterval: account.onlineKeepAliveInterval || 300
           })
-          // Проверяем авторизован ли аккаунт
-          setIsAuthorized(!!(account.clientId && account.clientSecret))
+          // Проверяем авторизован ли аккаунт (OAuth токены или cookies для парсера)
+          const hasOAuthTokens = !!(account.clientId && account.clientSecret)
+          const hasParserCookies = !!(account.useParser && account.cookies)
+          setIsAuthorized(hasOAuthTokens || hasParserCookies)
         } else {
           toast.error(response.error || 'Не удалось загрузить данные аккаунта')
         }
@@ -218,8 +221,12 @@ export default function EditAvitoAccountPage() {
                   </h3>
                   <p className="text-sm text-gray-600 mt-1">
                     {isAuthorized 
-                      ? 'Аккаунт подключен через OAuth. Токены обновляются автоматически.' 
-                      : 'Для работы с API Avito необходимо пройти OAuth авторизацию.'}
+                      ? (formData.useParser 
+                          ? 'Аккаунт авторизован через парсер. Cookies обновляются автоматически.' 
+                          : 'Аккаунт подключен через OAuth. Токены обновляются автоматически.')
+                      : (formData.useParser
+                          ? 'Для работы парсера необходимо авторизоваться в Avito.'
+                          : 'Для работы с API Avito необходимо пройти OAuth авторизацию.')}
                   </p>
                 </div>
                 <Button
@@ -284,7 +291,8 @@ export default function EditAvitoAccountPage() {
               {formData.useParser && (
                 <div className="space-y-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
                   <p className="text-sm text-blue-800 mb-4">
-                    <strong>Парсер:</strong> Работает через браузерную автоматизацию. Капчу решают операторы бесплатно!
+                    <strong>Парсер:</strong> Работает через браузерную автоматизацию. Капчу решают операторы бесплатно!<br/>
+                    Для переавторизации нажмите кнопку "Авторизовать через Avito" выше.
                   </p>
                   
                   <div>
@@ -294,22 +302,11 @@ export default function EditAvitoAccountPage() {
                       type="text"
                       value={formData.avitoLogin}
                       onChange={(e) => setFormData({ ...formData, avitoLogin: e.target.value })}
-                      placeholder="79001234567 или email@example.com"
+                      placeholder="79001234567 или email@example.com (опционально)"
                       className="mt-1"
                     />
-                  </div>
-
-                  <div>
-                    <Label htmlFor="cookies" className="text-gray-700">Cookies (оставьте пустым чтобы не менять)</Label>
-                    <textarea
-                      id="cookies"
-                      value={formData.cookies}
-                      onChange={(e) => setFormData({ ...formData, cookies: e.target.value })}
-                      placeholder='[{"name":"...","value":"..."}] или оставьте пустым'
-                      className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500 min-h-[100px] font-mono text-xs"
-                    />
                     <p className="text-xs text-gray-500 mt-1">
-                      Для обновления: <code className="bg-gray-200 px-1 rounded">node scripts/get-cookies.js</code>
+                      Необязательно - используется только для справки
                     </p>
                   </div>
                 </div>

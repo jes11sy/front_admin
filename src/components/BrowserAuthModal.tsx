@@ -30,7 +30,9 @@ export function BrowserAuthModal({ accountId, proxyConfig, onSuccess, onClose }:
   const startBrowser = async () => {
     try {
       setIsLoading(true)
-      const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://api.lead-schem.ru/api/v1'
+      const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'https://api.lead-schem.ru/api/v1'
+      // Убираем /api/v1 если он уже есть
+      const API_URL = baseUrl.endsWith('/api/v1') ? baseUrl : `${baseUrl}/api/v1`
       
       const response = await fetch(`${API_URL}/browser/start`, {
         method: 'POST',
@@ -39,6 +41,8 @@ export function BrowserAuthModal({ accountId, proxyConfig, onSuccess, onClose }:
       })
 
       const data = await response.json()
+      
+      console.log('Browser start response:', data)
       
       if (data.success && data.data.publicWsUrl) {
         setWsUrl(data.data.publicWsUrl)
@@ -63,7 +67,8 @@ export function BrowserAuthModal({ accountId, proxyConfig, onSuccess, onClose }:
 
   const checkAuthStatus = async () => {
     try {
-      const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://api.lead-schem.ru/api/v1'
+      const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'https://api.lead-schem.ru/api/v1'
+      const API_URL = baseUrl.endsWith('/api/v1') ? baseUrl : `${baseUrl}/api/v1`
       const response = await fetch(`${API_URL}/browser/${accountId}/status`)
       const data = await response.json()
 
@@ -80,7 +85,8 @@ export function BrowserAuthModal({ accountId, proxyConfig, onSuccess, onClose }:
 
   const handleComplete = async () => {
     try {
-      const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://api.lead-schem.ru/api/v1'
+      const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'https://api.lead-schem.ru/api/v1'
+      const API_URL = baseUrl.endsWith('/api/v1') ? baseUrl : `${baseUrl}/api/v1`
       
       // Получаем cookies
       const response = await fetch(`${API_URL}/browser/${accountId}/cookies`)
@@ -105,7 +111,8 @@ export function BrowserAuthModal({ accountId, proxyConfig, onSuccess, onClose }:
 
   const handleCancel = async () => {
     try {
-      const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://api.lead-schem.ru/api/v1'
+      const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'https://api.lead-schem.ru/api/v1'
+      const API_URL = baseUrl.endsWith('/api/v1') ? baseUrl : `${baseUrl}/api/v1`
       await fetch(`${API_URL}/browser/${accountId}`, { method: 'DELETE' })
     } catch (error) {
       console.error('Close browser error:', error)

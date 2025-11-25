@@ -184,34 +184,22 @@ export default function AddAvitoAccountPage() {
               {formData.useParser && (
                 <div className="space-y-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
                   <p className="text-sm text-blue-800 mb-4">
-                    <strong>Парсер:</strong> Работает через браузерную автоматизацию. Капчу решают операторы бесплатно!
+                    <strong>Парсер:</strong> Работает через браузерную автоматизацию. Капчу решают операторы бесплатно!<br/>
+                    После создания аккаунта откроется окно для авторизации в Avito.
                   </p>
                   
                   <div>
-                    <Label htmlFor="avitoLogin" className="text-gray-700">Логин Avito (телефон/email) *</Label>
+                    <Label htmlFor="avitoLogin" className="text-gray-700">Логин Avito (телефон/email)</Label>
                     <Input
                       id="avitoLogin"
                       type="text"
-                      required={formData.useParser}
                       value={formData.avitoLogin}
                       onChange={(e) => setFormData({ ...formData, avitoLogin: e.target.value })}
-                      placeholder="79001234567 или email@example.com"
+                      placeholder="79001234567 или email@example.com (опционально)"
                       className="mt-1"
                     />
-                  </div>
-
-                  <div>
-                    <Label htmlFor="cookies" className="text-gray-700">Cookies (получить через скрипт) *</Label>
-                    <textarea
-                      id="cookies"
-                      required={formData.useParser}
-                      value={formData.cookies}
-                      onChange={(e) => setFormData({ ...formData, cookies: e.target.value })}
-                      placeholder='[{"name":"...","value":"..."}]'
-                      className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500 min-h-[100px] font-mono text-xs"
-                    />
                     <p className="text-xs text-gray-500 mt-1">
-                      Запустите: <code className="bg-gray-200 px-1 rounded">node scripts/get-cookies.js</code> и вставьте результат
+                      Необязательно - используется только для справки
                     </p>
                   </div>
                 </div>
