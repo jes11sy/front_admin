@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Label } from '@/components/ui/label'
-import { Search, ShoppingCart } from 'lucide-react'
+import { Search, ChevronDown, ChevronUp, X } from 'lucide-react'
 import { useState, useEffect } from 'react'
 import { apiClient } from '@/lib/api'
 import { toast } from 'sonner'
@@ -36,6 +36,19 @@ export default function OrdersPage() {
   const [searchQuery, setSearchQuery] = useState('')
   const [statusFilter, setStatusFilter] = useState('all')
   const [masterFilter, setMasterFilter] = useState('')
+  const [cityFilter, setCityFilter] = useState('all')
+  const [rkFilter, setRkFilter] = useState('all')
+  const [typeEquipmentFilter, setTypeEquipmentFilter] = useState('all')
+  const [dateType, setDateType] = useState<'create' | 'close' | 'meeting'>('create')
+  const [dateFrom, setDateFrom] = useState('')
+  const [dateTo, setDateTo] = useState('')
+  const [showFilters, setShowFilters] = useState(false)
+  
+  // Данные для фильтров
+  const [allRks, setAllRks] = useState<string[]>([])
+  const [allTypeEquipments, setAllTypeEquipments] = useState<string[]>([])
+  const [allCities, setAllCities] = useState<string[]>([])
+  
   const [ordersData, setOrdersData] = useState<{
     orders: Order[]
     pagination: {
@@ -67,18 +80,39 @@ export default function OrdersPage() {
     { value: 'Незаказ', label: 'Незаказ' },
   ]
 
+  // Загрузка опций фильтров
+  useEffect(() => {
+    const loadFilterOptions = async () => {
+      try {
+        const response = await apiClient.getFilterOptions()
+        if (response.success && response.data) {
+          setAllRks(response.data.rks || [])
+          setAllTypeEquipments(response.data.typeEquipments || [])
+        }
+      } catch (error) {
+        console.error('Error loading filter options:', error)
+      }
+    }
+    loadFilterOptions()
+  }, [])
+
   // Загрузка заказов и статистики из API
   useEffect(() => {
     const loadOrders = async () => {
       setIsLoading(true)
       try {
-        // Загружаем ТОЛЬКО текущую страницу
         const response = await apiClient.getOrders({ 
           page, 
           limit,
           search: searchQuery || undefined,
           status: statusFilter !== 'all' ? statusFilter : undefined,
-          master: masterFilter || undefined
+          master: masterFilter || undefined,
+          city: cityFilter !== 'all' ? cityFilter : undefined,
+          rk: rkFilter !== 'all' ? rkFilter : undefined,
+          typeEquipment: typeEquipmentFilter !== 'all' ? typeEquipmentFilter : undefined,
+          dateType: (dateFrom || dateTo) ? dateType : undefined,
+          dateFrom: dateFrom || undefined,
+          dateTo: dateTo || undefined,
         })
         
         if (response.success && response.data) {
@@ -94,6 +128,12 @@ export default function OrdersPage() {
             orders,
             pagination
           })
+          
+          // Собираем уникальные города из заказов
+          const cities = [...new Set(orders.map((o: Order) => o.city).filter(Boolean))]
+          if (cities.length > 0) {
+            setAllCities(cities as string[])
+          }
         }
       } catch (error) {
         console.error('Error loading orders:', error)
@@ -105,22 +145,69 @@ export default function OrdersPage() {
     }
 
     loadOrders()
-  }, [page, limit, searchQuery, statusFilter, masterFilter])
+  }, [page, limit, searchQuery, statusFilter, masterFilter, cityFilter, rkFilter, typeEquipmentFilter, dateType, dateFrom, dateTo])
 
   const handleSearch = (value: string) => {
     setSearchQuery(value)
-    setPage(1) // Сброс на первую страницу при поиске
+    setPage(1)
   }
 
   const handleStatusChange = (value: string) => {
     setStatusFilter(value)
-    setPage(1) // Сброс на первую страницу при изменении фильтра
+    setPage(1)
   }
 
   const handleMasterChange = (value: string) => {
     setMasterFilter(value)
-    setPage(1) // Сброс на первую страницу при изменении фильтра
+    setPage(1)
   }
+
+  const handleCityChange = (value: string) => {
+    setCityFilter(value)
+    setPage(1)
+  }
+
+  const handleRkChange = (value: string) => {
+    setRkFilter(value)
+    setPage(1)
+  }
+
+  const handleTypeEquipmentChange = (value: string) => {
+    setTypeEquipmentFilter(value)
+    setPage(1)
+  }
+
+  const handleDateTypeChange = (value: 'create' | 'close' | 'meeting') => {
+    setDateType(value)
+    setPage(1)
+  }
+
+  const handleDateFromChange = (value: string) => {
+    setDateFrom(value)
+    setPage(1)
+  }
+
+  const handleDateToChange = (value: string) => {
+    setDateTo(value)
+    setPage(1)
+  }
+
+  const resetFilters = () => {
+    setSearchQuery('')
+    setStatusFilter('all')
+    setMasterFilter('')
+    setCityFilter('all')
+    setRkFilter('all')
+    setTypeEquipmentFilter('all')
+    setDateType('create')
+    setDateFrom('')
+    setDateTo('')
+    setPage(1)
+  }
+
+  const hasActiveFilters = searchQuery || statusFilter !== 'all' || masterFilter || 
+    cityFilter !== 'all' || rkFilter !== 'all' || typeEquipmentFilter !== 'all' || 
+    dateFrom || dateTo
 
   const handlePageChange = (newPage: number) => {
     setPage(newPage)
@@ -144,142 +231,386 @@ export default function OrdersPage() {
   }
 
   const getStatusColor = (status: string) => {
-    const colors: Record<string, string> = {
-      'Ожидает': 'bg-blue-100 text-blue-800',
-      'Принял': 'bg-cyan-100 text-cyan-800',
-      'В пути': 'bg-purple-100 text-purple-800',
-      'В работе': 'bg-yellow-100 text-yellow-800',
-      'Готово': 'bg-green-100 text-green-800',
-      'Отказ': 'bg-red-100 text-red-800',
-      'Модерн': 'bg-orange-100 text-orange-800',
-      'Незаказ': 'bg-gray-100 text-gray-800'
+    switch (status) {
+      case 'Готово': return '#059669'
+      case 'В работе': return '#3b82f6'
+      case 'Ожидает': return '#f59e0b'
+      case 'Отказ': return '#ef4444'
+      case 'Принял': return '#10b981'
+      case 'В пути': return '#8b5cf6'
+      case 'Модерн': return '#f97316'
+      case 'Незаказ': return '#6b7280'
+      default: return '#6b7280'
     }
-    return colors[status] || 'bg-gray-100 text-gray-800'
+  }
+
+  const getTypeColor = (type: string) => {
+    switch (type) {
+      case 'Впервые': return '#10b981'
+      case 'Повтор': return '#f59e0b'
+      case 'Гарантия': return '#ef4444'
+      default: return '#6b7280'
+    }
   }
 
   return (
     <div className="min-h-screen" style={{backgroundColor: '#114643'}}>
-      <div className="container mx-auto px-4 py-8 max-w-7xl">
-        {/* Таблица заказов */}
-        <Card className="border-0 shadow-lg">
-          <CardContent className="p-4">
+      <div className="container mx-auto px-2 sm:px-4 py-8">
+        <div className="max-w-none mx-auto">
+          <div className="backdrop-blur-lg shadow-2xl rounded-2xl p-6 md:p-8 border bg-white/95 hover:bg-white transition-all duration-500 hover:shadow-3xl" style={{borderColor: '#114643'}}>
+            
             {/* Фильтры */}
-            <div className="mb-4 space-y-3">
-              <div className="flex items-center gap-3">
-                <div className="relative flex-1 max-w-md">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-                  <Input
-                    type="text"
-                    placeholder="Поиск по ID, клиенту, телефону или адресу..."
-                    value={searchQuery}
-                    onChange={(e) => handleSearch(e.target.value)}
-                    className="pl-10"
-                  />
-                </div>
-                <div className="w-48">
-                  <Select
-                    value={statusFilter}
-                    onValueChange={handleStatusChange}
-                    disabled={isLoading}
-                  >
-                    <SelectTrigger className="bg-white">
-                      <SelectValue placeholder="Все статусы" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {ORDER_STATUSES.map((status) => (
-                        <SelectItem key={status.value} value={status.value}>
-                          {status.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="w-48">
-                  <Input
-                    type="text"
-                    placeholder="Имя мастера..."
-                    value={masterFilter}
-                    onChange={(e) => handleMasterChange(e.target.value)}
-                    className="bg-white"
-                  />
-                </div>
-                <div className="ml-auto text-sm text-gray-600">
-                  Всего заказов: <span className="font-semibold">{ordersData?.pagination.total || 0}</span>
-                </div>
+            <div className="mb-6">
+              <div className="mb-4">
+                <button
+                  onClick={() => setShowFilters(!showFilters)}
+                  className="flex items-center gap-2 text-left cursor-pointer group"
+                >
+                  <h2 className="text-lg font-semibold text-gray-700 group-hover:text-teal-600 transition-colors duration-200">
+                    Фильтр
+                  </h2>
+                  {showFilters ? (
+                    <ChevronUp className="w-5 h-5 text-gray-600 group-hover:text-teal-600 transition-all duration-200" />
+                  ) : (
+                    <ChevronDown className="w-5 h-5 text-gray-600 group-hover:text-teal-600 transition-all duration-200" />
+                  )}
+                  {hasActiveFilters && (
+                    <span className="ml-2 px-2 py-0.5 bg-teal-100 text-teal-700 text-xs rounded-full font-medium">
+                      Активны
+                    </span>
+                  )}
+                </button>
               </div>
+              
+              {showFilters && (
+                <div className="space-y-4 animate-in slide-in-from-top-2 duration-200">
+                  {/* Первая строка: Поиск и Статус */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {/* Поиск */}
+                    <div>
+                      <label className="block text-xs font-medium text-gray-600 mb-1">
+                        Поиск (№, телефон, адрес)
+                      </label>
+                      <div className="relative">
+                        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                        <input
+                          type="text"
+                          value={searchQuery}
+                          onChange={(e) => handleSearch(e.target.value)}
+                          placeholder="Введите номер, телефон или адрес..."
+                          className="w-full pl-10 pr-3 py-2 bg-white border-2 border-gray-200 rounded-lg text-gray-800 placeholder-gray-400 text-sm focus:outline-none focus:border-teal-500 transition-all duration-200 hover:border-gray-300 shadow-sm hover:shadow-md"
+                        />
+                      </div>
+                    </div>
+                    
+                    {/* Статус */}
+                    <div>
+                      <label className="block text-xs font-medium text-gray-600 mb-1">
+                        Статус
+                      </label>
+                      <Select value={statusFilter} onValueChange={handleStatusChange}>
+                        <SelectTrigger className="w-full bg-white border-gray-200 text-gray-800 border-2 hover:border-gray-300 focus:border-teal-500">
+                          <SelectValue placeholder="Все статусы" />
+                        </SelectTrigger>
+                        <SelectContent className="bg-white border-gray-300">
+                          {ORDER_STATUSES.map(status => (
+                            <SelectItem key={status.value} value={status.value} className="text-gray-800 focus:text-white focus:bg-teal-600 hover:text-white hover:bg-teal-600">
+                              {status.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                  
+                  {/* Вторая строка: Город и Мастер */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {/* Город */}
+                    <div>
+                      <label className="block text-xs font-medium text-gray-600 mb-1">
+                        Город
+                      </label>
+                      <Select value={cityFilter} onValueChange={handleCityChange}>
+                        <SelectTrigger className="w-full bg-white border-gray-200 text-gray-800 border-2 hover:border-gray-300 focus:border-teal-500">
+                          <SelectValue placeholder="Все города" />
+                        </SelectTrigger>
+                        <SelectContent className="bg-white border-gray-300">
+                          <SelectItem value="all" className="text-gray-800 focus:text-white focus:bg-teal-600 hover:text-white hover:bg-teal-600">
+                            Все города
+                          </SelectItem>
+                          {allCities.map(city => (
+                            <SelectItem key={city} value={city} className="text-gray-800 focus:text-white focus:bg-teal-600 hover:text-white hover:bg-teal-600">
+                              {city}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    
+                    {/* Мастер */}
+                    <div>
+                      <label className="block text-xs font-medium text-gray-600 mb-1">
+                        Мастер
+                      </label>
+                      <input
+                        type="text"
+                        value={masterFilter}
+                        onChange={(e) => handleMasterChange(e.target.value)}
+                        placeholder="Имя мастера..."
+                        className="w-full px-3 py-2 bg-white border-2 border-gray-200 rounded-lg text-gray-800 placeholder-gray-400 text-sm focus:outline-none focus:border-teal-500 transition-all duration-200 hover:border-gray-300 shadow-sm hover:shadow-md"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Третья строка: РК и Направление */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {/* РК */}
+                    <div>
+                      <label className="block text-xs font-medium text-gray-600 mb-1">
+                        РК
+                      </label>
+                      <Select value={rkFilter} onValueChange={handleRkChange}>
+                        <SelectTrigger className="w-full bg-white border-gray-200 text-gray-800 border-2 hover:border-gray-300 focus:border-teal-500">
+                          <SelectValue placeholder="Все РК" />
+                        </SelectTrigger>
+                        <SelectContent className="bg-white border-gray-300">
+                          <SelectItem value="all" className="text-gray-800 focus:text-white focus:bg-teal-600 hover:text-white hover:bg-teal-600">
+                            Все РК
+                          </SelectItem>
+                          {allRks.map(rk => (
+                            <SelectItem key={rk} value={rk} className="text-gray-800 focus:text-white focus:bg-teal-600 hover:text-white hover:bg-teal-600">
+                              {rk}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    
+                    {/* Направление */}
+                    <div>
+                      <label className="block text-xs font-medium text-gray-600 mb-1">
+                        Направление
+                      </label>
+                      <Select value={typeEquipmentFilter} onValueChange={handleTypeEquipmentChange}>
+                        <SelectTrigger className="w-full bg-white border-gray-200 text-gray-800 border-2 hover:border-gray-300 focus:border-teal-500">
+                          <SelectValue placeholder="Все направления" />
+                        </SelectTrigger>
+                        <SelectContent className="bg-white border-gray-300">
+                          <SelectItem value="all" className="text-gray-800 focus:text-white focus:bg-teal-600 hover:text-white hover:bg-teal-600">
+                            Все направления
+                          </SelectItem>
+                          {allTypeEquipments.map(type => (
+                            <SelectItem key={type} value={type} className="text-gray-800 focus:text-white focus:bg-teal-600 hover:text-white hover:bg-teal-600">
+                              {type}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+
+                  {/* Четвёртая строка: Фильтр по дате */}
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    {/* Тип даты */}
+                    <div>
+                      <label className="block text-xs font-medium text-gray-600 mb-1">
+                        Фильтр по дате
+                      </label>
+                      <Select value={dateType} onValueChange={(value: 'create' | 'close' | 'meeting') => handleDateTypeChange(value)}>
+                        <SelectTrigger className="w-full bg-white border-gray-200 text-gray-800 border-2 hover:border-gray-300 focus:border-teal-500">
+                          <SelectValue placeholder="Тип даты" />
+                        </SelectTrigger>
+                        <SelectContent className="bg-white border-gray-300">
+                          <SelectItem value="create" className="text-gray-800 focus:text-white focus:bg-teal-600 hover:text-white hover:bg-teal-600">
+                            Дата создания
+                          </SelectItem>
+                          <SelectItem value="close" className="text-gray-800 focus:text-white focus:bg-teal-600 hover:text-white hover:bg-teal-600">
+                            Дата закрытия
+                          </SelectItem>
+                          <SelectItem value="meeting" className="text-gray-800 focus:text-white focus:bg-teal-600 hover:text-white hover:bg-teal-600">
+                            Дата встречи
+                          </SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    
+                    {/* Дата от */}
+                    <div>
+                      <label className="block text-xs font-medium text-gray-600 mb-1">
+                        С даты
+                      </label>
+                      <input
+                        type="date"
+                        value={dateFrom}
+                        onChange={(e) => handleDateFromChange(e.target.value)}
+                        className="w-full px-3 py-2 bg-white border-2 border-gray-200 rounded-lg text-gray-800 text-sm focus:outline-none focus:border-teal-500 transition-all duration-200 hover:border-gray-300 shadow-sm hover:shadow-md"
+                      />
+                    </div>
+                    
+                    {/* Дата до */}
+                    <div>
+                      <label className="block text-xs font-medium text-gray-600 mb-1">
+                        По дату
+                      </label>
+                      <input
+                        type="date"
+                        value={dateTo}
+                        onChange={(e) => handleDateToChange(e.target.value)}
+                        className="w-full px-3 py-2 bg-white border-2 border-gray-200 rounded-lg text-gray-800 text-sm focus:outline-none focus:border-teal-500 transition-all duration-200 hover:border-gray-300 shadow-sm hover:shadow-md"
+                      />
+                    </div>
+                  </div>
+                  
+                  {/* Кнопки управления фильтрами */}
+                  <div className="flex flex-col sm:flex-row gap-2 items-start sm:items-center justify-between">
+                    <button
+                      onClick={resetFilters}
+                      className="flex items-center gap-2 px-4 py-2 text-white rounded-lg transition-all duration-200 hover:shadow-md text-sm font-medium bg-gradient-to-r from-teal-600 to-emerald-600 hover:from-teal-700 hover:to-emerald-700"
+                    >
+                      <X className="w-4 h-4" />
+                      Сбросить
+                    </button>
+                    <div className="text-sm text-gray-600">
+                      Всего заказов: <span className="font-semibold text-teal-600">{ordersData?.pagination.total || 0}</span>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
 
-            <div className="text-xs">
-              <Table>
-                <TableHeader className="bg-gray-50/50">
-                  <TableRow>
-                    <TableHead className="text-[10px] font-semibold text-gray-600 uppercase px-2 py-2">ID</TableHead>
-                    <TableHead className="text-[10px] font-semibold text-gray-600 uppercase px-2 py-2">РК</TableHead>
-                    <TableHead className="text-[10px] font-semibold text-gray-600 uppercase px-2 py-2">Город</TableHead>
-                    <TableHead className="text-[10px] font-semibold text-gray-600 uppercase px-2 py-2">Аккаунт</TableHead>
-                    <TableHead className="text-[10px] font-semibold text-gray-600 uppercase px-2 py-2">Тел.</TableHead>
-                    <TableHead className="text-[10px] font-semibold text-gray-600 uppercase px-2 py-2">Тип</TableHead>
-                    <TableHead className="text-[10px] font-semibold text-gray-600 uppercase px-2 py-2">Клиент</TableHead>
-                    <TableHead className="text-[10px] font-semibold text-gray-600 uppercase px-2 py-2">Адрес</TableHead>
-                    <TableHead className="text-[10px] font-semibold text-gray-600 uppercase px-2 py-2">Встреча</TableHead>
-                    <TableHead className="text-[10px] font-semibold text-gray-600 uppercase px-2 py-2">Закрытие</TableHead>
-                    <TableHead className="text-[10px] font-semibold text-gray-600 uppercase px-2 py-2">Техника</TableHead>
-                    <TableHead className="text-center text-[10px] font-semibold text-gray-600 uppercase px-2 py-2">Статус</TableHead>
-                    <TableHead className="text-[10px] font-semibold text-gray-600 uppercase px-2 py-2">Мастер</TableHead>
-                  <TableHead className="text-right text-[10px] font-semibold text-gray-600 uppercase px-2 py-2">Итог</TableHead>
-                  <TableHead className="text-[10px] font-semibold text-gray-600 uppercase px-2 py-2">Опер.</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {isLoading ? (
-                  <TableRow>
-                    <TableCell colSpan={15} className="text-center py-8 text-gray-500">
-                      Загрузка...
-                    </TableCell>
-                  </TableRow>
-                ) : ordersData?.orders.map((order) => (
-                  <TableRow 
+            {/* Состояние загрузки */}
+            {isLoading && (
+              <div className="text-center py-8">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-teal-600 mx-auto mb-4"></div>
+                <p className="text-gray-700 font-medium">Загрузка заказов...</p>
+              </div>
+            )}
+
+            {/* Десктопная таблица */}
+            {!isLoading && ordersData?.orders && ordersData.orders.length > 0 && (
+              <div className="hidden md:block overflow-x-auto">
+                <table className="w-full border-collapse text-xs bg-white rounded-lg shadow-lg">
+                  <thead>
+                    <tr className="border-b-2 bg-gray-50" style={{borderColor: '#14b8a6'}}>
+                      <th className="text-left py-2 px-2 font-semibold text-gray-700">ID</th>
+                      <th className="text-left py-2 px-2 font-semibold text-gray-700">Тип</th>
+                      <th className="text-left py-2 px-2 font-semibold text-gray-700">РК</th>
+                      <th className="text-left py-2 px-2 font-semibold text-gray-700">Город</th>
+                      <th className="text-left py-2 px-2 font-semibold text-gray-700">Аккаунт</th>
+                      <th className="text-left py-2 px-2 font-semibold text-gray-700">Телефон</th>
+                      <th className="text-left py-2 px-2 font-semibold text-gray-700">Клиент</th>
+                      <th className="text-left py-2 px-2 font-semibold text-gray-700">Адрес</th>
+                      <th className="text-left py-2 px-2 font-semibold text-gray-700">Встреча</th>
+                      <th className="text-left py-2 px-2 font-semibold text-gray-700">Закрытие</th>
+                      <th className="text-left py-2 px-2 font-semibold text-gray-700">Направление</th>
+                      <th className="text-center py-2 px-2 font-semibold text-gray-700">Статус</th>
+                      <th className="text-left py-2 px-2 font-semibold text-gray-700">Мастер</th>
+                      <th className="text-right py-2 px-2 font-semibold text-gray-700">Итог</th>
+                      <th className="text-left py-2 px-2 font-semibold text-gray-700">Опер.</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {ordersData.orders.map((order) => (
+                      <tr 
+                        key={order.id}
+                        className="border-b hover:bg-teal-50 transition-colors cursor-pointer" 
+                        style={{borderColor: '#e5e7eb'}}
+                        onClick={() => window.location.href = `/orders/${order.id}`}
+                      >
+                        <td className="py-2 px-2 text-gray-800 font-medium">{order.id}</td>
+                        <td className="py-2 px-2">
+                          <span className="px-2 py-1 rounded-full text-xs font-medium text-white shadow-sm" style={{backgroundColor: getTypeColor(order.typeOrder)}}>
+                            {order.typeOrder}
+                          </span>
+                        </td>
+                        <td className="py-2 px-2 text-gray-800">{order.rk}</td>
+                        <td className="py-2 px-2 text-gray-800">{order.city}</td>
+                        <td className="py-2 px-2 text-gray-800 max-w-[90px] truncate">{order.avitoName || '-'}</td>
+                        <td className="py-2 px-2 text-gray-800 font-mono text-[10px]">{order.phone}</td>
+                        <td className="py-2 px-2 text-gray-800 font-medium">{order.clientName}</td>
+                        <td className="py-2 px-2 text-gray-800 max-w-[100px] truncate" title={order.address}>{order.address}</td>
+                        <td className="py-2 px-2 text-gray-800 whitespace-nowrap">{formatDate(order.dateMeeting)}</td>
+                        <td className="py-2 px-2 text-gray-800 whitespace-nowrap">
+                          {order.closingData ? formatDate(order.closingData) : '-'}
+                        </td>
+                        <td className="py-2 px-2 text-gray-800">{order.typeEquipment}</td>
+                        <td className="py-2 px-2 text-center">
+                          <span className="inline-block px-2 py-1 rounded-full text-xs font-medium text-white shadow-sm" style={{backgroundColor: getStatusColor(order.statusOrder)}}>
+                            {order.statusOrder}
+                          </span>
+                        </td>
+                        <td className="py-2 px-2 text-gray-800">{order.master?.name || '-'}</td>
+                        <td className="py-2 px-2 text-right text-green-600 font-semibold whitespace-nowrap">
+                          {order.result ? formatCurrency(Number(order.result)) : '-'}
+                        </td>
+                        <td className="py-2 px-2 text-gray-800">{order.operator?.login || '-'}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+
+            {/* Мобильные карточки */}
+            {!isLoading && ordersData?.orders && ordersData.orders.length > 0 && (
+              <div className="md:hidden space-y-4">
+                {ordersData.orders.map((order) => (
+                  <div 
                     key={order.id}
-                    className="cursor-pointer hover:bg-gray-100"
+                    className="bg-white rounded-lg p-4 border border-gray-200 cursor-pointer hover:bg-teal-50 transition-all duration-200 shadow-sm hover:shadow-md"
                     onClick={() => window.location.href = `/orders/${order.id}`}
                   >
-                      <TableCell className="text-gray-500 px-2 py-2 text-[11px]">#{order.id}</TableCell>
-                      <TableCell className="text-gray-600 px-2 py-2 text-[11px]">{order.rk}</TableCell>
-                      <TableCell className="text-gray-600 px-2 py-2 text-[11px]">{order.city}</TableCell>
-                      <TableCell className="text-gray-600 px-2 py-2 text-[11px] max-w-[90px] truncate">{order.avitoName || '-'}</TableCell>
-                      <TableCell className="font-mono text-gray-600 px-2 py-2 text-[10px]">{order.phone}</TableCell>
-                      <TableCell className="text-gray-600 px-2 py-2 text-[11px]">{order.typeOrder}</TableCell>
-                      <TableCell className="font-medium text-gray-900 px-2 py-2 text-[11px]">{order.clientName}</TableCell>
-                      <TableCell className="text-gray-600 px-2 py-2 text-[11px] max-w-[100px] truncate" title={order.address}>{order.address}</TableCell>
-                      <TableCell className="text-gray-600 px-2 py-2 text-[11px] whitespace-nowrap">{formatDate(order.dateMeeting)}</TableCell>
-                      <TableCell className="text-gray-600 px-2 py-2 text-[11px] whitespace-nowrap">
-                        {order.closingData ? formatDate(order.closingData) : '-'}
-                      </TableCell>
-                      <TableCell className="text-gray-600 px-2 py-2 text-[11px]">{order.typeEquipment}</TableCell>
-                      <TableCell className="text-center px-2 py-2">
-                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-medium ${getStatusColor(order.statusOrder)}`}>
+                    <div className="flex justify-between items-start mb-3">
+                      <div className="flex items-center gap-2">
+                        <span className="text-gray-800 font-semibold">#{order.id}</span>
+                        <span className="px-3 py-1 rounded-full text-xs font-medium text-white shadow-sm" style={{backgroundColor: getTypeColor(order.typeOrder)}}>
+                          {order.typeOrder}
+                        </span>
+                      </div>
+                      <span className="text-gray-800 font-semibold">{order.result ? formatCurrency(Number(order.result)) : '-'}</span>
+                    </div>
+                    <div className="space-y-2 text-sm">
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Клиент:</span>
+                        <span className="text-gray-800">{order.clientName}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Город:</span>
+                        <span className="text-gray-800">{order.city}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Дата встречи:</span>
+                        <span className="text-gray-800">{formatDate(order.dateMeeting)}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Мастер:</span>
+                        <span className="text-gray-800">{order.master?.name || '-'}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Направление:</span>
+                        <span className="text-gray-800">{order.typeEquipment}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Статус:</span>
+                        <span className="px-3 py-1 rounded-full text-xs font-medium text-white shadow-sm" style={{backgroundColor: getStatusColor(order.statusOrder)}}>
                           {order.statusOrder}
                         </span>
-                      </TableCell>
-                      <TableCell className="text-gray-600 px-2 py-2 text-[11px]">{order.master?.name || '-'}</TableCell>
-                      <TableCell className="text-right font-medium text-green-600 px-2 py-2 text-[11px] whitespace-nowrap">
-                        {order.result ? formatCurrency(Number(order.result)) : '-'}
-                      </TableCell>
-                      <TableCell className="text-gray-600 px-2 py-2 text-[11px]">{order.operator?.login || '-'}</TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
 
-            {ordersData?.orders.length === 0 && !isLoading && (
+            {/* Пустой список */}
+            {!isLoading && ordersData?.orders.length === 0 && (
               <div className="text-center py-8 text-gray-500">
-                {searchQuery ? 'Заказы не найдены. Попробуйте изменить поисковый запрос.' : 'Нет заказов.'}
+                {hasActiveFilters ? 'Заказы не найдены. Попробуйте изменить параметры фильтрации.' : 'Нет заказов.'}
               </div>
             )}
 
             {/* Пагинация */}
-            {ordersData?.pagination && (
+            {!isLoading && ordersData?.pagination && ordersData.orders.length > 0 && (
               <div className="flex flex-col sm:flex-row items-center justify-between mt-6 gap-4 border-t border-gray-200 pt-4">
                 <div className="flex items-center gap-4">
                   <div className="text-sm text-gray-600">
@@ -323,10 +654,9 @@ export default function OrdersPage() {
                 )}
               </div>
             )}
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       </div>
     </div>
   )
 }
-

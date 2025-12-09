@@ -528,6 +528,11 @@ class ApiClient {
     masterId?: number
     master?: string
     closingDate?: string
+    rk?: string
+    typeEquipment?: string
+    dateType?: 'create' | 'close' | 'meeting'
+    dateFrom?: string
+    dateTo?: string
   }) {
     const searchParams = new URLSearchParams()
     if (params?.page) searchParams.append('page', params.page.toString())
@@ -538,9 +543,19 @@ class ApiClient {
     if (params?.masterId) searchParams.append('masterId', params.masterId.toString())
     if (params?.master) searchParams.append('master', params.master)
     if (params?.closingDate) searchParams.append('closingDate', params.closingDate)
+    if (params?.rk) searchParams.append('rk', params.rk)
+    if (params?.typeEquipment) searchParams.append('typeEquipment', params.typeEquipment)
+    if (params?.dateType) searchParams.append('dateType', params.dateType)
+    if (params?.dateFrom) searchParams.append('dateFrom', params.dateFrom)
+    if (params?.dateTo) searchParams.append('dateTo', params.dateTo)
 
     const query = searchParams.toString()
     return this.request<any>(`/orders${query ? `?${query}` : ''}`)
+  }
+
+  // Получение опций для фильтров заказов
+  async getFilterOptions() {
+    return this.request<{ rks: string[], typeEquipments: string[] }>('/orders/filter-options')
   }
 
   async getOrder(id: string) {
