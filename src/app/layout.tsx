@@ -14,8 +14,13 @@ const inter = Inter({
 })
 
 export const metadata: Metadata = {
-  title: 'Admin Panel - Новые Схемы',
+  title: 'Новые Схемы Рук',
   description: 'Панель управления учредителя',
+  icons: {
+    icon: '/logo.png',
+    shortcut: '/logo.png',
+    apple: '/logo.png',
+  },
 }
 
 export default function RootLayout({
