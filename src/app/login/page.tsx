@@ -251,7 +251,7 @@ function LoginForm() {
                   style={{accentColor: '#114643'}}
                 />
                 <label htmlFor="remember-me" className="ml-2 block text-sm text-gray-600 hover:text-gray-800 transition-colors duration-200 cursor-pointer">
-                  Запомнить меняя
+                  Запомнить меня
                 </label>
               </div>
               
