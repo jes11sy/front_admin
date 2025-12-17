@@ -49,7 +49,7 @@ export default function AvitoPage() {
   const [isCheckingConnections, setIsCheckingConnections] = useState(false)
   const [, setCurrentTime] = useState(Date.now())
 
-  // Константа для интервала проверки (12 часов в миллисекундах)
+  // Константа для интервала проверки1 (12 часов в миллисекундах)
   const CHECK_INTERVAL = 12 * 60 * 60 * 1000
 
   // Функция для проверки всех подключений и прокси
