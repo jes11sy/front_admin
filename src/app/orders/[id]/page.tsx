@@ -2,14 +2,9 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useRouter, useParams } from 'next/navigation'
 import { useState, useEffect } from 'react'
-import { 
-  ArrowLeft, MapPin, Phone, Calendar, User, Wrench, DollarSign, 
-  FileText, Tag, Package, Clock, CheckCircle, XCircle, AlertCircle,
-  Image as ImageIcon, Receipt, MessageSquare
-} from 'lucide-react'
+import { ArrowLeft, User, Phone, MapPin, Calendar, Wrench, Tag, FileText, DollarSign, Package, ChevronDown, ChevronUp } from 'lucide-react'
 import { apiClient } from '@/lib/api'
 import { toast } from 'sonner'
 
@@ -54,7 +49,8 @@ export default function OrderViewPage() {
 
   const [order, setOrder] = useState<Order | null>(null)
   const [loading, setLoading] = useState(true)
-  const [activeTab, setActiveTab] = useState('info')
+  const [showFinancial, setShowFinancial] = useState(false)
+  const [showDocuments, setShowDocuments] = useState(false)
 
   useEffect(() => {
     const loadOrder = async () => {
@@ -79,7 +75,6 @@ export default function OrderViewPage() {
       loadOrder()
     }
   }, [orderId])
-
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('ru-RU', {
@@ -108,43 +103,38 @@ export default function OrderViewPage() {
   }
 
   const getStatusColor = (status: string) => {
-    const colors: Record<string, string> = {
-      'Ожидает': 'bg-blue-100 text-blue-800 border-blue-200',
-      'Принял': 'bg-cyan-100 text-cyan-800 border-cyan-200',
-      'В пути': 'bg-purple-100 text-purple-800 border-purple-200',
-      'В работе': 'bg-yellow-100 text-yellow-800 border-yellow-200',
-      'Готово': 'bg-green-100 text-green-800 border-green-200',
-      'Отказ': 'bg-red-100 text-red-800 border-red-200',
-      'Модерн': 'bg-orange-100 text-orange-800 border-orange-200',
-      'Незаказ': 'bg-gray-100 text-gray-800 border-gray-200'
+    switch (status) {
+      case 'Готово': return '#059669'
+      case 'В работе': return '#3b82f6'
+      case 'Ожидает': return '#f59e0b'
+      case 'Отказ': return '#ef4444'
+      case 'Принял': return '#10b981'
+      case 'В пути': return '#8b5cf6'
+      case 'Модерн': return '#f97316'
+      case 'Незаказ': return '#6b7280'
+      default: return '#6b7280'
     }
-    return colors[status] || 'bg-gray-100 text-gray-800 border-gray-200'
   }
 
-  const getStatusIcon = (status: string) => {
-    const icons: Record<string, any> = {
-      'Ожидает': <Clock className="h-4 w-4" />,
-      'Принял': <CheckCircle className="h-4 w-4" />,
-      'В пути': <Package className="h-4 w-4" />,
-      'В работе': <Wrench className="h-4 w-4" />,
-      'Готово': <CheckCircle className="h-4 w-4" />,
-      'Отказ': <XCircle className="h-4 w-4" />,
-      'Модерн': <AlertCircle className="h-4 w-4" />,
-      'Незаказ': <XCircle className="h-4 w-4" />
+  const getTypeColor = (type: string) => {
+    switch (type) {
+      case 'Впервые': return '#10b981'
+      case 'Повтор': return '#f59e0b'
+      case 'Гарантия': return '#ef4444'
+      default: return '#6b7280'
     }
-    return icons[status] || <AlertCircle className="h-4 w-4" />
   }
 
   if (loading) {
     return (
       <div className="min-h-screen" style={{backgroundColor: '#114643'}}>
-        <div className="container mx-auto px-4 py-8">
-          <Card className="border-0 shadow-lg">
-            <CardContent className="p-8 text-center">
+        <div className="container mx-auto px-2 sm:px-4 py-8">
+          <div className="backdrop-blur-lg shadow-2xl rounded-2xl p-8 border bg-white/95" style={{borderColor: '#114643'}}>
+            <div className="text-center py-8">
               <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-teal-600 mx-auto mb-4"></div>
-              <p className="text-gray-600">Загрузка данных заказа...</p>
-            </CardContent>
-          </Card>
+              <p className="text-gray-700 font-medium">Загрузка...</p>
+            </div>
+          </div>
         </div>
       </div>
     )
@@ -153,21 +143,19 @@ export default function OrderViewPage() {
   if (!order) {
     return (
       <div className="min-h-screen" style={{backgroundColor: '#114643'}}>
-        <div className="container mx-auto px-4 py-8">
-          <Card className="border-0 shadow-lg">
-            <CardContent className="p-8 text-center">
-              <XCircle className="h-16 w-16 text-red-500 mx-auto mb-4" />
-              <p className="text-gray-600 mb-4">Заказ не найден</p>
+        <div className="container mx-auto px-2 sm:px-4 py-8">
+          <div className="backdrop-blur-lg shadow-2xl rounded-2xl p-8 border bg-white/95" style={{borderColor: '#114643'}}>
+            <p className="text-gray-600 text-center">Заказ не найден</p>
+            <div className="text-center mt-4">
               <Button 
-                variant="outline" 
-                className="bg-white"
                 onClick={() => router.push('/orders')}
+                className="bg-gradient-to-r from-teal-600 to-emerald-600 hover:from-teal-700 hover:to-emerald-700 text-white"
               >
                 <ArrowLeft className="h-4 w-4 mr-2" />
-                Вернуться к списку
+                Назад к списку
               </Button>
-            </CardContent>
-          </Card>
+            </div>
+          </div>
         </div>
       </div>
     )
@@ -175,382 +163,285 @@ export default function OrderViewPage() {
 
   return (
     <div className="min-h-screen" style={{backgroundColor: '#114643'}}>
-      <div className="container mx-auto px-4 py-8 max-w-6xl">
-        {/* Хедер с кнопкой назад */}
-        <div className="mb-6 flex items-center justify-between">
-          <Button 
-            variant="outline" 
-            className="bg-white"
-            onClick={() => router.push('/orders')}
-          >
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Назад к списку
-          </Button>
-        </div>
-
-        {/* Карточка с основной информацией */}
-        <Card className="border-0 shadow-xl mb-6">
-          <CardHeader className="bg-gradient-to-r from-teal-600 to-emerald-600 text-white">
-            <div className="flex items-center justify-between">
-              <div>
-                <CardTitle className="text-3xl font-bold mb-2">Заказ #{order.id}</CardTitle>
-                <p className="text-teal-100 text-sm">Создан: {formatDate(order.createDate)}</p>
-              </div>
-              <div className={`px-6 py-3 rounded-xl text-sm font-semibold border-2 flex items-center gap-2 ${getStatusColor(order.statusOrder)} bg-white/90`}>
-                {getStatusIcon(order.statusOrder)}
-                {order.statusOrder}
-              </div>
+      <div className="container mx-auto px-2 sm:px-4 py-8">
+        <div className="max-w-none mx-auto">
+          <div className="backdrop-blur-lg shadow-2xl rounded-2xl p-6 md:p-8 border bg-white/95 hover:bg-white transition-all duration-500 hover:shadow-3xl" style={{borderColor: '#114643'}}>
+            
+            {/* Кнопка назад */}
+            <div className="mb-6">
+              <Button 
+                onClick={() => router.push('/orders')}
+                variant="outline"
+                className="border-2 border-gray-200 hover:border-gray-300"
+              >
+                <ArrowLeft className="h-4 w-4 mr-2" />
+                Назад к списку
+              </Button>
             </div>
-          </CardHeader>
-          
-          <CardContent className="p-6">
-            {/* Быстрая информация */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
-              <div className="bg-gradient-to-br from-blue-50 to-blue-100 p-4 rounded-lg border border-blue-200">
-                <div className="flex items-center gap-3 mb-2">
-                  <div className="bg-blue-600 p-2 rounded-lg">
-                    <User className="h-5 w-5 text-white" />
-                  </div>
-                  <div className="flex-1">
-                    <p className="text-xs text-blue-600 font-medium">Клиент</p>
-                    <p className="text-lg font-bold text-blue-900">{order.clientName}</p>
-                  </div>
-                </div>
-              </div>
 
-              <div className="bg-gradient-to-br from-purple-50 to-purple-100 p-4 rounded-lg border border-purple-200">
-                <div className="flex items-center gap-3 mb-2">
-                  <div className="bg-purple-600 p-2 rounded-lg">
-                    <Wrench className="h-5 w-5 text-white" />
-                  </div>
-                  <div className="flex-1">
-                    <p className="text-xs text-purple-600 font-medium">Мастер</p>
-                    <p className="text-lg font-bold text-purple-900">{order.master?.name || 'Не назначен'}</p>
-                  </div>
+            {/* Заголовок */}
+            <div className="mb-6">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                <div>
+                  <h1 className="text-2xl font-bold text-gray-800 mb-1">Заказ №{order.id}</h1>
+                  <p className="text-sm text-gray-500">Создан: {formatDate(order.createDate)}</p>
                 </div>
-              </div>
-
-              <div className="bg-gradient-to-br from-green-50 to-green-100 p-4 rounded-lg border border-green-200">
-                <div className="flex items-center gap-3 mb-2">
-                  <div className="bg-green-600 p-2 rounded-lg">
-                    <DollarSign className="h-5 w-5 text-white" />
-                  </div>
-                  <div className="flex-1">
-                    <p className="text-xs text-green-600 font-medium">Сумма заказа</p>
-                    <p className="text-lg font-bold text-green-900">
-                      {order.result ? formatCurrency(Number(order.result)) : '—'}
-                    </p>
-                  </div>
+                <div className="flex items-center gap-3">
+                  <span className="px-3 py-1 rounded-full text-xs font-medium text-white shadow-sm" style={{backgroundColor: getTypeColor(order.typeOrder)}}>
+                    {order.typeOrder}
+                  </span>
+                  <span className="px-4 py-2 rounded-full text-sm font-medium text-white shadow-sm" style={{backgroundColor: getStatusColor(order.statusOrder)}}>
+                    {order.statusOrder}
+                  </span>
                 </div>
               </div>
             </div>
 
-            {/* Вкладки */}
-            <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-              <TabsList className="grid w-full grid-cols-3 mb-6">
-                <TabsTrigger value="info">Информация</TabsTrigger>
-                <TabsTrigger value="financial">Финансы</TabsTrigger>
-                <TabsTrigger value="documents">Документы</TabsTrigger>
-              </TabsList>
-
-              {/* Вкладка: Информация */}
-              <TabsContent value="info" className="space-y-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  {/* Левая колонка */}
-                  <div className="space-y-4">
-                    <Card className="border border-gray-200">
-                      <CardHeader className="pb-3">
-                        <CardTitle className="text-sm font-medium text-gray-500">Контактная информация</CardTitle>
-                      </CardHeader>
-                      <CardContent className="space-y-3">
-                        <div>
-                          <div className="flex items-center gap-2 text-gray-500 text-xs mb-1">
-                            <Phone className="h-3 w-3" />
-                            Телефон
-                          </div>
-                          <p className="text-gray-900 font-mono text-lg font-semibold">{order.phone}</p>
-                        </div>
-                        <div>
-                          <div className="flex items-center gap-2 text-gray-500 text-xs mb-1">
-                            <MapPin className="h-3 w-3" />
-                            Адрес
-                          </div>
-                          <p className="text-gray-900">{order.address}</p>
-                        </div>
-                        <div>
-                          <div className="flex items-center gap-2 text-gray-500 text-xs mb-1">
-                            <MapPin className="h-3 w-3" />
-                            Город
-                          </div>
-                          <p className="text-gray-900 font-medium">{order.city}</p>
-                        </div>
-                      </CardContent>
-                    </Card>
-
-                    <Card className="border border-gray-200">
-                      <CardHeader className="pb-3">
-                        <CardTitle className="text-sm font-medium text-gray-500">Даты</CardTitle>
-                      </CardHeader>
-                      <CardContent className="space-y-3">
-                        <div>
-                          <div className="flex items-center gap-2 text-gray-500 text-xs mb-1">
-                            <Calendar className="h-3 w-3" />
-                            Дата встречи
-                          </div>
-                          <p className="text-gray-900 font-medium text-lg">{formatDate(order.dateMeeting)}</p>
-                        </div>
-                        {order.closingData && (
-                          <div>
-                            <div className="flex items-center gap-2 text-gray-500 text-xs mb-1">
-                              <CheckCircle className="h-3 w-3" />
-                              Дата закрытия
-                            </div>
-                            <p className="text-gray-900 font-medium">{formatDate(order.closingData)}</p>
-                          </div>
-                        )}
-                        {order.dateClosmod && (
-                          <div>
-                            <div className="flex items-center gap-2 text-gray-500 text-xs mb-1">
-                              <AlertCircle className="h-3 w-3" />
-                              Дата модерна
-                            </div>
-                            <p className="text-gray-900 font-medium">{formatDateShort(order.dateClosmod)}</p>
-                          </div>
-                        )}
-                      </CardContent>
-                    </Card>
+            {/* Основная информация */}
+            <div className="space-y-6">
+              {/* Информация о клиенте и заказе */}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                <div className="p-4 bg-white border-2 border-gray-200 rounded-lg hover:border-gray-300 transition-all duration-200 hover:shadow-md">
+                  <div className="flex items-center gap-2 text-gray-500 text-xs mb-2">
+                    <User className="h-4 w-4" />
+                    <span className="font-medium">Клиент</span>
                   </div>
+                  <p className="text-gray-800 font-semibold text-lg">{order.clientName}</p>
+                </div>
 
-                  {/* Правая колонка */}
-                  <div className="space-y-4">
-                    <Card className="border border-gray-200">
-                      <CardHeader className="pb-3">
-                        <CardTitle className="text-sm font-medium text-gray-500">Детали заказа</CardTitle>
-                      </CardHeader>
-                      <CardContent className="space-y-3">
-                        <div>
-                          <div className="flex items-center gap-2 text-gray-500 text-xs mb-1">
-                            <Tag className="h-3 w-3" />
-                            Тип заказа
-                          </div>
-                          <p className="text-gray-900 font-medium">{order.typeOrder}</p>
-                        </div>
-                        <div>
-                          <div className="flex items-center gap-2 text-gray-500 text-xs mb-1">
-                            <Package className="h-3 w-3" />
-                            Тип оборудования
-                          </div>
-                          <p className="text-gray-900 font-medium">{order.typeEquipment}</p>
-                        </div>
-                        <div>
-                          <div className="flex items-center gap-2 text-gray-500 text-xs mb-1">
-                            <Wrench className="h-3 w-3" />
-                            Проблема
-                          </div>
-                          <p className="text-gray-900">{order.problem || '—'}</p>
-                        </div>
-                      </CardContent>
-                    </Card>
+                <div className="p-4 bg-white border-2 border-gray-200 rounded-lg hover:border-gray-300 transition-all duration-200 hover:shadow-md">
+                  <div className="flex items-center gap-2 text-gray-500 text-xs mb-2">
+                    <Phone className="h-4 w-4" />
+                    <span className="font-medium">Телефон</span>
+                  </div>
+                  <p className="text-gray-800 font-mono font-semibold">{order.phone}</p>
+                </div>
 
-                    <Card className="border border-gray-200">
-                      <CardHeader className="pb-3">
-                        <CardTitle className="text-sm font-medium text-gray-500">Источник и операторы</CardTitle>
-                      </CardHeader>
-                      <CardContent className="space-y-3">
-                        <div>
-                          <p className="text-gray-500 text-xs mb-1">РК (Рекламная кампания)</p>
-                          <p className="text-gray-900 font-medium">{order.rk}</p>
-                        </div>
-                        {order.avitoName && (
-                          <div>
-                            <p className="text-gray-500 text-xs mb-1">Авито аккаунт</p>
-                            <p className="text-gray-900 font-medium">{order.avitoName}</p>
-                          </div>
-                        )}
-                        <div>
-                          <p className="text-gray-500 text-xs mb-1">Оператор</p>
-                          <p className="text-gray-900 font-medium">{order.operator?.name || order.operator?.login || '—'}</p>
-                        </div>
-                      </CardContent>
-                    </Card>
+                <div className="p-4 bg-white border-2 border-gray-200 rounded-lg hover:border-gray-300 transition-all duration-200 hover:shadow-md">
+                  <div className="flex items-center gap-2 text-gray-500 text-xs mb-2">
+                    <MapPin className="h-4 w-4" />
+                    <span className="font-medium">Город</span>
+                  </div>
+                  <p className="text-gray-800 font-semibold">{order.city}</p>
+                </div>
 
-                    {order.comment && (
-                      <Card className="border border-yellow-200 bg-yellow-50">
-                        <CardHeader className="pb-3">
-                          <CardTitle className="text-sm font-medium text-yellow-800">Комментарий</CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                          <p className="text-gray-900">{order.comment}</p>
-                        </CardContent>
-                      </Card>
+                <div className="p-4 bg-white border-2 border-gray-200 rounded-lg hover:border-gray-300 transition-all duration-200 hover:shadow-md md:col-span-2 lg:col-span-3">
+                  <div className="flex items-center gap-2 text-gray-500 text-xs mb-2">
+                    <MapPin className="h-4 w-4" />
+                    <span className="font-medium">Адрес</span>
+                  </div>
+                  <p className="text-gray-800">{order.address}</p>
+                </div>
+
+                <div className="p-4 bg-white border-2 border-gray-200 rounded-lg hover:border-gray-300 transition-all duration-200 hover:shadow-md">
+                  <div className="flex items-center gap-2 text-gray-500 text-xs mb-2">
+                    <Wrench className="h-4 w-4" />
+                    <span className="font-medium">Мастер</span>
+                  </div>
+                  <p className="text-gray-800 font-semibold">{order.master?.name || '-'}</p>
+                </div>
+
+                <div className="p-4 bg-white border-2 border-gray-200 rounded-lg hover:border-gray-300 transition-all duration-200 hover:shadow-md">
+                  <div className="flex items-center gap-2 text-gray-500 text-xs mb-2">
+                    <User className="h-4 w-4" />
+                    <span className="font-medium">Оператор</span>
+                  </div>
+                  <p className="text-gray-800">{order.operator?.name || order.operator?.login || '-'}</p>
+                </div>
+
+                <div className="p-4 bg-white border-2 border-gray-200 rounded-lg hover:border-gray-300 transition-all duration-200 hover:shadow-md">
+                  <div className="flex items-center gap-2 text-gray-500 text-xs mb-2">
+                    <DollarSign className="h-4 w-4" />
+                    <span className="font-medium">Итог</span>
+                  </div>
+                  <p className="text-green-600 font-bold text-xl">
+                    {order.result ? formatCurrency(Number(order.result)) : '-'}
+                  </p>
+                </div>
+
+                <div className="p-4 bg-white border-2 border-gray-200 rounded-lg hover:border-gray-300 transition-all duration-200 hover:shadow-md">
+                  <div className="flex items-center gap-2 text-gray-500 text-xs mb-2">
+                    <Calendar className="h-4 w-4" />
+                    <span className="font-medium">Дата встречи</span>
+                  </div>
+                  <p className="text-gray-800 font-semibold">{formatDate(order.dateMeeting)}</p>
+                </div>
+
+                {order.closingData && (
+                  <div className="p-4 bg-white border-2 border-gray-200 rounded-lg hover:border-gray-300 transition-all duration-200 hover:shadow-md">
+                    <div className="flex items-center gap-2 text-gray-500 text-xs mb-2">
+                      <Calendar className="h-4 w-4" />
+                      <span className="font-medium">Дата закрытия</span>
+                    </div>
+                    <p className="text-gray-800 font-semibold">{formatDate(order.closingData)}</p>
+                  </div>
+                )}
+
+                <div className="p-4 bg-white border-2 border-gray-200 rounded-lg hover:border-gray-300 transition-all duration-200 hover:shadow-md">
+                  <div className="flex items-center gap-2 text-gray-500 text-xs mb-2">
+                    <Package className="h-4 w-4" />
+                    <span className="font-medium">Направление</span>
+                  </div>
+                  <p className="text-gray-800">{order.typeEquipment}</p>
+                </div>
+
+                <div className="p-4 bg-white border-2 border-gray-200 rounded-lg hover:border-gray-300 transition-all duration-200 hover:shadow-md">
+                  <div className="flex items-center gap-2 text-gray-500 text-xs mb-2">
+                    <Tag className="h-4 w-4" />
+                    <span className="font-medium">РК</span>
+                  </div>
+                  <p className="text-gray-800">{order.rk}</p>
+                </div>
+
+                {order.avitoName && (
+                  <div className="p-4 bg-white border-2 border-gray-200 rounded-lg hover:border-gray-300 transition-all duration-200 hover:shadow-md">
+                    <div className="flex items-center gap-2 text-gray-500 text-xs mb-2">
+                      <Tag className="h-4 w-4" />
+                      <span className="font-medium">Авито аккаунт</span>
+                    </div>
+                    <p className="text-gray-800">{order.avitoName}</p>
+                  </div>
+                )}
+
+                {order.problem && (
+                  <div className="p-4 bg-white border-2 border-gray-200 rounded-lg hover:border-gray-300 transition-all duration-200 hover:shadow-md md:col-span-2 lg:col-span-3">
+                    <div className="flex items-center gap-2 text-gray-500 text-xs mb-2">
+                      <FileText className="h-4 w-4" />
+                      <span className="font-medium">Проблема</span>
+                    </div>
+                    <p className="text-gray-800">{order.problem}</p>
+                  </div>
+                )}
+
+                {order.comment && (
+                  <div className="p-4 bg-yellow-50 border-2 border-yellow-200 rounded-lg md:col-span-2 lg:col-span-3">
+                    <div className="flex items-center gap-2 text-yellow-700 text-xs mb-2">
+                      <FileText className="h-4 w-4" />
+                      <span className="font-medium">Комментарий</span>
+                    </div>
+                    <p className="text-gray-800">{order.comment}</p>
+                  </div>
+                )}
+              </div>
+
+              {/* Финансовая информация */}
+              <div className="border-t-2 border-gray-200 pt-4">
+                <button
+                  onClick={() => setShowFinancial(!showFinancial)}
+                  className="flex items-center gap-2 text-left cursor-pointer group mb-4"
+                >
+                  <h2 className="text-lg font-semibold text-gray-700 group-hover:text-teal-600 transition-colors duration-200">
+                    Финансы
+                  </h2>
+                  {showFinancial ? (
+                    <ChevronUp className="w-5 h-5 text-gray-600 group-hover:text-teal-600 transition-all duration-200" />
+                  ) : (
+                    <ChevronDown className="w-5 h-5 text-gray-600 group-hover:text-teal-600 transition-all duration-200" />
+                  )}
+                </button>
+
+                {showFinancial && (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 animate-in slide-in-from-top-2 duration-200">
+                    <div className="p-4 bg-blue-50 border-2 border-blue-200 rounded-lg">
+                      <p className="text-xs text-blue-600 font-medium mb-1">Итог</p>
+                      <p className="text-xl font-bold text-blue-800">
+                        {order.result ? formatCurrency(Number(order.result)) : '-'}
+                      </p>
+                    </div>
+                    <div className="p-4 bg-red-50 border-2 border-red-200 rounded-lg">
+                      <p className="text-xs text-red-600 font-medium mb-1">Расход</p>
+                      <p className="text-xl font-bold text-red-800">
+                        {order.expenditure ? formatCurrency(Number(order.expenditure)) : '-'}
+                      </p>
+                    </div>
+                    <div className="p-4 bg-green-50 border-2 border-green-200 rounded-lg">
+                      <p className="text-xs text-green-600 font-medium mb-1">Чистыми</p>
+                      <p className="text-xl font-bold text-green-800">
+                        {order.clean ? formatCurrency(Number(order.clean)) : '-'}
+                      </p>
+                    </div>
+                    <div className="p-4 bg-purple-50 border-2 border-purple-200 rounded-lg">
+                      <p className="text-xs text-purple-600 font-medium mb-1">Сдача мастера</p>
+                      <p className="text-xl font-bold text-purple-800">
+                        {order.masterChange ? formatCurrency(Number(order.masterChange)) : '-'}
+                      </p>
+                    </div>
+                    {order.prepayment && (
+                      <div className="p-4 bg-yellow-50 border-2 border-yellow-200 rounded-lg">
+                        <p className="text-xs text-yellow-700 font-medium mb-1">Предоплата</p>
+                        <p className="text-lg font-bold text-yellow-800">
+                          {formatCurrency(Number(order.prepayment))}
+                        </p>
+                      </div>
+                    )}
+                    {order.partner && (
+                      <div className="p-4 bg-indigo-50 border-2 border-indigo-200 rounded-lg">
+                        <p className="text-xs text-indigo-700 font-medium mb-1">Партнер</p>
+                        <p className="text-sm text-indigo-800">
+                          {order.partnerPercent && `${order.partnerPercent}%`}
+                        </p>
+                      </div>
                     )}
                   </div>
-                </div>
-              </TabsContent>
-
-              {/* Вкладка: Финансы */}
-              <TabsContent value="financial" className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <Card className="border border-gray-200">
-                    <CardHeader className="bg-gray-50">
-                      <CardTitle className="text-lg">Итоги заказа</CardTitle>
-                    </CardHeader>
-                    <CardContent className="pt-6 space-y-4">
-                      <div className="flex justify-between items-center p-3 bg-blue-50 rounded-lg">
-                        <span className="text-gray-700">Итог:</span>
-                        <span className="text-xl font-bold text-blue-600">
-                          {order.result ? formatCurrency(Number(order.result)) : '—'}
-                        </span>
-                      </div>
-                      <div className="flex justify-between items-center p-3 bg-red-50 rounded-lg">
-                        <span className="text-gray-700">Расход:</span>
-                        <span className="text-xl font-bold text-red-600">
-                          {order.expenditure ? formatCurrency(Number(order.expenditure)) : '—'}
-                        </span>
-                      </div>
-                      <div className="flex justify-between items-center p-3 bg-green-50 rounded-lg">
-                        <span className="text-gray-700">Чистыми:</span>
-                        <span className="text-xl font-bold text-green-600">
-                          {order.clean ? formatCurrency(Number(order.clean)) : '—'}
-                        </span>
-                      </div>
-                      <div className="flex justify-between items-center p-3 bg-purple-50 rounded-lg">
-                        <span className="text-gray-700">Сдача мастера:</span>
-                        <span className="text-xl font-bold text-purple-600">
-                          {order.masterChange ? formatCurrency(Number(order.masterChange)) : '—'}
-                        </span>
-                      </div>
-                    </CardContent>
-                  </Card>
-
-                  <Card className="border border-gray-200">
-                    <CardHeader className="bg-gray-50">
-                      <CardTitle className="text-lg">Дополнительная информация</CardTitle>
-                    </CardHeader>
-                    <CardContent className="pt-6 space-y-4">
-                      {order.prepayment && (
-                        <div className="flex justify-between items-center p-3 bg-yellow-50 rounded-lg">
-                          <span className="text-gray-700">Предоплата:</span>
-                          <span className="text-lg font-bold text-yellow-600">
-                            {formatCurrency(Number(order.prepayment))}
-                          </span>
-                        </div>
-                      )}
-                      
-                      {order.partner && (
-                        <div className="p-3 bg-indigo-50 rounded-lg border border-indigo-200">
-                          <div className="flex items-center gap-2 mb-2">
-                            <div className="h-2 w-2 bg-indigo-600 rounded-full"></div>
-                            <span className="font-semibold text-indigo-900">Партнер</span>
-                          </div>
-                          {order.partnerPercent && (
-                            <p className="text-sm text-indigo-700">
-                              Процент партнера: <span className="font-bold">{order.partnerPercent}%</span>
-                            </p>
-                          )}
-                        </div>
-                      )}
-
-                      {!order.result && !order.prepayment && !order.partner && (
-                        <div className="text-center py-8 text-gray-400">
-                          <DollarSign className="h-12 w-12 mx-auto mb-2 opacity-50" />
-                          <p>Финансовые данные не заполнены</p>
-                        </div>
-                      )}
-                    </CardContent>
-                  </Card>
-                </div>
-              </TabsContent>
-
-              {/* Вкладка: Документы */}
-              <TabsContent value="documents" className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  {/* Документ БСО */}
-                  <Card className="border border-gray-200">
-                    <CardHeader>
-                      <CardTitle className="text-lg flex items-center gap-2">
-                        <Receipt className="h-5 w-5" />
-                        Документ (БСО)
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      {order.bsoDoc ? (
-                        <div className="space-y-3">
-                          <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
-                            <ImageIcon className="h-12 w-12 text-gray-400 mx-auto mb-2" />
-                            <p className="text-sm text-gray-600 text-center">Документ загружен</p>
-                          </div>
-                          <Button 
-                            className="w-full" 
-                            variant="outline"
-                            onClick={() => window.open(order.bsoDoc!, '_blank')}
-                          >
-                            Открыть документ
-                          </Button>
-                        </div>
-                      ) : (
-                        <div className="text-center py-8 text-gray-400">
-                          <FileText className="h-12 w-12 mx-auto mb-2 opacity-50" />
-                          <p>Документ не загружен</p>
-                        </div>
-                      )}
-                    </CardContent>
-                  </Card>
-
-                  {/* Чек расхода */}
-                  <Card className="border border-gray-200">
-                    <CardHeader>
-                      <CardTitle className="text-lg flex items-center gap-2">
-                        <Receipt className="h-5 w-5" />
-                        Чек расхода
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      {order.expenditureDoc ? (
-                        <div className="space-y-3">
-                          <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
-                            <ImageIcon className="h-12 w-12 text-gray-400 mx-auto mb-2" />
-                            <p className="text-sm text-gray-600 text-center">Чек загружен</p>
-                          </div>
-                          <Button 
-                            className="w-full" 
-                            variant="outline"
-                            onClick={() => window.open(order.expenditureDoc!, '_blank')}
-                          >
-                            Открыть чек
-                          </Button>
-                        </div>
-                      ) : (
-                        <div className="text-center py-8 text-gray-400">
-                          <FileText className="h-12 w-12 mx-auto mb-2 opacity-50" />
-                          <p>Чек не загружен</p>
-                        </div>
-                      )}
-                    </CardContent>
-                  </Card>
-                </div>
-
-                {/* Чат Avito */}
-                {order.avitoChatId && (
-                  <Card className="border border-gray-200 mt-6">
-                    <CardHeader>
-                      <CardTitle className="text-lg flex items-center gap-2">
-                        <MessageSquare className="h-5 w-5" />
-                        Чат Avito
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="bg-blue-50 rounded-lg p-4 border border-blue-200">
-                        <p className="text-sm text-blue-700 mb-2">ID чата:</p>
-                        <p className="font-mono text-blue-900 font-bold">{order.avitoChatId}</p>
-                      </div>
-                    </CardContent>
-                  </Card>
                 )}
-              </TabsContent>
-            </Tabs>
-          </CardContent>
-        </Card>
+              </div>
+
+              {/* Документы */}
+              {(order.bsoDoc || order.expenditureDoc || order.avitoChatId) && (
+                <div className="border-t-2 border-gray-200 pt-4">
+                  <button
+                    onClick={() => setShowDocuments(!showDocuments)}
+                    className="flex items-center gap-2 text-left cursor-pointer group mb-4"
+                  >
+                    <h2 className="text-lg font-semibold text-gray-700 group-hover:text-teal-600 transition-colors duration-200">
+                      Документы
+                    </h2>
+                    {showDocuments ? (
+                      <ChevronUp className="w-5 h-5 text-gray-600 group-hover:text-teal-600 transition-all duration-200" />
+                    ) : (
+                      <ChevronDown className="w-5 h-5 text-gray-600 group-hover:text-teal-600 transition-all duration-200" />
+                    )}
+                  </button>
+
+                  {showDocuments && (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 animate-in slide-in-from-top-2 duration-200">
+                      {order.bsoDoc && (
+                        <div className="p-4 bg-white border-2 border-gray-200 rounded-lg">
+                          <p className="text-xs text-gray-600 font-medium mb-2">Документ (БСО)</p>
+                          <Button 
+                            onClick={() => window.open(order.bsoDoc!, '_blank')}
+                            variant="outline"
+                            className="w-full border-2 border-teal-600 text-teal-600 hover:bg-teal-50"
+                          >
+                            Открыть
+                          </Button>
+                        </div>
+                      )}
+                      {order.expenditureDoc && (
+                        <div className="p-4 bg-white border-2 border-gray-200 rounded-lg">
+                          <p className="text-xs text-gray-600 font-medium mb-2">Чек расхода</p>
+                          <Button 
+                            onClick={() => window.open(order.expenditureDoc!, '_blank')}
+                            variant="outline"
+                            className="w-full border-2 border-teal-600 text-teal-600 hover:bg-teal-50"
+                          >
+                            Открыть
+                          </Button>
+                        </div>
+                      )}
+                      {order.avitoChatId && (
+                        <div className="p-4 bg-white border-2 border-gray-200 rounded-lg sm:col-span-2">
+                          <p className="text-xs text-gray-600 font-medium mb-1">Чат Avito</p>
+                          <p className="font-mono text-gray-800 text-sm">{order.avitoChatId}</p>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   )
