@@ -52,7 +52,7 @@ export default function AvitoPage() {
   // Константа для интервала проверки1 (12 часов в миллисекундах)
   const CHECK_INTERVAL = 12 * 60 * 60 * 1000
 
-  // Функция для проверки всех подключений и прокси2
+  // Функция для проверки всех подключений и прокси1
   const checkAllConnectionsAndProxies = useCallback(async () => {
     if (isCheckingConnections) return
     
