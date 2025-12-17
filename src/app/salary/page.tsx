@@ -19,7 +19,8 @@ interface SalaryRecord {
   id: string
   city: string
   directorName: string
-  turnover: number
+  turnoverOur: number
+  turnoverPartner: number
   salary: number
 }
 
@@ -121,25 +122,30 @@ export default function SalaryPage() {
         }
 
         // Создаем Map для быстрого поиска оборота по городу
-        const cityTurnover = new Map<string, number>()
+        const cityTurnoverOur = new Map<string, number>()
+        const cityTurnoverPartner = new Map<string, number>()
         
         citiesReportResponse.data.forEach((cityData: any) => {
-          // Оборот = totalClean (сумма чистыми из orders.clean)
-          cityTurnover.set(cityData.city, cityData.orders.totalClean || 0)
+          // Оборот Наш = сумма чистыми где partner = false
+          cityTurnoverOur.set(cityData.city, cityData.orders.totalCleanOur || 0)
+          // Оборот Партнер = сумма чистыми где partner = true
+          cityTurnoverPartner.set(cityData.city, cityData.orders.totalCleanPartner || 0)
         })
 
         // Создаем записи зарплаты для каждого директора по каждому городу
         const records: SalaryRecord[] = []
         directors.forEach((director) => {
           director.cities.forEach((city) => {
-            const turnover = cityTurnover.get(city) || 0
-            const salary = turnover * 0.07 // 7% от оборота
+            const turnoverOur = cityTurnoverOur.get(city) || 0
+            const turnoverPartner = cityTurnoverPartner.get(city) || 0
+            const salary = turnoverOur * 0.07 // 7% от оборота нашего
             
             records.push({
               id: `${director.id}-${city}`,
               city,
               directorName: director.name,
-              turnover,
+              turnoverOur,
+              turnoverPartner,
               salary
             })
           })
@@ -174,7 +180,8 @@ export default function SalaryPage() {
 
   // Статистика
   const stats = {
-    totalTurnover: salaryRecords.reduce((sum, r) => sum + r.turnover, 0),
+    totalTurnoverOur: salaryRecords.reduce((sum, r) => sum + r.turnoverOur, 0),
+    totalTurnoverPartner: salaryRecords.reduce((sum, r) => sum + r.turnoverPartner, 0),
     totalSalary: salaryRecords.reduce((sum, r) => sum + r.salary, 0),
   }
 
@@ -182,15 +189,26 @@ export default function SalaryPage() {
     <div className="min-h-screen" style={{backgroundColor: '#114643'}}>
       <div className="container mx-auto px-4 py-8 max-w-7xl">
         {/* Статистика */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
           <Card className="border-0 shadow-lg">
             <CardContent className="pt-6">
               <div className="flex items-center justify-between mb-2">
-                <div className="text-sm text-gray-500">Общий оборот</div>
+                <div className="text-sm text-gray-500">Оборот Наш</div>
                 <DollarSign className="h-4 w-4 text-blue-600" />
               </div>
-              <div className="text-3xl font-bold text-blue-600">{formatCurrency(stats.totalTurnover)}</div>
-              <p className="text-xs text-gray-500 mt-1">По всем городам</p>
+              <div className="text-3xl font-bold text-blue-600">{formatCurrency(stats.totalTurnoverOur)}</div>
+              <p className="text-xs text-gray-500 mt-1">Партнер: нет</p>
+            </CardContent>
+          </Card>
+
+          <Card className="border-0 shadow-lg bg-gradient-to-br from-purple-50 to-pink-50">
+            <CardContent className="pt-6">
+              <div className="flex items-center justify-between mb-2">
+                <div className="text-sm text-purple-700">Оборот Партнер</div>
+                <DollarSign className="h-4 w-4 text-purple-700" />
+              </div>
+              <div className="text-3xl font-bold text-purple-700">{formatCurrency(stats.totalTurnoverPartner)}</div>
+              <p className="text-xs text-purple-600 mt-1">Партнер: да</p>
             </CardContent>
           </Card>
 
@@ -201,7 +219,7 @@ export default function SalaryPage() {
                 <DollarSign className="h-4 w-4 text-teal-700" />
               </div>
               <div className="text-3xl font-bold text-teal-700">{formatCurrency(stats.totalSalary)}</div>
-              <p className="text-xs text-teal-600 mt-1">Всего директорам</p>
+              <p className="text-xs text-teal-600 mt-1">7% от Оборота Нашего</p>
             </CardContent>
           </Card>
         </div>
@@ -293,20 +311,21 @@ export default function SalaryPage() {
                 <TableRow>
                   <TableHead className="text-xs font-semibold text-gray-600 uppercase tracking-wider">Город</TableHead>
                   <TableHead className="text-xs font-semibold text-gray-600 uppercase tracking-wider">Имя директора</TableHead>
-                  <TableHead className="text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">Оборот</TableHead>
-                  <TableHead className="text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">Зарплата</TableHead>
+                  <TableHead className="text-right text-xs font-semibold text-blue-600 uppercase tracking-wider">Оборот Наш</TableHead>
+                  <TableHead className="text-right text-xs font-semibold text-purple-600 uppercase tracking-wider">Оборот Партнер</TableHead>
+                  <TableHead className="text-right text-xs font-semibold text-teal-600 uppercase tracking-wider">Зарплата</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {isLoading ? (
                   <TableRow>
-                    <TableCell colSpan={4} className="text-center py-8 text-gray-500">
+                    <TableCell colSpan={5} className="text-center py-8 text-gray-500">
                       Загрузка...
                     </TableCell>
                   </TableRow>
                 ) : filteredRecords.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={4} className="text-center py-8 text-gray-500">
+                    <TableCell colSpan={5} className="text-center py-8 text-gray-500">
                       {searchQuery ? 'Записи не найдены. Попробуйте изменить поисковый запрос.' : 'Нет данных.'}
                     </TableCell>
                   </TableRow>
@@ -323,7 +342,10 @@ export default function SalaryPage() {
                         </div>
                       </TableCell>
                       <TableCell className="text-right font-medium text-blue-600">
-                        {formatCurrency(record.turnover)}
+                        {formatCurrency(record.turnoverOur)}
+                      </TableCell>
+                      <TableCell className="text-right font-medium text-purple-600">
+                        {formatCurrency(record.turnoverPartner)}
                       </TableCell>
                       <TableCell className="text-right font-bold text-teal-700">
                         {formatCurrency(record.salary)}
