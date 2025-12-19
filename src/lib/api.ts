@@ -321,12 +321,12 @@ class ApiClient {
       refreshToken?: string // Только в legacy mode
     }>('/auth/refresh', {
       method: 'POST',
-      // Cookie mode: НЕ отправляем body вообще
+      // Cookie mode: отправляем пустой объект {} чтобы удовлетворить Fastify
+      // (refresh token в cookie, но Fastify требует body когда Content-Type: application/json)
       // Legacy mode: отправляем refresh token в body
-      ...(this.useCookies 
-        ? {} 
-        : { body: JSON.stringify({ refreshToken: this.refreshToken }) }
-      ),
+      body: this.useCookies 
+        ? JSON.stringify({}) 
+        : JSON.stringify({ refreshToken: this.refreshToken }),
     }, false) // Не повторяем запрос при 401
 
     // ✅ Cookie mode: токены автоматически обновлены в cookies
