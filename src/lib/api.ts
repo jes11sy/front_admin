@@ -125,8 +125,12 @@ class ApiClient {
     const url = `${this.baseURL}${endpoint}`
     
     const headers: Record<string, string> = {
-      'Content-Type': 'application/json',
       ...(options.headers as Record<string, string>),
+    }
+
+    // ✅ Добавляем Content-Type только если есть body
+    if (options.body) {
+      headers['Content-Type'] = 'application/json'
     }
 
     // ✅ НОВОЕ: Добавляем header для cookie mode
