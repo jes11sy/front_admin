@@ -26,17 +26,26 @@ export default function ClientLayout({
       }
 
       try {
-        // Проверяем наличие токенов
-        const hasToken = typeof window !== 'undefined' && 
-          (localStorage.getItem('auth_token') || sessionStorage.getItem('auth_token'))
+        // ✅ Cookie mode: токены в httpOnly cookies, проверяем через /profile
+        // Legacy mode: проверяем наличие токенов в localStorage
+        const useCookies = typeof window !== 'undefined' && 
+          localStorage.getItem('use_cookie_auth') === 'true'
         
-        if (!hasToken) {
-          // Нет токена - редирект на логин
-          router.push('/login')
-          return
+        if (!useCookies) {
+          // Legacy mode: проверяем localStorage/sessionStorage
+          const hasToken = typeof window !== 'undefined' && 
+            (localStorage.getItem('auth_token') || sessionStorage.getItem('auth_token'))
+          
+          if (!hasToken) {
+            // Нет токена - редирект на логин
+            router.push('/login')
+            return
+          }
         }
 
         // Проверяем валидность токена через запрос профиля
+        // Cookie mode: токен будет автоматически отправлен в httpOnly cookie
+        // Legacy mode: токен будет добавлен из localStorage в Authorization header
         const profileResponse = await apiClient.getProfile()
         
         if (profileResponse.success && profileResponse.data) {
