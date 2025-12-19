@@ -73,21 +73,23 @@ class ApiClient {
    */
   private async refreshAccessToken(): Promise<boolean> {
     try {
-      const headers: Record<string, string> = {
-        'Content-Type': 'application/json',
-      }
+      const headers: Record<string, string> = {}
 
-      // ✅ Cookie mode: refresh token в cookie, не в body
+      // ✅ Cookie mode: refresh token в cookie
       if (this.useCookies) {
         headers['X-Use-Cookies'] = 'true'
+        headers['Content-Type'] = 'application/json'
+      } else {
+        headers['Content-Type'] = 'application/json'
       }
 
       const response = await fetch(`${this.baseURL}/auth/refresh`, {
         method: 'POST',
         headers,
         credentials: this.useCookies ? 'include' : 'omit',
+        // Cookie mode: отправляем пустой объект чтобы удовлетворить Fastify
         // Legacy mode: отправляем refresh token в body
-        body: this.useCookies ? undefined : JSON.stringify({ refreshToken: this.refreshToken }),
+        body: this.useCookies ? JSON.stringify({}) : JSON.stringify({ refreshToken: this.refreshToken }),
       })
 
       if (!response.ok) {
@@ -316,6 +318,16 @@ class ApiClient {
       throw new Error('Refresh token не найден')
     }
 
+    const bodyData = this.useCookies 
+      ? JSON.stringify({}) 
+      : JSON.stringify({ refreshToken: this.refreshToken })
+    
+    console.log('🔄 Refresh request:', { 
+      useCookies: this.useCookies, 
+      bodyData,
+      bodyLength: bodyData.length 
+    })
+
     const response = await this.request<{
       accessToken?: string // Только в legacy mode
       refreshToken?: string // Только в legacy mode
@@ -324,9 +336,7 @@ class ApiClient {
       // Cookie mode: отправляем пустой объект {} чтобы удовлетворить Fastify
       // (refresh token в cookie, но Fastify требует body когда Content-Type: application/json)
       // Legacy mode: отправляем refresh token в body
-      body: this.useCookies 
-        ? JSON.stringify({}) 
-        : JSON.stringify({ refreshToken: this.refreshToken }),
+      body: bodyData,
     }, false) // Не повторяем запрос при 401
 
     // ✅ Cookie mode: токены автоматически обновлены в cookies
