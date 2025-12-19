@@ -31,8 +31,8 @@ interface Order {
   operator?: { id: number; name: string; login: string }
   problem?: string
   comment?: string
-  bsoDoc?: string | null
-  expenditureDoc?: string | null
+  bsoDoc?: string[] | null
+  expenditureDoc?: string[] | null
   partner?: boolean
   partnerPercent?: number | null
   avitoChatId?: string | null
@@ -323,30 +323,40 @@ export default function OrderDetailPage() {
                   </div>
 
                   {/* Документы */}
-                  {(order.bsoDoc || order.expenditureDoc) && (
+                  {((order.bsoDoc && order.bsoDoc.length > 0) || (order.expenditureDoc && order.expenditureDoc.length > 0)) && (
                     <div>
                       <h3 className="text-lg font-semibold text-gray-800 mb-4 pb-2 border-b border-gray-200">Документы</h3>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        {order.bsoDoc && (
+                        {order.bsoDoc && order.bsoDoc.length > 0 && (
                           <div>
-                            <label className="block text-sm font-medium text-gray-600 mb-1">Документ (БСО)</label>
-                            <button
-                              onClick={() => window.open(order.bsoDoc!, '_blank')}
-                              className="w-full text-left text-teal-600 hover:text-teal-700 bg-gray-50 rounded-lg px-4 py-2 border border-gray-200 hover:border-teal-300 transition-all"
-                            >
-                              Открыть документ
-                            </button>
+                            <label className="block text-sm font-medium text-gray-600 mb-1">Документ (БСО) ({order.bsoDoc.length})</label>
+                            <div className="space-y-2">
+                              {order.bsoDoc.map((doc, index) => (
+                                <button
+                                  key={index}
+                                  onClick={() => window.open(doc, '_blank')}
+                                  className="w-full text-left text-teal-600 hover:text-teal-700 bg-gray-50 rounded-lg px-4 py-2 border border-gray-200 hover:border-teal-300 transition-all"
+                                >
+                                  Открыть документ {order.bsoDoc!.length > 1 ? `#${index + 1}` : ''}
+                                </button>
+                              ))}
+                            </div>
                           </div>
                         )}
-                        {order.expenditureDoc && (
+                        {order.expenditureDoc && order.expenditureDoc.length > 0 && (
                           <div>
-                            <label className="block text-sm font-medium text-gray-600 mb-1">Чек расхода</label>
-                            <button
-                              onClick={() => window.open(order.expenditureDoc!, '_blank')}
-                              className="w-full text-left text-teal-600 hover:text-teal-700 bg-gray-50 rounded-lg px-4 py-2 border border-gray-200 hover:border-teal-300 transition-all"
-                            >
-                              Открыть чек
-                            </button>
+                            <label className="block text-sm font-medium text-gray-600 mb-1">Чек расхода ({order.expenditureDoc.length})</label>
+                            <div className="space-y-2">
+                              {order.expenditureDoc.map((doc, index) => (
+                                <button
+                                  key={index}
+                                  onClick={() => window.open(doc, '_blank')}
+                                  className="w-full text-left text-teal-600 hover:text-teal-700 bg-gray-50 rounded-lg px-4 py-2 border border-gray-200 hover:border-teal-300 transition-all"
+                                >
+                                  Открыть чек {order.expenditureDoc!.length > 1 ? `#${index + 1}` : ''}
+                                </button>
+                              ))}
+                            </div>
                           </div>
                         )}
                       </div>
