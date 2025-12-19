@@ -9,87 +9,35 @@ interface ApiResponse<T> {
 
 class ApiClient {
   private baseURL: string
-  private token: string | null = null
-  private refreshToken: string | null = null
-  private useCookies: boolean = true // ✅ НОВОЕ: Режим httpOnly cookies
 
   constructor(baseURL: string) {
     this.baseURL = baseURL
-    
-    // Проверяем флаг в localStorage для включения cookie mode
-    if (typeof window !== 'undefined') {
-      const cookieMode = localStorage.getItem('use_cookie_auth')
-      this.useCookies = cookieMode !== 'false' // По умолчанию true
-      
-      // Если используем legacy mode (старые токены), загружаем их
-      if (!this.useCookies) {
-        this.token = localStorage.getItem('auth_token') || sessionStorage.getItem('auth_token')
-        this.refreshToken = localStorage.getItem('refresh_token') || sessionStorage.getItem('refresh_token')
-      }
-    }
   }
 
-  setToken(token: string, remember: boolean = false) {
-    this.token = token
-    if (typeof window !== 'undefined') {
-      if (remember) {
-        localStorage.setItem('auth_token', token)
-      } else {
-        sessionStorage.setItem('auth_token', token)
-      }
-    }
-  }
-
-  setRefreshToken(refreshToken: string, remember: boolean = false) {
-    this.refreshToken = refreshToken
-    if (typeof window !== 'undefined') {
-      if (remember) {
-        localStorage.setItem('refresh_token', refreshToken)
-      } else {
-        sessionStorage.setItem('refresh_token', refreshToken)
-      }
-    }
-  }
-
+  /**
+   * Очистка пользовательских данных из localStorage
+   * Токены хранятся в httpOnly cookies и очищаются на сервере
+   */
   clearToken() {
-    this.token = null
-    this.refreshToken = null
     if (typeof window !== 'undefined') {
-      localStorage.removeItem('auth_token')
-      localStorage.removeItem('refresh_token')
       localStorage.removeItem('user')
-      sessionStorage.removeItem('auth_token')
-      sessionStorage.removeItem('refresh_token')
       sessionStorage.removeItem('user')
     }
   }
 
-  async getAccessToken(): Promise<string | null> {
-    return this.token
-  }
-
   /**
-   * Обновление токена доступа через refresh token
+   * Обновление токена доступа через refresh token из httpOnly cookie
    */
   private async refreshAccessToken(): Promise<boolean> {
     try {
-      const headers: Record<string, string> = {}
-
-      // ✅ Cookie mode: refresh token в cookie
-      if (this.useCookies) {
-        headers['X-Use-Cookies'] = 'true'
-        headers['Content-Type'] = 'application/json'
-      } else {
-        headers['Content-Type'] = 'application/json'
-      }
-
       const response = await fetch(`${this.baseURL}/auth/refresh`, {
         method: 'POST',
-        headers,
-        credentials: this.useCookies ? 'include' : 'omit',
-        // Cookie mode: отправляем пустой объект чтобы удовлетворить Fastify
-        // Legacy mode: отправляем refresh token в body
-        body: this.useCookies ? JSON.stringify({}) : JSON.stringify({ refreshToken: this.refreshToken }),
+        headers: {
+          'X-Use-Cookies': 'true',
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',  // Отправляем cookies с refresh token
+        body: JSON.stringify({}),  // Пустой body (refresh token в cookie)
       })
 
       if (!response.ok) {
@@ -97,23 +45,8 @@ class ApiClient {
       }
 
       const data = await response.json()
-
-      // ✅ Cookie mode: токены в cookies, не сохраняем в localStorage
-      if (this.useCookies) {
-        return data.success
-      }
-
-      // Legacy mode: сохраняем токены из JSON response
-      if (data.success && data.data?.accessToken && data.data?.refreshToken) {
-        const remember = typeof window !== 'undefined' && 
-          (localStorage.getItem('auth_token') !== null)
-        
-        this.setToken(data.data.accessToken, remember)
-        this.setRefreshToken(data.data.refreshToken, remember)
-        return true
-      }
-
-      return false
+      // Новые токены установлены в httpOnly cookies автоматически сервером
+      return data.success
     } catch (error) {
       return false
     }
@@ -128,68 +61,51 @@ class ApiClient {
     
     const headers: Record<string, string> = {
       ...(options.headers as Record<string, string>),
+      'X-Use-Cookies': 'true',  // Всегда используем httpOnly cookies
     }
 
-    // ✅ Добавляем Content-Type только если есть body
+    // Добавляем Content-Type только если есть body
     if (options.body) {
       headers['Content-Type'] = 'application/json'
-    }
-
-    // ✅ НОВОЕ: Добавляем header для cookie mode
-    if (this.useCookies) {
-      headers['X-Use-Cookies'] = 'true'
-    }
-
-    // Legacy mode: отправляем токен в header
-    if (!this.useCookies && this.token) {
-      headers.Authorization = `Bearer ${this.token}`
     }
 
     try {
       const response = await fetch(url, {
         ...options,
         headers,
-        credentials: this.useCookies ? 'include' : 'omit', // ✅ ВАЖНО: Отправляем cookies
+        credentials: 'include',  // Всегда отправляем cookies
       })
 
-      // Обработка 401 - попытка обновить токен
+      // Обработка 401 - попытка обновить токен из cookie
       if (response.status === 401 && retryOn401) {
-        // ✅ Cookie mode: refresh token в cookie, всегда пытаемся обновить
-        // Legacy mode: только если есть refresh token
-        if (this.useCookies || this.refreshToken) {
-          const refreshed = await this.refreshAccessToken()
-          
-          if (refreshed) {
-            // Повторяем запрос с обновленным токеном/cookie
-            if (!this.useCookies && this.token) {
-              headers.Authorization = `Bearer ${this.token}`
-            }
-            
+        const refreshed = await this.refreshAccessToken()
+        
+        if (refreshed) {
+          // Повторяем запрос с обновленным токеном в cookie
           const retryResponse = await fetch(url, {
             ...options,
             headers,
-            credentials: this.useCookies ? 'include' : 'omit',
+            credentials: 'include',
           })
 
-            if (!retryResponse.ok) {
-              // Если после обновления токена все еще ошибка - выход
-              if (retryResponse.status === 401) {
-                this.clearToken()
-                if (typeof window !== 'undefined') {
-                  window.location.href = '/login'
-                }
-                throw new Error('Сессия истекла. Пожалуйста, войдите снова.')
+          if (!retryResponse.ok) {
+            // Если после обновления токена все еще ошибка - выход
+            if (retryResponse.status === 401) {
+              this.clearToken()
+              if (typeof window !== 'undefined') {
+                window.location.href = '/login'
               }
+              throw new Error('Сессия истекла. Пожалуйста, войдите снова.')
             }
-
-            const contentType = retryResponse.headers.get('content-type')
-            if (!contentType || !contentType.includes('application/json')) {
-              throw new Error('Сервер вернул неожиданный формат ответа')
-            }
-
-            const data = await retryResponse.json()
-            return data
           }
+
+          const contentType = retryResponse.headers.get('content-type')
+          if (!contentType || !contentType.includes('application/json')) {
+            throw new Error('Сервер вернул неожиданный формат ответа')
+          }
+
+          const data = await retryResponse.json()
+          return data
         } else {
           // Не удалось обновить токен - выход
           this.clearToken()
@@ -224,136 +140,66 @@ class ApiClient {
    * Таблица содержит: id, login, password, note, createdAt, updatedAt
    * Поле name отсутствует в таблице callcentre_admin, поэтому может быть undefined
    */
+  /**
+   * Вход в систему
+   * Токены автоматически устанавливаются в httpOnly cookies сервером
+   */
   async login(login: string, password: string, rememberMe: boolean = false) {
-    // POST /api/v1/auth/login с role: 'admin' ищет пользователя в таблице callcentre_admin
     const response = await this.request<{
       user: {
         id: number
         login: string
-        name?: string  // Может отсутствовать для callcentre_admin
-        role: 'admin'  // Роль из таблицы callcentre_admin
+        name?: string
+        role: 'admin'
       }
-      accessToken?: string  // Только в legacy mode
-      refreshToken?: string // Только в legacy mode
     }>('/auth/login', {
       method: 'POST',
       body: JSON.stringify({ 
         login, 
         password, 
-        role: 'admin'  // Роль определяет использование таблицы callcentre_admin
+        role: 'admin'
       }),
     })
 
-    if (response.success) {
-      // ✅ Cookie mode: токены в httpOnly cookies, НЕ сохраняем в localStorage
-      if (this.useCookies) {
-        // Только сохраняем пользователя
-        if (response.data?.user && typeof window !== 'undefined') {
-          const storage = rememberMe ? localStorage : sessionStorage
-          storage.setItem('user', JSON.stringify(response.data.user))
-        }
-      } 
-      // Legacy mode: сохраняем токены из JSON response
-      else if (response.data?.accessToken) {
-        this.setToken(response.data.accessToken, rememberMe)
-        
-        if (response.data.refreshToken) {
-          this.setRefreshToken(response.data.refreshToken, rememberMe)
-        }
-
-        if (response.data.user && typeof window !== 'undefined') {
-          const storage = rememberMe ? localStorage : sessionStorage
-          storage.setItem('user', JSON.stringify(response.data.user))
-        }
-      }
+    // Сохраняем информацию о пользователе (НЕ токены!)
+    if (response.success && response.data?.user && typeof window !== 'undefined') {
+      const storage = rememberMe ? localStorage : sessionStorage
+      storage.setItem('user', JSON.stringify(response.data.user))
     }
 
     return response
   }
 
+  /**
+   * Выход из системы
+   * Очищает cookies на сервере и пользовательские данные локально
+   */
   logout() {
-    if (typeof window !== 'undefined') {
-      localStorage.removeItem('auth_token')
-      localStorage.removeItem('refresh_token')
-      localStorage.removeItem('user')
-      sessionStorage.removeItem('auth_token')
-      sessionStorage.removeItem('refresh_token')
-      sessionStorage.removeItem('user')
-    }
+    // Очищаем локальные данные пользователя
+    this.clearToken()
     
-    const token = this.token
-    this.token = null
-    this.refreshToken = null
-    
-    // Отправляем запрос logout на сервер
-    const headers: Record<string, string> = {
-      'Content-Type': 'application/json',
-    }
-
-    // ✅ Cookie mode: добавляем header и credentials
-    if (this.useCookies) {
-      headers['X-Use-Cookies'] = 'true'
-    }
-    
-    // Legacy mode: отправляем токен в header
-    if (!this.useCookies && token) {
-      headers['Authorization'] = `Bearer ${token}`
-    }
-
+    // Отправляем запрос logout на сервер для очистки cookies
     fetch(`${this.baseURL}/auth/logout`, {
       method: 'POST',
-      headers,
-      credentials: this.useCookies ? 'include' : 'omit', // ✅ Отправляем cookies для очистки
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Use-Cookies': 'true',
+      },
+      credentials: 'include',  // Отправляем cookies для очистки на сервере
     }).catch(() => {
-      // Игнорируем ошибки
+      // Игнорируем ошибки - пользователь уже разлогинен локально
     })
   }
 
   /**
    * Обновление токена доступа (публичный метод)
+   * Refresh token берется из httpOnly cookie автоматически
    */
   async refreshAuthToken() {
-    // ✅ Cookie mode: не требуется refresh token в памяти, он в cookie
-    if (!this.useCookies && !this.refreshToken) {
-      throw new Error('Refresh token не найден')
-    }
-
-    const bodyData = this.useCookies 
-      ? JSON.stringify({}) 
-      : JSON.stringify({ refreshToken: this.refreshToken })
-    
-    console.log('🔄 Refresh request:', { 
-      useCookies: this.useCookies, 
-      bodyData,
-      bodyLength: bodyData.length 
-    })
-
-    const response = await this.request<{
-      accessToken?: string // Только в legacy mode
-      refreshToken?: string // Только в legacy mode
-    }>('/auth/refresh', {
+    return this.request<{}>('/auth/refresh', {
       method: 'POST',
-      // Cookie mode: отправляем пустой объект {} чтобы удовлетворить Fastify
-      // (refresh token в cookie, но Fastify требует body когда Content-Type: application/json)
-      // Legacy mode: отправляем refresh token в body
-      body: bodyData,
+      body: JSON.stringify({}),  // Пустой body (refresh token в cookie)
     }, false) // Не повторяем запрос при 401
-
-    // ✅ Cookie mode: токены автоматически обновлены в cookies
-    if (this.useCookies) {
-      return response
-    }
-
-    // Legacy mode: сохраняем токены из JSON response
-    if (response.success && response.data) {
-      const remember = typeof window !== 'undefined' && 
-        (localStorage.getItem('auth_token') !== null)
-      
-      this.setToken(response.data.accessToken!, remember)
-      this.setRefreshToken(response.data.refreshToken!, remember)
-    }
-
-    return response
   }
 
   /**
