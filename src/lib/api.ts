@@ -321,8 +321,12 @@ class ApiClient {
       refreshToken?: string // Только в legacy mode
     }>('/auth/refresh', {
       method: 'POST',
-      // Cookie mode: НЕ отправляем body, токен в cookie
-      body: this.useCookies ? undefined : JSON.stringify({ refreshToken: this.refreshToken }),
+      // Cookie mode: НЕ отправляем body вообще
+      // Legacy mode: отправляем refresh token в body
+      ...(this.useCookies 
+        ? {} 
+        : { body: JSON.stringify({ refreshToken: this.refreshToken }) }
+      ),
     }, false) // Не повторяем запрос при 401
 
     // ✅ Cookie mode: токены автоматически обновлены в cookies
