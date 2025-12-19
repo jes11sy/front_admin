@@ -159,30 +159,31 @@ class ApiClient {
               headers.Authorization = `Bearer ${this.token}`
             }
             
-            const retryResponse = await fetch(url, {
-              ...options,
-              headers,
-              credentials: this.useCookies ? 'include' : 'omit',
-            })
+          const retryResponse = await fetch(url, {
+            ...options,
+            headers,
+            credentials: this.useCookies ? 'include' : 'omit',
+          })
 
-          if (!retryResponse.ok) {
-            // Если после обновления токена все еще ошибка - выход
-            if (retryResponse.status === 401) {
-              this.clearToken()
-              if (typeof window !== 'undefined') {
-                window.location.href = '/login'
+            if (!retryResponse.ok) {
+              // Если после обновления токена все еще ошибка - выход
+              if (retryResponse.status === 401) {
+                this.clearToken()
+                if (typeof window !== 'undefined') {
+                  window.location.href = '/login'
+                }
+                throw new Error('Сессия истекла. Пожалуйста, войдите снова.')
               }
-              throw new Error('Сессия истекла. Пожалуйста, войдите снова.')
             }
-          }
 
-          const contentType = retryResponse.headers.get('content-type')
-          if (!contentType || !contentType.includes('application/json')) {
-            throw new Error('Сервер вернул неожиданный формат ответа')
-          }
+            const contentType = retryResponse.headers.get('content-type')
+            if (!contentType || !contentType.includes('application/json')) {
+              throw new Error('Сервер вернул неожиданный формат ответа')
+            }
 
-          const data = await retryResponse.json()
-          return data
+            const data = await retryResponse.json()
+            return data
+          }
         } else {
           // Не удалось обновить токен - выход
           this.clearToken()
