@@ -108,15 +108,6 @@ export default function CashboxPage() {
   // Загрузка данных из API
   useEffect(() => {
     const loadData = async () => {
-      // Проверяем наличие токена
-      const token = typeof window !== 'undefined' ? 
-        (localStorage.getItem('auth_token') || sessionStorage.getItem('auth_token')) : null
-      
-      if (!token) {
-        setIsLoading(false)
-        return
-      }
-      
       setIsLoading(true)
       try {
         const dateRange = getDateRange()
