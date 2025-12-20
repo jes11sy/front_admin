@@ -42,6 +42,10 @@ WORKDIR /app
 RUN addgroup --system --gid 1001 nodejs
 RUN adduser --system --uid 1001 nextjs
 
+# 🔒 БЕЗОПАСНОСТЬ: Удаляем опасные утилиты которые используются в эксплойтах
+RUN rm -f /usr/bin/wget /usr/bin/curl /usr/bin/nc /usr/bin/netcat 2>/dev/null || true \
+    && rm -rf /tmp/* /var/tmp/*
+
 # Копируем package.json
 COPY package*.json ./
 
