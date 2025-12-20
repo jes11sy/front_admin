@@ -10,12 +10,16 @@ export default function LogoutPage() {
   const clearAuth = useAuthStore((state) => state.clearAuth)
 
   useEffect(() => {
-    // Выполняем выход
-    apiClient.logout()
-    clearAuth()
+    const performLogout = async () => {
+      // Выполняем выход и ждём очистки cookies на сервере
+      await apiClient.logout()
+      clearAuth()
+      
+      // Перенаправляем на страницу логина
+      router.push('/login')
+    }
     
-    // Перенаправляем на страницу логина
-    router.push('/login')
+    performLogout()
   }, [router, clearAuth])
 
   return (

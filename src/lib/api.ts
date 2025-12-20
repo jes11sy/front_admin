@@ -174,21 +174,23 @@ class ApiClient {
    * Выход из системы
    * Очищает cookies на сервере и пользовательские данные локально
    */
-  logout() {
-    // Очищаем локальные данные пользователя
-    this.clearToken()
-    
+  async logout(): Promise<void> {
     // Отправляем запрос logout на сервер для очистки cookies
-    fetch(`${this.baseURL}/auth/logout`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-Use-Cookies': 'true',
-      },
-      credentials: 'include',  // Отправляем cookies для очистки на сервере
-    }).catch(() => {
-      // Игнорируем ошибки - пользователь уже разлогинен локально
-    })
+    try {
+      await fetch(`${this.baseURL}/auth/logout`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Use-Cookies': 'true',
+        },
+        credentials: 'include',  // Отправляем cookies для очистки на сервере
+      })
+    } catch {
+      // Игнорируем ошибки сети
+    }
+    
+    // Очищаем локальные данные пользователя ПОСЛЕ запроса на сервер
+    this.clearToken()
   }
 
   /**

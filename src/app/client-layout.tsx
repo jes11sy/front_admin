@@ -14,7 +14,7 @@ export default function ClientLayout({
   const pathname = usePathname()
   const router = useRouter()
   const isLoginPage = pathname === '/login' || pathname === '/logout'
-  const { isAuthenticated, user, setUser } = useAuthStore()
+  const { isAuthenticated, user, setUser, clearAuth } = useAuthStore()
   const [isChecking, setIsChecking] = useState(true)
 
   useEffect(() => {
@@ -40,19 +40,23 @@ export default function ClientLayout({
           })
           setIsChecking(false)
         } else {
-          // Профиль не получен - редирект на логин
-          console.error('Failed to get profile:', profileResponse)
-          router.push('/login')
+          // Профиль не получен - очищаем и редирект на логин
+          apiClient.clearToken()
+          clearAuth()
+          setIsChecking(false)
+          router.replace('/login')
         }
       } catch (error) {
-        // Ошибка при проверке - редирект на логин
+        // Ошибка при проверке - очищаем и редирект на логин
         apiClient.clearToken()
-        router.push('/login')
+        clearAuth()
+        setIsChecking(false)
+        router.replace('/login')
       }
     }
 
     checkAuth()
-  }, [pathname, router, isLoginPage, setUser])
+  }, [pathname, router, isLoginPage, setUser, clearAuth])
 
   // Показываем loading во время проверки авторизации
   if (isChecking && !isLoginPage) {
