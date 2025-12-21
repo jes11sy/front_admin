@@ -1,0 +1,113 @@
+'use client'
+
+import { useEffect, useState } from 'react'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+
+export default function DebugPage() {
+  const [debugInfo, setDebugInfo] = useState<string>('')
+  const [indexedDBSupport, setIndexedDBSupport] = useState<string>('')
+  const [hasSavedData, setHasSavedData] = useState<string>('')
+
+  useEffect(() => {
+    // Получаем отладочную информацию
+    const info = sessionStorage.getItem('auto_login_debug') || 'Нет данных'
+    setDebugInfo(info)
+
+    // Проверяем поддержку IndexedDB
+    if (typeof window !== 'undefined') {
+      setIndexedDBSupport(window.indexedDB ? '✅ Поддерживается' : '❌ Не поддерживается')
+    }
+
+    // Проверяем наличие сохраненных данных
+    checkSavedData()
+  }, [])
+
+  const checkSavedData = async () => {
+    try {
+      const { hasSavedCredentials } = await import('@/lib/remember-me')
+      const has = await hasSavedCredentials()
+      setHasSavedData(has ? '✅ Есть сохраненные данные' : '❌ Нет сохраненных данных')
+    } catch (error) {
+      setHasSavedData('❌ Ошибка проверки: ' + String(error))
+    }
+  }
+
+  const clearDebugInfo = () => {
+    sessionStorage.removeItem('auto_login_debug')
+    setDebugInfo('Очищено')
+  }
+
+  const clearSavedData = async () => {
+    try {
+      const { clearSavedCredentials } = await import('@/lib/remember-me')
+      await clearSavedCredentials()
+      alert('Сохраненные данные очищены')
+      checkSavedData()
+    } catch (error) {
+      alert('Ошибка: ' + String(error))
+    }
+  }
+
+  return (
+    <div className="min-h-screen p-4" style={{backgroundColor: '#114643'}}>
+      <div className="max-w-2xl mx-auto space-y-4">
+        <Card>
+          <CardHeader>
+            <CardTitle>🔍 Отладочная информация</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div>
+              <h3 className="font-bold mb-2">Последнее действие автовхода:</h3>
+              <p className="bg-gray-100 p-3 rounded">{debugInfo}</p>
+              <Button onClick={clearDebugInfo} className="mt-2" variant="outline">
+                Очистить
+              </Button>
+            </div>
+
+            <div>
+              <h3 className="font-bold mb-2">Поддержка IndexedDB:</h3>
+              <p className="bg-gray-100 p-3 rounded">{indexedDBSupport}</p>
+            </div>
+
+            <div>
+              <h3 className="font-bold mb-2">Сохраненные данные:</h3>
+              <p className="bg-gray-100 p-3 rounded">{hasSavedData}</p>
+              <Button onClick={checkSavedData} className="mt-2 mr-2" variant="outline">
+                Обновить
+              </Button>
+              <Button onClick={clearSavedData} className="mt-2" variant="destructive">
+                Удалить сохраненные данные
+              </Button>
+            </div>
+
+            <div>
+              <h3 className="font-bold mb-2">Информация о браузере:</h3>
+              <p className="bg-gray-100 p-3 rounded text-xs break-all">
+                {typeof window !== 'undefined' ? navigator.userAgent : 'N/A'}
+              </p>
+            </div>
+
+            <div>
+              <h3 className="font-bold mb-2">Standalone режим (PWA):</h3>
+              <p className="bg-gray-100 p-3 rounded">
+                {typeof window !== 'undefined' && 'standalone' in navigator
+                  ? (navigator as any).standalone
+                    ? '✅ Да (iOS PWA)'
+                    : '❌ Нет'
+                  : window.matchMedia('(display-mode: standalone)').matches
+                  ? '✅ Да (Android PWA)'
+                  : '❌ Нет'}
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Button onClick={() => window.location.href = '/'} className="w-full">
+          Вернуться на главную
+        </Button>
+      </div>
+    </div>
+  )
+}
+

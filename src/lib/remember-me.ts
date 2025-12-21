@@ -148,9 +148,12 @@ async function decryptCredentials(saved: SavedCredentials): Promise<Credentials 
  * Сохраняет учетные данные в IndexedDB
  */
 export async function saveCredentials(login: string, password: string): Promise<void> {
+  console.log('[RememberMe] Attempting to save credentials for:', login)
   try {
     const encrypted = await encryptCredentials({ login, password })
+    console.log('[RememberMe] Credentials encrypted successfully')
     const db = await openDB()
+    console.log('[RememberMe] IndexedDB opened')
 
     return new Promise((resolve, reject) => {
       const transaction = db.transaction(STORE_NAME, 'readwrite')
@@ -158,10 +161,13 @@ export async function saveCredentials(login: string, password: string): Promise<
       const request = store.put(encrypted, CREDENTIALS_KEY)
 
       request.onsuccess = () => {
-        console.log('[RememberMe] Credentials saved successfully')
+        console.log('[RememberMe] Credentials saved successfully to IndexedDB')
         resolve()
       }
-      request.onerror = () => reject(request.error)
+      request.onerror = () => {
+        console.error('[RememberMe] Error saving to IndexedDB:', request.error)
+        reject(request.error)
+      }
 
       transaction.oncomplete = () => db.close()
     })
@@ -175,8 +181,10 @@ export async function saveCredentials(login: string, password: string): Promise<
  * Получает сохраненные учетные данные из IndexedDB
  */
 export async function getSavedCredentials(): Promise<Credentials | null> {
+  console.log('[RememberMe] Attempting to get saved credentials...')
   try {
     const db = await openDB()
+    console.log('[RememberMe] IndexedDB opened for reading')
 
     return new Promise((resolve, reject) => {
       const transaction = db.transaction(STORE_NAME, 'readonly')
@@ -186,14 +194,24 @@ export async function getSavedCredentials(): Promise<Credentials | null> {
       request.onsuccess = async () => {
         const saved = request.result as SavedCredentials | undefined
         if (!saved) {
+          console.log('[RememberMe] No saved credentials found in IndexedDB')
           resolve(null)
           return
         }
 
+        console.log('[RememberMe] Found encrypted credentials, attempting to decrypt...')
         const credentials = await decryptCredentials(saved)
+        if (credentials) {
+          console.log('[RememberMe] Credentials decrypted successfully for user:', credentials.login)
+        } else {
+          console.log('[RememberMe] Failed to decrypt credentials (expired or invalid)')
+        }
         resolve(credentials)
       }
-      request.onerror = () => reject(request.error)
+      request.onerror = () => {
+        console.error('[RememberMe] Error reading from IndexedDB:', request.error)
+        reject(request.error)
+      }
 
       transaction.oncomplete = () => db.close()
     })

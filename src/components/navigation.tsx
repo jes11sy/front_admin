@@ -24,7 +24,8 @@ import {
   ShoppingCart,
   Wallet,
   DollarSign,
-  TrendingUp
+  TrendingUp,
+  Bug
 } from 'lucide-react'
 
 const navigationItems = [
@@ -198,8 +199,16 @@ export function Navigation() {
             })}
           </nav>
 
-          {/* Кнопка выхода */}
-          <div className="px-4 pb-4">
+          {/* Кнопка Debug и выхода */}
+          <div className="px-4 pb-4 space-y-2">
+            <Link
+              href="/debug"
+              onClick={() => setSidebarOpen(false)}
+              className="flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium text-blue-600 hover:bg-blue-50 transition-all duration-200 w-full"
+            >
+              <Bug className="h-5 w-5" />
+              <span>Отладка</span>
+            </Link>
             <Link
               href="/logout"
               onClick={() => setSidebarOpen(false)}

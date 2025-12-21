@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react'
 import { Navigation } from '@/components/navigation'
 import { useAuthStore } from '@/store/auth.store'
 import { apiClient } from '@/lib/api'
+import { toast } from '@/components/ui/toast'
 
 export default function ClientLayout({
   children,
@@ -53,13 +54,19 @@ export default function ClientLayout({
     }
 
     const tryAutoLogin = async () => {
+      console.log('[Auth] Starting auto-login attempt...')
       try {
         // Проверяем, есть ли сохраненные учетные данные
         const { getSavedCredentials } = await import('@/lib/remember-me')
+        console.log('[Auth] Checking for saved credentials...')
         const credentials = await getSavedCredentials()
 
         if (credentials) {
-          console.log('[Auth] Found saved credentials, attempting auto-login...')
+          console.log('[Auth] Found saved credentials for user:', credentials.login)
+          // DEBUG: показываем что нашли данные
+          if (typeof window !== 'undefined') {
+            sessionStorage.setItem('auto_login_debug', 'Найдены данные для: ' + credentials.login)
+          }
           
           // Пытаемся авторизоваться с сохраненными данными
           const loginResponse = await apiClient.login(
@@ -68,22 +75,43 @@ export default function ClientLayout({
             true // rememberMe = true
           )
 
+          console.log('[Auth] Login response:', loginResponse.success)
+
           if (loginResponse.success && loginResponse.data?.user) {
             // Успешная авторизация
             setUser(loginResponse.data.user)
             setIsAuthChecked(true)
             setIsChecking(false)
             console.log('[Auth] Auto-login successful')
+            // DEBUG: показываем успех
+            if (typeof window !== 'undefined') {
+              sessionStorage.setItem('auto_login_debug', 'Автовход успешен!')
+            }
+            toast.success('Автоматический вход выполнен')
             return
+          } else {
+            console.warn('[Auth] Login response was not successful')
+            if (typeof window !== 'undefined') {
+              sessionStorage.setItem('auto_login_debug', 'Ошибка: неверный ответ сервера')
+            }
+          }
+        } else {
+          console.log('[Auth] No saved credentials found')
+          if (typeof window !== 'undefined') {
+            sessionStorage.setItem('auto_login_debug', 'Сохраненные данные не найдены')
           }
         }
 
         // Если не удалось авторизоваться автоматически - редирект на логин
+        console.log('[Auth] Redirecting to login page')
         apiClient.clearToken()
         clearAuth()
         router.replace('/login')
       } catch (error) {
         console.error('[Auth] Auto-login failed:', error)
+        if (typeof window !== 'undefined') {
+          sessionStorage.setItem('auto_login_debug', 'Ошибка: ' + String(error))
+        }
         // Очищаем невалидные данные и редирект на логин
         try {
           const { clearSavedCredentials } = await import('@/lib/remember-me')
