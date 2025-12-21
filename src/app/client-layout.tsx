@@ -55,6 +55,12 @@ export default function ClientLayout({
 
     const tryAutoLogin = async () => {
       console.log('[Auth] Starting auto-login attempt...')
+      
+      // Сохраняем в localStorage для отладки (он более устойчив чем sessionStorage)
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('auto_login_last_attempt', new Date().toISOString())
+      }
+      
       try {
         // Проверяем, есть ли сохраненные учетные данные
         const { getSavedCredentials } = await import('@/lib/remember-me')
@@ -63,9 +69,8 @@ export default function ClientLayout({
 
         if (credentials) {
           console.log('[Auth] Found saved credentials for user:', credentials.login)
-          // DEBUG: показываем что нашли данные
           if (typeof window !== 'undefined') {
-            sessionStorage.setItem('auto_login_debug', 'Найдены данные для: ' + credentials.login)
+            localStorage.setItem('auto_login_debug', 'Найдены данные для: ' + credentials.login)
           }
           
           // Пытаемся авторизоваться с сохраненными данными
@@ -83,22 +88,22 @@ export default function ClientLayout({
             setIsAuthChecked(true)
             setIsChecking(false)
             console.log('[Auth] Auto-login successful')
-            // DEBUG: показываем успех
             if (typeof window !== 'undefined') {
-              sessionStorage.setItem('auto_login_debug', 'Автовход успешен!')
+              localStorage.setItem('auto_login_debug', 'Автовход успешен!')
+              localStorage.setItem('auto_login_last_success', new Date().toISOString())
             }
             toast.success('Автоматический вход выполнен')
             return
           } else {
             console.warn('[Auth] Login response was not successful')
             if (typeof window !== 'undefined') {
-              sessionStorage.setItem('auto_login_debug', 'Ошибка: неверный ответ сервера')
+              localStorage.setItem('auto_login_debug', 'Ошибка: неверный ответ сервера')
             }
           }
         } else {
           console.log('[Auth] No saved credentials found')
           if (typeof window !== 'undefined') {
-            sessionStorage.setItem('auto_login_debug', 'Сохраненные данные не найдены')
+            localStorage.setItem('auto_login_debug', 'Сохраненные данные не найдены')
           }
         }
 
@@ -110,7 +115,7 @@ export default function ClientLayout({
       } catch (error) {
         console.error('[Auth] Auto-login failed:', error)
         if (typeof window !== 'undefined') {
-          sessionStorage.setItem('auto_login_debug', 'Ошибка: ' + String(error))
+          localStorage.setItem('auto_login_debug', 'Ошибка: ' + String(error))
         }
         // Очищаем невалидные данные и редирект на логин
         try {

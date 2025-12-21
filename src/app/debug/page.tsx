@@ -6,13 +6,21 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 
 export default function DebugPage() {
   const [debugInfo, setDebugInfo] = useState<string>('')
+  const [lastAttempt, setLastAttempt] = useState<string>('')
+  const [lastSuccess, setLastSuccess] = useState<string>('')
   const [indexedDBSupport, setIndexedDBSupport] = useState<string>('')
   const [hasSavedData, setHasSavedData] = useState<string>('')
 
   useEffect(() => {
-    // Получаем отладочную информацию
-    const info = sessionStorage.getItem('auto_login_debug') || 'Нет данных'
+    // Получаем отладочную информацию из localStorage (более устойчив на iOS)
+    const info = localStorage.getItem('auto_login_debug') || 'Нет данных'
     setDebugInfo(info)
+    
+    const attempt = localStorage.getItem('auto_login_last_attempt')
+    setLastAttempt(attempt ? new Date(attempt).toLocaleString('ru-RU') : 'Никогда')
+    
+    const success = localStorage.getItem('auto_login_last_success')
+    setLastSuccess(success ? new Date(success).toLocaleString('ru-RU') : 'Никогда')
 
     // Проверяем поддержку IndexedDB
     if (typeof window !== 'undefined') {
@@ -34,8 +42,12 @@ export default function DebugPage() {
   }
 
   const clearDebugInfo = () => {
-    sessionStorage.removeItem('auto_login_debug')
+    localStorage.removeItem('auto_login_debug')
+    localStorage.removeItem('auto_login_last_attempt')
+    localStorage.removeItem('auto_login_last_success')
     setDebugInfo('Очищено')
+    setLastAttempt('Очищено')
+    setLastSuccess('Очищено')
   }
 
   const clearSavedData = async () => {
@@ -58,8 +70,10 @@ export default function DebugPage() {
           </CardHeader>
           <CardContent className="space-y-4">
             <div>
-              <h3 className="font-bold mb-2">Последнее действие автовхода:</h3>
-              <p className="bg-gray-100 p-3 rounded">{debugInfo}</p>
+              <h3 className="font-bold mb-2">Статус автовхода:</h3>
+              <p className="bg-gray-100 p-3 rounded mb-2">{debugInfo}</p>
+              <p className="text-sm text-gray-600">Последняя попытка: {lastAttempt}</p>
+              <p className="text-sm text-gray-600">Последний успех: {lastSuccess}</p>
               <Button onClick={clearDebugInfo} className="mt-2" variant="outline">
                 Очистить
               </Button>
