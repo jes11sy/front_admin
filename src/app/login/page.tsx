@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, Suspense } from 'react'
+import { useState, useEffect, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Image from 'next/image'
 import { Button } from "@/components/ui/button"
@@ -25,12 +25,69 @@ function LoginForm() {
   const [rememberMe, setRememberMe] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [errors, setErrors] = useState<{ login?: string; password?: string }>({})
+  const [isCheckingAutoLogin, setIsCheckingAutoLogin] = useState(true)
   
   // Rate Limiting: защита от брутфорс атак
   const [attemptCount, setAttemptCount] = useState(0)
   const [blockedUntil, setBlockedUntil] = useState<number | null>(null)
   const MAX_ATTEMPTS = 10 // Максимум попыток
   const BLOCK_DURATION = 5 * 60 * 1000 // 5 минут в миллисекундах
+  
+  // Проверяем автовход при загрузке страницы логина
+  useEffect(() => {
+    const tryAutoLogin = async () => {
+      try {
+        const { getSavedCredentials } = await import('@/lib/remember-me')
+        const credentials = await getSavedCredentials()
+        
+        if (credentials) {
+          console.log('[Login] Found saved credentials, attempting auto-login...')
+          if (typeof window !== 'undefined') {
+            localStorage.setItem('auto_login_debug', 'Попытка автовхода на странице логина')
+            localStorage.setItem('auto_login_last_attempt', new Date().toISOString())
+          }
+          
+          setIsLoading(true)
+          const loginResponse = await apiClient.login(
+            credentials.login,
+            credentials.password,
+            true
+          )
+          
+          if (loginResponse.success && loginResponse.data?.user) {
+            setUser(loginResponse.data.user)
+            if (typeof window !== 'undefined') {
+              localStorage.setItem('auto_login_debug', 'Автовход успешен!')
+              localStorage.setItem('auto_login_last_success', new Date().toISOString())
+            }
+            toast.success('Автоматический вход выполнен')
+            router.replace(getSafeRedirectUrl())
+            return
+          } else {
+            console.warn('[Login] Auto-login failed')
+            if (typeof window !== 'undefined') {
+              localStorage.setItem('auto_login_debug', 'Автовход не удался: неверные данные')
+            }
+          }
+        } else {
+          console.log('[Login] No saved credentials found')
+          if (typeof window !== 'undefined') {
+            localStorage.setItem('auto_login_debug', 'Нет сохраненных данных для автовхода')
+          }
+        }
+      } catch (error) {
+        console.error('[Login] Auto-login error:', error)
+        if (typeof window !== 'undefined') {
+          localStorage.setItem('auto_login_debug', 'Ошибка автовхода: ' + String(error))
+        }
+      } finally {
+        setIsLoading(false)
+        setIsCheckingAutoLogin(false)
+      }
+    }
+    
+    tryAutoLogin()
+  }, [router, setUser])
   
   /**
    * Безопасная валидация redirect URL
