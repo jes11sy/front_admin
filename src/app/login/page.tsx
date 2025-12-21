@@ -60,7 +60,7 @@ function LoginForm() {
               localStorage.setItem('auto_login_debug', 'Автовход успешен!')
               localStorage.setItem('auto_login_last_success', new Date().toISOString())
             }
-            toast.success('Автоматический вход выполнен')
+            // Сразу редиректим БЕЗ изменения isCheckingAutoLogin чтобы не было мигания
             router.replace(getSafeRedirectUrl())
             return
           } else {
@@ -68,19 +68,24 @@ function LoginForm() {
             if (typeof window !== 'undefined') {
               localStorage.setItem('auto_login_debug', 'Автовход не удался: неверные данные')
             }
+            // Только если автовход не удался - показываем форму
+            setIsLoading(false)
+            setIsCheckingAutoLogin(false)
           }
         } else {
           console.log('[Login] No saved credentials found')
           if (typeof window !== 'undefined') {
             localStorage.setItem('auto_login_debug', 'Нет сохраненных данных для автовхода')
           }
+          // Нет сохраненных данных - показываем форму
+          setIsCheckingAutoLogin(false)
         }
       } catch (error) {
         console.error('[Login] Auto-login error:', error)
         if (typeof window !== 'undefined') {
           localStorage.setItem('auto_login_debug', 'Ошибка автовхода: ' + String(error))
         }
-      } finally {
+        // Ошибка - показываем форму
         setIsLoading(false)
         setIsCheckingAutoLogin(false)
       }

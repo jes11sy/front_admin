@@ -5,7 +5,6 @@ import { useEffect, useState } from 'react'
 import { Navigation } from '@/components/navigation'
 import { useAuthStore } from '@/store/auth.store'
 import { apiClient } from '@/lib/api'
-import { toast } from '@/components/ui/toast'
 
 export default function ClientLayout({
   children,
@@ -109,7 +108,6 @@ export default function ClientLayout({
               localStorage.setItem('auto_login_debug', 'Автовход успешен!')
               localStorage.setItem('auto_login_last_success', new Date().toISOString())
             }
-            toast.success('Автоматический вход выполнен')
             return
           } else {
             console.warn('[Auth] Login response was not successful')
