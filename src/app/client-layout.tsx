@@ -43,13 +43,54 @@ export default function ClientLayout({
           setIsAuthChecked(true)
           setIsChecking(false)
         } else {
-          // Профиль не получен - очищаем и редирект на логин
-          apiClient.clearToken()
-          clearAuth()
-          router.replace('/login')
+          // Профиль не получен - пробуем автоматическую авторизацию через IndexedDB
+          await tryAutoLogin()
         }
       } catch (error) {
-        // Ошибка при проверке - очищаем и редирект на логин
+        // Ошибка при проверке - пробуем автоматическую авторизацию через IndexedDB
+        await tryAutoLogin()
+      }
+    }
+
+    const tryAutoLogin = async () => {
+      try {
+        // Проверяем, есть ли сохраненные учетные данные
+        const { getSavedCredentials } = await import('@/lib/remember-me')
+        const credentials = await getSavedCredentials()
+
+        if (credentials) {
+          console.log('[Auth] Found saved credentials, attempting auto-login...')
+          
+          // Пытаемся авторизоваться с сохраненными данными
+          const loginResponse = await apiClient.login(
+            credentials.login,
+            credentials.password,
+            true // rememberMe = true
+          )
+
+          if (loginResponse.success && loginResponse.data?.user) {
+            // Успешная авторизация
+            setUser(loginResponse.data.user)
+            setIsAuthChecked(true)
+            setIsChecking(false)
+            console.log('[Auth] Auto-login successful')
+            return
+          }
+        }
+
+        // Если не удалось авторизоваться автоматически - редирект на логин
+        apiClient.clearToken()
+        clearAuth()
+        router.replace('/login')
+      } catch (error) {
+        console.error('[Auth] Auto-login failed:', error)
+        // Очищаем невалидные данные и редирект на логин
+        try {
+          const { clearSavedCredentials } = await import('@/lib/remember-me')
+          await clearSavedCredentials()
+        } catch (e) {
+          console.error('[Auth] Failed to clear credentials:', e)
+        }
         apiClient.clearToken()
         clearAuth()
         router.replace('/login')

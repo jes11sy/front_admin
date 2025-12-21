@@ -165,6 +165,17 @@ class ApiClient {
     if (response.success && response.data?.user && typeof window !== 'undefined') {
       const storage = rememberMe ? localStorage : sessionStorage
       storage.setItem('user', JSON.stringify(response.data.user))
+
+      // Если включен "Запомнить меня" - сохраняем учетные данные в IndexedDB
+      if (rememberMe) {
+        try {
+          const { saveCredentials } = await import('./remember-me')
+          await saveCredentials(login, password)
+        } catch (error) {
+          console.error('[Login] Failed to save credentials:', error)
+          // Не прерываем процесс логина, если не удалось сохранить
+        }
+      }
     }
 
     return response
@@ -175,6 +186,14 @@ class ApiClient {
    * Очищает cookies на сервере и пользовательские данные локально
    */
   async logout(): Promise<void> {
+    // Очищаем сохраненные учетные данные из IndexedDB
+    try {
+      const { clearSavedCredentials } = await import('./remember-me')
+      await clearSavedCredentials()
+    } catch (error) {
+      console.error('[Logout] Failed to clear saved credentials:', error)
+    }
+
     // Отправляем запрос logout на сервер для очистки cookies
     try {
       await fetch(`${this.baseURL}/auth/logout`, {
