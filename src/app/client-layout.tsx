@@ -28,6 +28,11 @@ export default function ClientLayout({
         return
       }
 
+      // DEBUG: Логируем начало проверки
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('auth_check_start', new Date().toISOString())
+      }
+
       try {
         // ✅ Проверяем валидность токена через запрос профиля
         // Токен автоматически отправляется в httpOnly cookie
@@ -43,12 +48,24 @@ export default function ClientLayout({
           })
           setIsAuthChecked(true)
           setIsChecking(false)
+          
+          // DEBUG: Профиль получен успешно
+          if (typeof window !== 'undefined') {
+            localStorage.setItem('auto_login_debug', 'Профиль получен через cookies (автовход не требуется)')
+            localStorage.setItem('auth_check_result', 'success_with_cookies')
+          }
         } else {
           // Профиль не получен - пробуем автоматическую авторизацию через IndexedDB
+          if (typeof window !== 'undefined') {
+            localStorage.setItem('auth_check_result', 'profile_failed_trying_autologin')
+          }
           await tryAutoLogin()
         }
       } catch (error) {
         // Ошибка при проверке - пробуем автоматическую авторизацию через IndexedDB
+        if (typeof window !== 'undefined') {
+          localStorage.setItem('auth_check_result', 'profile_error_trying_autologin: ' + String(error))
+        }
         await tryAutoLogin()
       }
     }

@@ -8,6 +8,8 @@ export default function DebugPage() {
   const [debugInfo, setDebugInfo] = useState<string>('')
   const [lastAttempt, setLastAttempt] = useState<string>('')
   const [lastSuccess, setLastSuccess] = useState<string>('')
+  const [authCheckStart, setAuthCheckStart] = useState<string>('')
+  const [authCheckResult, setAuthCheckResult] = useState<string>('')
   const [indexedDBSupport, setIndexedDBSupport] = useState<string>('')
   const [hasSavedData, setHasSavedData] = useState<string>('')
 
@@ -21,6 +23,12 @@ export default function DebugPage() {
     
     const success = localStorage.getItem('auto_login_last_success')
     setLastSuccess(success ? new Date(success).toLocaleString('ru-RU') : 'Никогда')
+    
+    const checkStart = localStorage.getItem('auth_check_start')
+    setAuthCheckStart(checkStart ? new Date(checkStart).toLocaleString('ru-RU') : 'Никогда')
+    
+    const checkResult = localStorage.getItem('auth_check_result')
+    setAuthCheckResult(checkResult || 'Нет данных')
 
     // Проверяем поддержку IndexedDB
     if (typeof window !== 'undefined') {
@@ -45,9 +53,13 @@ export default function DebugPage() {
     localStorage.removeItem('auto_login_debug')
     localStorage.removeItem('auto_login_last_attempt')
     localStorage.removeItem('auto_login_last_success')
+    localStorage.removeItem('auth_check_start')
+    localStorage.removeItem('auth_check_result')
     setDebugInfo('Очищено')
     setLastAttempt('Очищено')
     setLastSuccess('Очищено')
+    setAuthCheckStart('Очищено')
+    setAuthCheckResult('Очищено')
   }
 
   const clearSavedData = async () => {
@@ -71,9 +83,13 @@ export default function DebugPage() {
           <CardContent className="space-y-4">
             <div>
               <h3 className="font-bold mb-2">Статус автовхода:</h3>
-              <p className="bg-gray-100 p-3 rounded mb-2">{debugInfo}</p>
-              <p className="text-sm text-gray-600">Последняя попытка: {lastAttempt}</p>
-              <p className="text-sm text-gray-600">Последний успех: {lastSuccess}</p>
+              <p className="bg-gray-100 p-3 rounded mb-2 text-sm">{debugInfo}</p>
+              <div className="space-y-1 text-sm">
+                <p className="text-gray-600">🔍 Проверка авторизации: {authCheckStart}</p>
+                <p className="text-gray-600">📊 Результат проверки: {authCheckResult}</p>
+                <p className="text-gray-600">🔄 Попытка автовхода: {lastAttempt}</p>
+                <p className="text-gray-600">✅ Успешный автовход: {lastSuccess}</p>
+              </div>
               <Button onClick={clearDebugInfo} className="mt-2" variant="outline">
                 Очистить
               </Button>
