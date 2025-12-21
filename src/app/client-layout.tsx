@@ -15,13 +15,15 @@ export default function ClientLayout({
   const router = useRouter()
   const isLoginPage = pathname === '/login' || pathname === '/logout'
   const { isAuthenticated, user, setUser, clearAuth } = useAuthStore()
-  const [isChecking, setIsChecking] = useState(true)
+  const [isChecking, setIsChecking] = useState(!isLoginPage) // Сразу начинаем с true для защищенных страниц
+  const [isAuthChecked, setIsAuthChecked] = useState(false)
 
   useEffect(() => {
     const checkAuth = async () => {
       // Если на странице логина/логаута - пропускаем проверку
       if (isLoginPage) {
         setIsChecking(false)
+        setIsAuthChecked(true)
         return
       }
 
@@ -38,19 +40,18 @@ export default function ClientLayout({
             name: profileResponse.data.name || profileResponse.data.login, // Для админа name может отсутствовать
             role: profileResponse.data.role || 'admin',
           })
+          setIsAuthChecked(true)
           setIsChecking(false)
         } else {
           // Профиль не получен - очищаем и редирект на логин
           apiClient.clearToken()
           clearAuth()
-          setIsChecking(false)
           router.replace('/login')
         }
       } catch (error) {
         // Ошибка при проверке - очищаем и редирект на логин
         apiClient.clearToken()
         clearAuth()
-        setIsChecking(false)
         router.replace('/login')
       }
     }
@@ -58,13 +59,18 @@ export default function ClientLayout({
     checkAuth()
   }, [pathname, router, isLoginPage, setUser, clearAuth])
 
-  // Показываем loading во время проверки авторизации
-  if (isChecking && !isLoginPage) {
+  // Показываем loading во время проверки авторизации (для защищенных страниц)
+  if (isChecking) {
     return (
       <div className="min-h-screen flex items-center justify-center" style={{backgroundColor: '#114643'}}>
         <div className="text-white text-xl">Загрузка...</div>
       </div>
     )
+  }
+
+  // Не показываем контент до завершения проверки авторизации
+  if (!isLoginPage && !isAuthChecked) {
+    return null
   }
 
   return (

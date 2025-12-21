@@ -184,6 +184,7 @@ class ApiClient {
           'X-Use-Cookies': 'true',
         },
         credentials: 'include',  // Отправляем cookies для очистки на сервере
+        body: JSON.stringify({}), // Пустой объект для POST запроса
       })
     } catch {
       // Игнорируем ошибки сети
