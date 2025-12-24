@@ -27,17 +27,22 @@ export default function HomePage() {
         setLoading(true)
         const response = await apiClient.getDashboardStats()
         
+        // Проверяем наличие данных
+        if (!response.data) {
+          throw new Error('Нет данных от сервера')
+        }
+        
         setStats({
-          callCenterEmployees: response.data!.employees.callCenter,
-          directors: response.data!.employees.directors,
-          masters: response.data!.employees.masters,
-          orders: response.data!.orders,
-          notOrders: response.data!.notOrders,
-          cancellations: response.data!.cancellations,
-          completedInMoney: response.data!.completedInMoney,
-          revenue: response.data!.finance.revenue,
-          profit: response.data!.finance.profit,
-          expenses: response.data!.finance.expenses,
+          callCenterEmployees: response.data.employees.callCenter,
+          directors: response.data.employees.directors,
+          masters: response.data.employees.masters,
+          orders: response.data.orders,
+          notOrders: response.data.notOrders,
+          cancellations: response.data.cancellations,
+          completedInMoney: response.data.completedInMoney,
+          revenue: response.data.finance.revenue,
+          profit: response.data.finance.profit,
+          expenses: response.data.finance.expenses,
         })
       } catch (err) {
         console.error('Ошибка загрузки статистики:', err)
