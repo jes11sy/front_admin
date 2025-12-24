@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Users, UserCheck, Wrench, ShoppingCart, TrendingUp, DollarSign, TrendingDown } from 'lucide-react'
+import { Users, UserCheck, Wrench, ShoppingCart, TrendingUp, DollarSign, TrendingDown, XCircle, AlertCircle, CheckCircle } from 'lucide-react'
 import { apiClient } from '@/lib/api'
 
 export default function HomePage() {
@@ -11,6 +11,9 @@ export default function HomePage() {
     directors: number
     masters: number
     orders: number
+    notOrders: number
+    cancellations: number
+    completedInMoney: number
     revenue: number
     profit: number
     expenses: number
@@ -25,13 +28,16 @@ export default function HomePage() {
         const response = await apiClient.getDashboardStats()
         
         setStats({
-          callCenterEmployees: response.employees.callCenter,
-          directors: response.employees.directors,
-          masters: response.employees.masters,
-          orders: response.orders,
-          revenue: response.finance.revenue,
-          profit: response.finance.profit,
-          expenses: response.finance.expenses,
+          callCenterEmployees: response.data!.employees.callCenter,
+          directors: response.data!.employees.directors,
+          masters: response.data!.employees.masters,
+          orders: response.data!.orders,
+          notOrders: response.data!.notOrders,
+          cancellations: response.data!.cancellations,
+          completedInMoney: response.data!.completedInMoney,
+          revenue: response.data!.finance.revenue,
+          profit: response.data!.finance.profit,
+          expenses: response.data!.finance.expenses,
         })
       } catch (err) {
         console.error('Ошибка загрузки статистики:', err)
@@ -142,7 +148,49 @@ export default function HomePage() {
               </CardHeader>
               <CardContent>
                 <div className="text-3xl font-bold text-indigo-600">{stats.orders}</div>
-                <p className="text-xs text-gray-500 mt-1">всего заказов</p>
+                <p className="text-xs text-gray-500 mt-1">Заказов за текущий месяц</p>
+              </CardContent>
+            </Card>
+
+            {/* Незаказы */}
+            <Card className="hover:shadow-lg transition-shadow duration-300">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">
+                  Незаказы
+                </CardTitle>
+                <XCircle className="h-5 w-5 text-gray-600" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-3xl font-bold text-gray-600">{stats.notOrders}</div>
+                <p className="text-xs text-gray-500 mt-1">за текущий месяц</p>
+              </CardContent>
+            </Card>
+
+            {/* Отмены */}
+            <Card className="hover:shadow-lg transition-shadow duration-300">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">
+                  Отмены
+                </CardTitle>
+                <AlertCircle className="h-5 w-5 text-amber-600" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-3xl font-bold text-amber-600">{stats.cancellations}</div>
+                <p className="text-xs text-gray-500 mt-1">за текущий месяц</p>
+              </CardContent>
+            </Card>
+
+            {/* Выполненных в деньги */}
+            <Card className="hover:shadow-lg transition-shadow duration-300">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">
+                  Вып в деньги
+                </CardTitle>
+                <CheckCircle className="h-5 w-5 text-emerald-600" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-3xl font-bold text-emerald-600">{stats.completedInMoney}</div>
+                <p className="text-xs text-gray-500 mt-1">за текущий месяц</p>
               </CardContent>
             </Card>
 

@@ -750,6 +750,9 @@ class ApiClient {
         masters: number
       }
       orders: number
+      notOrders: number         // Незаказы
+      cancellations: number     // Отмены (Отказ)
+      completedInMoney: number  // Выполненных в деньги
       finance: {
         revenue: number
         profit: number
