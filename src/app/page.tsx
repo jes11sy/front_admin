@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Users, UserCheck, Wrench, ShoppingCart, TrendingUp, DollarSign, TrendingDown, Tag } from 'lucide-react'
+import { Users, UserCheck, Wrench, ShoppingCart, TrendingUp, DollarSign, TrendingDown } from 'lucide-react'
 import { apiClient } from '@/lib/api'
 
 export default function HomePage() {
@@ -14,7 +14,6 @@ export default function HomePage() {
     revenue: number
     profit: number
     expenses: number
-    avitoOrderPrice: number
   } | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -33,7 +32,6 @@ export default function HomePage() {
           revenue: response.finance.revenue,
           profit: response.finance.profit,
           expenses: response.finance.expenses,
-          avitoOrderPrice: response.avito.orderPrice,
         })
       } catch (err) {
         console.error('Ошибка загрузки статистики:', err)
@@ -187,25 +185,6 @@ export default function HomePage() {
               <CardContent>
                 <div className="text-2xl font-bold text-red-600">{formatCurrency(stats.expenses)}</div>
                 <p className="text-xs text-gray-500 mt-1">общие расходы</p>
-              </CardContent>
-            </Card>
-          </div>
-        </div>
-
-        {/* Авито */}
-        <div className="mt-6">
-          <h2 className="text-xl font-semibold text-white mb-4">Авито</h2>
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-            <Card className="hover:shadow-lg transition-shadow duration-300 border-l-4 border-l-yellow-500">
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">
-                  Цена заказа Авито
-                </CardTitle>
-                <Tag className="h-5 w-5 text-yellow-600" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-yellow-600">{formatCurrency(stats.avitoOrderPrice)}</div>
-                <p className="text-xs text-gray-500 mt-1">текущая цена</p>
               </CardContent>
             </Card>
           </div>

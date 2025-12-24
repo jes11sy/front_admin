@@ -755,9 +755,6 @@ class ApiClient {
         profit: number
         expenses: number
       }
-      avito: {
-        orderPrice: number
-      }
     }>('/stats/dashboard')
   }
 }
