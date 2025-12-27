@@ -112,7 +112,7 @@ export default function SessionsPage() {
     })
   }
 
-  const handleDeauthorize = async (sessionId: string, userName: string, userId: number, role: string) => {
+  const handleDeauthorize = async (userName: string, userId: number, role: string) => {
     if (!confirm(`Вы уверены, что хотите деавторизовать ${userName}?`)) {
       return
     }
@@ -297,7 +297,7 @@ export default function SessionsPage() {
                         </td>
                         <td className="py-3 px-3 text-center" onClick={(e) => e.stopPropagation()}>
                           <button
-                            onClick={() => handleDeauthorize(session.id, session.fullName, session.userId, session.role)}
+                            onClick={() => handleDeauthorize(session.fullName, session.userId, session.role)}
                             className="px-3 py-1.5 text-xs font-medium text-red-600 bg-red-50 hover:bg-red-100 rounded-lg transition-all duration-200 border border-red-200"
                           >
                             Деавторизовать
