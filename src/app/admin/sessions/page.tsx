@@ -44,20 +44,27 @@ export default function SessionsPage() {
   const [showFilters, setShowFilters] = useState(false)
 
   const loadSessions = async () => {
+    console.log('[Sessions] Starting to load sessions...')
     setLoading(true)
     try {
+      console.log('[Sessions] Calling apiClient.getSessions()...')
       const response = await apiClient.getSessions()
+      console.log('[Sessions] Response:', response)
       if (response.success && response.data) {
+        console.log('[Sessions] Sessions loaded:', response.data.sessions.length)
         setSessions(response.data.sessions)
+      } else {
+        console.error('[Sessions] Response not successful:', response)
       }
     } catch (error) {
-      console.error('Error loading sessions:', error)
+      console.error('[Sessions] Error loading sessions:', error)
     } finally {
       setLoading(false)
     }
   }
 
   useEffect(() => {
+    console.log('[Sessions] useEffect triggered, calling loadSessions()')
     loadSessions()
   }, [])
 

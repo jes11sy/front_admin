@@ -779,7 +779,7 @@ class ApiClient {
         lastActivity: string
       }>
       total: number
-    }>('/auth/admin/sessions')
+    }>('/auth/admin/sessions', { method: 'GET' })
   }
 
   /**
@@ -806,7 +806,7 @@ class ApiClient {
         status: 'success' | 'failed'
         reason?: string
       }>
-    }>(`/auth/admin/sessions/${userId}`)
+    }>(`/auth/admin/sessions/${userId}`, { method: 'GET' })
   }
 
   /**
