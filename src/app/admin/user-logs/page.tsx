@@ -52,6 +52,8 @@ export default function UserLogsPage() {
   const [logs, setLogs] = useState<AuditLog[]>([])
   const [loading, setLoading] = useState(true)
   const [showFilters, setShowFilters] = useState(false)
+  const [selectedLog, setSelectedLog] = useState<AuditLog | null>(null)
+  const [showModal, setShowModal] = useState(false)
   
   // Фильтры
   const [filterFullName, setFilterFullName] = useState('')
@@ -371,7 +373,15 @@ export default function UserLogsPage() {
                             </Badge>
                           </TableCell>
                           <TableCell className="text-xs text-gray-500 max-w-md">
-                            {formatMetadata(log.metadata, log.eventType)}
+                            <button
+                              onClick={() => {
+                                setSelectedLog(log)
+                                setShowModal(true)
+                              }}
+                              className="text-left hover:text-teal-600 hover:underline transition-colors"
+                            >
+                              {formatMetadata(log.metadata, log.eventType)}
+                            </button>
                           </TableCell>
                         </TableRow>
                       ))}
@@ -409,6 +419,91 @@ export default function UserLogsPage() {
           </div>
         </Card>
       </div>
+
+      {/* Модальное окно с полными данными */}
+      {showModal && selectedLog && (
+        <div 
+          className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+          onClick={() => setShowModal(false)}
+        >
+          <div 
+            className="bg-white rounded-2xl shadow-2xl max-w-3xl w-full max-h-[80vh] overflow-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="sticky top-0 bg-teal-600 text-white p-6 rounded-t-2xl flex justify-between items-center">
+              <h2 className="text-xl font-bold">Детали события</h2>
+              <button
+                onClick={() => setShowModal(false)}
+                className="text-white hover:text-gray-200 text-2xl leading-none"
+              >
+                ×
+              </button>
+            </div>
+            
+            <div className="p-6 space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <div className="text-sm text-gray-500 font-medium mb-1">Дата и время</div>
+                  <div className="text-base">{formatDate(selectedLog.timestamp)}</div>
+                </div>
+                <div>
+                  <div className="text-sm text-gray-500 font-medium mb-1">ID события</div>
+                  <div className="text-base">#{selectedLog.id}</div>
+                </div>
+                <div>
+                  <div className="text-sm text-gray-500 font-medium mb-1">Пользователь</div>
+                  <div className="text-base font-semibold">{selectedLog.fullName}</div>
+                </div>
+                <div>
+                  <div className="text-sm text-gray-500 font-medium mb-1">Логин</div>
+                  <div className="text-base">{selectedLog.login || '-'}</div>
+                </div>
+                <div>
+                  <div className="text-sm text-gray-500 font-medium mb-1">Должность</div>
+                  <div>
+                    <Badge variant="outline">{ROLE_LABELS[selectedLog.role || ''] || selectedLog.role}</Badge>
+                  </div>
+                </div>
+                <div>
+                  <div className="text-sm text-gray-500 font-medium mb-1">IP адрес</div>
+                  <div className="text-base font-mono">{selectedLog.ip}</div>
+                </div>
+              </div>
+              
+              <div>
+                <div className="text-sm text-gray-500 font-medium mb-1">Тип действия</div>
+                <div>
+                  <Badge variant={getEventBadgeColor(selectedLog.eventType) as any} className="text-base py-1 px-3">
+                    {EVENT_TYPE_LABELS[selectedLog.eventType] || selectedLog.eventType}
+                  </Badge>
+                </div>
+              </div>
+              
+              <div>
+                <div className="text-sm text-gray-500 font-medium mb-2">User-Agent</div>
+                <div className="text-xs bg-gray-50 p-3 rounded-lg font-mono break-all">
+                  {selectedLog.userAgent}
+                </div>
+              </div>
+              
+              <div>
+                <div className="text-sm text-gray-500 font-medium mb-2">Метаданные</div>
+                <div className="bg-gray-50 p-4 rounded-lg">
+                  <pre className="text-xs font-mono whitespace-pre-wrap break-all">
+                    {JSON.stringify(selectedLog.metadata, null, 2)}
+                  </pre>
+                </div>
+              </div>
+            </div>
+            
+            <div className="sticky bottom-0 bg-gray-50 p-4 rounded-b-2xl flex justify-end">
+              <Button onClick={() => setShowModal(false)}>
+                Закрыть
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
