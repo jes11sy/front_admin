@@ -42,7 +42,7 @@ export default function ErrorLogsPage() {
   const [showModal, setShowModal] = useState(false)
   
   // Фильтры
-  const [filterService, setFilterService] = useState('')
+  const [filterService, setFilterService] = useState('all')
   const [filterErrorType, setFilterErrorType] = useState('')
   const [filterStartDate, setFilterStartDate] = useState('')
   const [filterEndDate, setFilterEndDate] = useState('')
@@ -58,7 +58,7 @@ export default function ErrorLogsPage() {
     try {
       const params: any = { page: page.toString(), limit: limit.toString() }
       
-      if (filterService) params.service = filterService
+      if (filterService && filterService !== 'all') params.service = filterService
       if (filterErrorType) params.errorType = filterErrorType
       if (filterStartDate) params.startDate = new Date(filterStartDate).toISOString()
       if (filterEndDate) params.endDate = new Date(filterEndDate).toISOString()
@@ -142,7 +142,7 @@ export default function ErrorLogsPage() {
                       <SelectValue placeholder="Все сервисы" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">Все</SelectItem>
+                      <SelectItem value="all">Все</SelectItem>
                       <SelectItem value="auth-service">Auth Service</SelectItem>
                       <SelectItem value="orders-service">Orders Service</SelectItem>
                       <SelectItem value="cash-service">Cash Service</SelectItem>
