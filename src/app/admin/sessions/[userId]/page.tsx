@@ -207,144 +207,129 @@ export default function UserSessionDetailPage({ params }: { params: { userId: st
   }
 
   return (
-    <div className="min-h-screen p-4 md:p-8" style={{backgroundColor: '#114643'}}>
-      <div className="max-w-7xl mx-auto">
-        {/* Кнопка назад */}
-        <Button
-          onClick={() => router.push('/admin/sessions')}
-          variant="outline"
-          className="mb-6 bg-white hover:bg-gray-50"
-        >
-          <ArrowLeft className="h-4 w-4 mr-2" />
-          Назад к списку сессий
-        </Button>
+    <div className="min-h-screen" style={{backgroundColor: '#114643'}}>
+      <div className="container mx-auto px-2 sm:px-4 py-8">
+        <div className="max-w-none mx-auto">
+          {/* Кнопка назад */}
+          <button
+            onClick={() => router.push('/admin/sessions')}
+            className="mb-6 flex items-center gap-2 px-4 py-2 text-white bg-white/10 hover:bg-white/20 rounded-lg transition-all duration-200 text-sm font-medium backdrop-blur-sm"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            Назад к списку сессий
+          </button>
 
-        {/* Информация о пользователе */}
-        <Card className="border-0 shadow-lg mb-6">
-          <CardHeader className="bg-gradient-to-r from-teal-600 to-emerald-600 text-white rounded-t-lg">
-            <CardTitle className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <User className="h-6 w-6" />
-                <span>{userSession.fullName}</span>
-              </div>
-              <Button
-                onClick={handleDeauthorize}
-                variant="outline"
-                className="bg-red-600 text-white hover:bg-red-700 border-red-700"
-              >
-                Деавторизовать
-              </Button>
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="p-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div>
-                <p className="text-sm text-gray-600 mb-1">Роль</p>
-                <div>{getRoleBadge(userSession.role)}</div>
-              </div>
-              <div>
-                <p className="text-sm text-gray-600 mb-1">ID пользователя</p>
-                <p className="font-mono text-sm">{userSession.userId}</p>
+          <div className="backdrop-blur-lg shadow-2xl rounded-2xl p-6 md:p-8 border bg-white/95 hover:bg-white transition-all duration-500 hover:shadow-3xl" style={{borderColor: '#114643'}}>
+            
+            {/* Шапка с информацией о пользователе */}
+            <div className="mb-6 pb-6 border-b-2" style={{borderColor: '#14b8a6'}}>
+              <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                <div>
+                  <h1 className="text-2xl font-bold text-gray-800 mb-2">{userSession.fullName}</h1>
+                  <div className="flex items-center gap-3">
+                    <span className="text-sm text-gray-600">ID: {userSession.userId}</span>
+                    <span className="text-gray-300">•</span>
+                    {getRoleBadge(userSession.role)}
+                  </div>
+                </div>
+                <button
+                  onClick={handleDeauthorize}
+                  className="px-4 py-2 text-white bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 rounded-lg transition-all duration-200 text-sm font-medium shadow-md hover:shadow-lg"
+                >
+                  Деавторизовать пользователя
+                </button>
               </div>
             </div>
-          </CardContent>
-        </Card>
 
-        {/* Текущая сессия */}
-        <Card className="border-0 shadow-lg mb-6">
-          <CardHeader className="bg-gray-50 border-b">
-            <CardTitle className="text-lg flex items-center gap-2">
-              <Shield className="h-5 w-5 text-green-600" />
-              Текущая активная сессия
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="p-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              <div>
-                <p className="text-sm text-gray-600 mb-1">Устройство</p>
-                <p className="text-sm font-medium">{userSession.currentSession.device}</p>
-              </div>
-              <div>
-                <p className="text-sm text-gray-600 mb-1">IP Адрес</p>
-                <p className="font-mono text-sm font-medium">{userSession.currentSession.ip}</p>
-              </div>
-              <div>
-                <p className="text-sm text-gray-600 mb-1">Дата авторизации</p>
-                <p className="text-sm font-medium">{formatDate(userSession.currentSession.loginDate)}</p>
-              </div>
-              <div>
-                <p className="text-sm text-gray-600 mb-1">Последняя активность</p>
-                <p className="text-sm font-medium">{formatDate(userSession.currentSession.lastActivity)}</p>
+            {/* Текущая сессия */}
+            <div className="mb-6">
+              <h2 className="text-lg font-semibold text-gray-700 mb-4 flex items-center gap-2">
+                <Shield className="h-5 w-5 text-green-600" />
+                Текущая активная сессия
+              </h2>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 bg-gray-50 p-4 rounded-lg border-2 border-gray-200">
+                <div>
+                  <p className="text-xs font-medium text-gray-600 mb-1">Устройство</p>
+                  <p className="text-sm font-medium text-gray-800">{userSession.currentSession.device}</p>
+                </div>
+                <div>
+                  <p className="text-xs font-medium text-gray-600 mb-1">IP Адрес</p>
+                  <p className="font-mono text-sm font-medium text-gray-800">{userSession.currentSession.ip}</p>
+                </div>
+                <div>
+                  <p className="text-xs font-medium text-gray-600 mb-1">Дата авторизации</p>
+                  <p className="text-sm font-medium text-gray-800">{formatDate(userSession.currentSession.loginDate)}</p>
+                </div>
+                <div>
+                  <p className="text-xs font-medium text-gray-600 mb-1">Последняя активность</p>
+                  <p className="text-sm font-medium text-gray-800">{formatDate(userSession.currentSession.lastActivity)}</p>
+                </div>
               </div>
             </div>
-          </CardContent>
-        </Card>
 
-        {/* История авторизаций */}
-        <Card className="border-0 shadow-lg">
-          <CardHeader className="bg-gradient-to-r from-teal-600 to-emerald-600 text-white rounded-t-lg">
-            <CardTitle className="flex items-center gap-2">
-              <Clock className="h-5 w-5" />
-              История авторизаций ({userSession.loginHistory.length})
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="p-0">
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow className="bg-gray-50">
-                    <TableHead className="font-semibold">Дата и время</TableHead>
-                    <TableHead className="font-semibold">IP Адрес</TableHead>
-                    <TableHead className="font-semibold">Устройство</TableHead>
-                    <TableHead className="font-semibold">Статус</TableHead>
-                    <TableHead className="font-semibold">Причина</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {userSession.loginHistory.length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={5} className="text-center py-12">
-                        <p className="text-gray-500">История авторизаций отсутствует</p>
-                      </TableCell>
-                    </TableRow>
-                  ) : (
-                    userSession.loginHistory.map((attempt) => (
-                      <TableRow key={attempt.id} className="hover:bg-gray-50">
-                        <TableCell>
-                          <span className="text-sm">{formatDate(attempt.timestamp)}</span>
-                        </TableCell>
-                        <TableCell>
-                          <span className="font-mono text-sm">{attempt.ip}</span>
-                        </TableCell>
-                        <TableCell>
-                          <span className="text-sm text-gray-600">{attempt.device}</span>
-                        </TableCell>
-                        <TableCell>
-                          {attempt.status === 'success' ? (
-                            <Badge className="bg-green-100 text-green-700 border border-green-300">
-                              <CheckCircle className="h-3 w-3 mr-1" />
-                              Успешно
-                            </Badge>
-                          ) : (
-                            <Badge className="bg-red-100 text-red-700 border border-red-300">
-                              <XCircle className="h-3 w-3 mr-1" />
-                              Ошибка
-                            </Badge>
-                          )}
-                        </TableCell>
-                        <TableCell>
-                          <span className="text-sm text-gray-600">
+            {/* История авторизаций */}
+            <div>
+              <h2 className="text-lg font-semibold text-gray-700 mb-4 flex items-center gap-2">
+                <Clock className="h-5 w-5 text-teal-600" />
+                История авторизаций ({userSession.loginHistory.length})
+              </h2>
+              
+              <div className="overflow-x-auto">
+                <table className="w-full border-collapse text-xs bg-white rounded-lg shadow-lg">
+                  <thead>
+                    <tr className="border-b-2 bg-gray-50" style={{borderColor: '#14b8a6'}}>
+                      <th className="text-left py-3 px-3 font-semibold text-gray-700">Дата и время</th>
+                      <th className="text-left py-3 px-3 font-semibold text-gray-700">IP Адрес</th>
+                      <th className="text-left py-3 px-3 font-semibold text-gray-700">Устройство</th>
+                      <th className="text-left py-3 px-3 font-semibold text-gray-700">Статус</th>
+                      <th className="text-left py-3 px-3 font-semibold text-gray-700">Причина</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {userSession.loginHistory.length === 0 ? (
+                      <tr>
+                        <td colSpan={5} className="text-center py-12">
+                          <Clock className="h-16 w-16 text-gray-300 mx-auto mb-4" />
+                          <p className="text-gray-500 text-lg font-medium">История авторизаций отсутствует</p>
+                        </td>
+                      </tr>
+                    ) : (
+                      userSession.loginHistory.map((attempt) => (
+                        <tr key={attempt.id} className="border-b border-gray-100 hover:bg-teal-50/50 transition-all duration-200">
+                          <td className="py-3 px-3 text-gray-800">
+                            {formatDate(attempt.timestamp)}
+                          </td>
+                          <td className="py-3 px-3">
+                            <span className="font-mono text-gray-600">{attempt.ip}</span>
+                          </td>
+                          <td className="py-3 px-3 text-gray-600">
+                            {attempt.device}
+                          </td>
+                          <td className="py-3 px-3">
+                            {attempt.status === 'success' ? (
+                              <span className="inline-flex items-center gap-1 px-2 py-1 bg-green-100 text-green-700 rounded text-xs font-medium">
+                                <CheckCircle className="h-3 w-3" />
+                                Успешно
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center gap-1 px-2 py-1 bg-red-100 text-red-700 rounded text-xs font-medium">
+                                <XCircle className="h-3 w-3" />
+                                Ошибка
+                              </span>
+                            )}
+                          </td>
+                          <td className="py-3 px-3 text-gray-600">
                             {attempt.reason || '-'}
-                          </span>
-                        </TableCell>
-                      </TableRow>
-                    ))
-                  )}
-                </TableBody>
-              </Table>
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       </div>
     </div>
   )

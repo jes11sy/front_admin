@@ -7,6 +7,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { 
   Monitor, 
   Smartphone, 
@@ -16,7 +17,10 @@ import {
   User,
   Clock,
   MapPin,
-  Shield
+  Shield,
+  ChevronDown,
+  ChevronUp,
+  X
 } from 'lucide-react'
 
 interface Session {
@@ -102,6 +106,7 @@ export default function SessionsPage() {
   const [loading, setLoading] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const [filterRole, setFilterRole] = useState<string>('all')
+  const [showFilters, setShowFilters] = useState(false)
 
   const loadSessions = async () => {
     setLoading(true)
@@ -193,6 +198,13 @@ export default function SessionsPage() {
     return matchesSearch && matchesRole
   })
 
+  const hasActiveFilters = searchQuery || filterRole !== 'all'
+
+  const resetFilters = () => {
+    setSearchQuery('')
+    setFilterRole('all')
+  }
+
   return (
     <div className="min-h-screen" style={{backgroundColor: '#114643'}}>
       <div className="container mx-auto px-2 sm:px-4 py-8">
@@ -201,59 +213,92 @@ export default function SessionsPage() {
             
             {/* Фильтры */}
             <div className="mb-6">
-              <h2 className="text-lg font-semibold text-gray-700 mb-4">Фильтры</h2>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                {/* Поиск */}
-                <div>
-                  <label className="block text-xs font-medium text-gray-600 mb-1">
-                    Поиск (ФИО, IP, устройство)
-                  </label>
-                  <div className="relative">
-                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-                    <input
-                      type="text"
-                      placeholder="Введите для поиска..."
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                      className="w-full pl-10 pr-3 py-2 bg-white border-2 border-gray-200 rounded-lg text-gray-800 text-sm focus:outline-none focus:border-teal-500 transition-all duration-200 hover:border-gray-300 shadow-sm hover:shadow-md"
-                    />
-                  </div>
-                </div>
-
-                {/* Фильтр по роли */}
-                <div>
-                  <label className="block text-xs font-medium text-gray-600 mb-1">
-                    Роль
-                  </label>
-                  <select
-                    value={filterRole}
-                    onChange={(e) => setFilterRole(e.target.value)}
-                    className="w-full px-3 py-2 bg-white border-2 border-gray-200 rounded-lg text-gray-800 text-sm focus:outline-none focus:border-teal-500 transition-all duration-200 hover:border-gray-300 shadow-sm hover:shadow-md"
-                  >
-                    <option value="all">Все роли</option>
-                    <option value="admin">Администратор</option>
-                    <option value="director">Директор</option>
-                    <option value="callcenter">Кол-центр</option>
-                    <option value="master">Мастер</option>
-                  </select>
-                </div>
-
-                {/* Кнопка обновить */}
-                <div className="flex items-end">
-                  <button
-                    onClick={loadSessions}
-                    disabled={loading}
-                    className="w-full px-4 py-2 text-white rounded-lg transition-all duration-200 hover:shadow-md text-sm font-medium bg-gradient-to-r from-teal-600 to-emerald-600 hover:from-teal-700 hover:to-emerald-700 disabled:opacity-50"
-                  >
-                    <RefreshCw className={`h-4 w-4 inline mr-2 ${loading ? 'animate-spin' : ''}`} />
-                    Обновить
-                  </button>
-                </div>
+              <div className="mb-4">
+                <button
+                  onClick={() => setShowFilters(!showFilters)}
+                  className="flex items-center gap-2 text-left cursor-pointer group"
+                >
+                  <h2 className="text-lg font-semibold text-gray-700 group-hover:text-teal-600 transition-colors duration-200">
+                    Фильтр
+                  </h2>
+                  {showFilters ? (
+                    <ChevronUp className="w-5 h-5 text-gray-600 group-hover:text-teal-600 transition-all duration-200" />
+                  ) : (
+                    <ChevronDown className="w-5 h-5 text-gray-600 group-hover:text-teal-600 transition-all duration-200" />
+                  )}
+                  {hasActiveFilters && (
+                    <span className="ml-2 px-2 py-0.5 bg-teal-100 text-teal-700 text-xs rounded-full font-medium">
+                      Активны
+                    </span>
+                  )}
+                </button>
               </div>
               
-              <div className="mt-3 text-sm text-gray-600">
-                Всего сессий: <span className="font-semibold text-teal-600">{filteredSessions.length}</span>
-              </div>
+              {showFilters && (
+                <div className="space-y-4 animate-in slide-in-from-top-2 duration-200">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {/* Поиск */}
+                    <div>
+                      <label className="block text-xs font-medium text-gray-600 mb-1">
+                        Поиск (ФИО, IP, устройство)
+                      </label>
+                      <div className="relative">
+                        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                        <input
+                          type="text"
+                          placeholder="Введите для поиска..."
+                          value={searchQuery}
+                          onChange={(e) => setSearchQuery(e.target.value)}
+                          className="w-full pl-10 pr-3 py-2 bg-white border-2 border-gray-200 rounded-lg text-gray-800 placeholder-gray-400 text-sm focus:outline-none focus:border-teal-500 transition-all duration-200 hover:border-gray-300 shadow-sm hover:shadow-md"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Фильтр по роли */}
+                    <div>
+                      <label className="block text-xs font-medium text-gray-600 mb-1">
+                        Роль
+                      </label>
+                      <Select value={filterRole} onValueChange={setFilterRole}>
+                        <SelectTrigger className="w-full bg-white border-gray-200 text-gray-800 border-2 hover:border-gray-300 focus:border-teal-500">
+                          <SelectValue placeholder="Все роли" />
+                        </SelectTrigger>
+                        <SelectContent className="bg-white border-gray-300">
+                          <SelectItem value="all" className="text-gray-800 focus:text-white focus:bg-teal-600 hover:text-white hover:bg-teal-600">
+                            Все роли
+                          </SelectItem>
+                          <SelectItem value="admin" className="text-gray-800 focus:text-white focus:bg-teal-600 hover:text-white hover:bg-teal-600">
+                            Администратор
+                          </SelectItem>
+                          <SelectItem value="director" className="text-gray-800 focus:text-white focus:bg-teal-600 hover:text-white hover:bg-teal-600">
+                            Директор
+                          </SelectItem>
+                          <SelectItem value="callcenter" className="text-gray-800 focus:text-white focus:bg-teal-600 hover:text-white hover:bg-teal-600">
+                            Кол-центр
+                          </SelectItem>
+                          <SelectItem value="master" className="text-gray-800 focus:text-white focus:bg-teal-600 hover:text-white hover:bg-teal-600">
+                            Мастер
+                          </SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                  
+                  {/* Кнопки управления фильтрами */}
+                  <div className="flex flex-col sm:flex-row gap-2 items-start sm:items-center justify-between">
+                    <button
+                      onClick={resetFilters}
+                      className="flex items-center gap-2 px-4 py-2 text-white rounded-lg transition-all duration-200 hover:shadow-md text-sm font-medium bg-gradient-to-r from-teal-600 to-emerald-600 hover:from-teal-700 hover:to-emerald-700"
+                    >
+                      <X className="w-4 h-4" />
+                      Сбросить
+                    </button>
+                    <div className="text-sm text-gray-600">
+                      Всего сессий: <span className="font-semibold text-teal-600">{filteredSessions.length}</span>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Состояние загрузки */}
