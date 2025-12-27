@@ -132,6 +132,73 @@ export default function UserLogsPage() {
     })
   }
 
+  const formatMetadata = (metadata: any, eventType: string) => {
+    if (!metadata) return '-'
+    
+    // 🎯 Заказы
+    if (eventType === 'order.create') {
+      return `Заказ #${metadata.orderId || '?'} создан (${metadata.clientName || 'без имени'})`
+    }
+    
+    if (eventType === 'order.status.change') {
+      return `Заказ #${metadata.orderId || '?'}: статус изменен с "${metadata.oldStatus}" на "${metadata.newStatus}"`
+    }
+    
+    if (eventType === 'order.close') {
+      const result = metadata.result ? `${metadata.result}₽` : '0₽'
+      const clean = metadata.clean ? `, чистая: ${metadata.clean}₽` : ''
+      return `Заказ #${metadata.orderId || '?'} закрыт. Результат: ${result}${clean}`
+    }
+    
+    if (eventType === 'order.update') {
+      const changes = metadata.changes || {}
+      const keys = Object.keys(changes)
+      if (keys.length === 0) return `Заказ #${metadata.orderId || '?'} изменен`
+      
+      // Показываем основные изменения
+      const mainChanges = []
+      if (changes.statusOrder) mainChanges.push(`статус: ${changes.statusOrder}`)
+      if (changes.masterId) mainChanges.push(`мастер: #${changes.masterId}`)
+      if (changes.address) mainChanges.push('адрес изменен')
+      
+      const summary = mainChanges.length > 0 ? mainChanges.join(', ') : `${keys.length} полей изменено`
+      return `Заказ #${metadata.orderId || '?'} изменен (${summary})`
+    }
+    
+    // 💰 Касса
+    if (eventType === 'cash.income.create') {
+      return `Приход #${metadata.cashId || '?'}: ${metadata.amount}₽ (${metadata.city})`
+    }
+    
+    if (eventType === 'cash.expense.create') {
+      return `Расход #${metadata.cashId || '?'}: ${metadata.amount}₽ (${metadata.city})`
+    }
+    
+    if (eventType === 'cash.update') {
+      return `Касса #${metadata.cashId || '?'} изменена`
+    }
+    
+    if (eventType === 'cash.delete') {
+      return `Касса #${metadata.cashId || '?'} удалена`
+    }
+    
+    // 🔐 Авторизация
+    if (eventType === 'auth.login.success') {
+      return 'Успешный вход в систему'
+    }
+    
+    if (eventType === 'auth.logout') {
+      return 'Выход из системы'
+    }
+    
+    if (eventType === 'auth.force_logout') {
+      return `Принудительный выход (админ #${metadata.adminId})`
+    }
+    
+    // Остальное - JSON
+    return JSON.stringify(metadata).substring(0, 150)
+  }
+
   const getEventBadgeColor = (eventType: string) => {
     if (eventType.includes('login.success') || eventType.includes('create')) return 'default'
     if (eventType.includes('failed') || eventType.includes('delete')) return 'destructive'
@@ -275,8 +342,8 @@ export default function UserLogsPage() {
                               {EVENT_TYPE_LABELS[log.eventType] || log.eventType}
                             </Badge>
                           </TableCell>
-                          <TableCell className="text-xs text-gray-500 max-w-xs truncate">
-                            {log.metadata ? JSON.stringify(log.metadata).substring(0, 100) : '-'}
+                          <TableCell className="text-xs text-gray-500 max-w-md">
+                            {formatMetadata(log.metadata, log.eventType)}
                           </TableCell>
                         </TableRow>
                       ))}
