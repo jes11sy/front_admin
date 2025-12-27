@@ -94,6 +94,12 @@ export default function UserLogsPage() {
           )
         }
         
+        // 🔥 Скрываем мусорные события по умолчанию
+        filteredLogs = filteredLogs.filter((log: AuditLog) => 
+          log.eventType !== 'auth.profile.access' && 
+          log.eventType !== 'auth.token.refresh'
+        )
+        
         setLogs(filteredLogs)
         setTotal(response.data.pagination.total)
         setTotalPages(response.data.pagination.totalPages)
