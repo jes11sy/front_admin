@@ -31,7 +31,11 @@ const SERVICE_LABELS: Record<string, string> = {
   'orders-service': 'Orders Service',
   'cash-service': 'Cash Service',
   'users-service': 'Users Service',
-  'files-service': 'Files Service',
+  'notifications-service': 'Notifications Service',
+  'reports-service': 'Reports Service',
+  'calls-service': 'Calls Service',
+  'masters-service': 'Masters Service',
+  'backup-service': 'Backup Service',
 }
 
 export default function ErrorLogsPage() {
@@ -112,24 +116,23 @@ export default function ErrorLogsPage() {
       style={{ backgroundColor: '#114643' }}
     >
       <div className="max-w-[1400px] mx-auto">
-        <div className="flex items-center gap-3 mb-6">
-          <AlertCircle className="w-8 h-8 text-red-500" />
-          <h1 className="text-3xl font-bold text-white">Логи ошибок</h1>
-        </div>
-
         <Card className="backdrop-blur-lg shadow-2xl rounded-2xl border border-white/20 bg-white/95 hover:bg-white transition-all duration-300">
           <div className="p-6">
             {/* Кнопка фильтров */}
             <div className="mb-4">
-              <Button
-                variant="outline"
+              <button
                 onClick={() => setShowFilters(!showFilters)}
-                className="flex items-center gap-2"
+                className="flex items-center gap-2 text-left cursor-pointer group"
               >
-                <Filter className="w-4 h-4" />
-                Фильтры
-                {showFilters ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-              </Button>
+                <h2 className="text-lg font-semibold text-gray-700 group-hover:text-teal-600 transition-colors duration-200">
+                  Фильтр
+                </h2>
+                {showFilters ? (
+                  <ChevronUp className="w-5 h-5 text-gray-600 group-hover:text-teal-600 transition-all duration-200" />
+                ) : (
+                  <ChevronDown className="w-5 h-5 text-gray-600 group-hover:text-teal-600 transition-all duration-200" />
+                )}
+              </button>
             </div>
 
             {/* Фильтры */}
@@ -146,7 +149,12 @@ export default function ErrorLogsPage() {
                       <SelectItem value="auth-service">Auth Service</SelectItem>
                       <SelectItem value="orders-service">Orders Service</SelectItem>
                       <SelectItem value="cash-service">Cash Service</SelectItem>
-                      <SelectItem value="files-service">Files Service</SelectItem>
+                      <SelectItem value="notifications-service">Notifications Service</SelectItem>
+                      <SelectItem value="reports-service">Reports Service</SelectItem>
+                      <SelectItem value="calls-service">Calls Service</SelectItem>
+                      <SelectItem value="masters-service">Masters Service</SelectItem>
+                      <SelectItem value="users-service">Users Service</SelectItem>
+                      <SelectItem value="backup-service">Backup Service</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>

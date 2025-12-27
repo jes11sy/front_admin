@@ -242,21 +242,23 @@ export default function UserLogsPage() {
       style={{ backgroundColor: '#114643' }}
     >
       <div className="max-w-[1400px] mx-auto">
-        <h1 className="text-3xl font-bold text-white mb-6">Логирование пользователей</h1>
-
         <Card className="backdrop-blur-lg shadow-2xl rounded-2xl border border-white/20 bg-white/95 hover:bg-white transition-all duration-300">
           <div className="p-6">
             {/* Кнопка фильтров */}
             <div className="mb-4">
-              <Button
-                variant="outline"
+              <button
                 onClick={() => setShowFilters(!showFilters)}
-                className="flex items-center gap-2"
+                className="flex items-center gap-2 text-left cursor-pointer group"
               >
-                <Filter className="w-4 h-4" />
-                Фильтры
-                {showFilters ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-              </Button>
+                <h2 className="text-lg font-semibold text-gray-700 group-hover:text-teal-600 transition-colors duration-200">
+                  Фильтр
+                </h2>
+                {showFilters ? (
+                  <ChevronUp className="w-5 h-5 text-gray-600 group-hover:text-teal-600 transition-all duration-200" />
+                ) : (
+                  <ChevronDown className="w-5 h-5 text-gray-600 group-hover:text-teal-600 transition-all duration-200" />
+                )}
+              </button>
             </div>
 
             {/* Фильтры */}
