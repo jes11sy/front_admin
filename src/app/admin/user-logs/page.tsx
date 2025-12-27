@@ -358,7 +358,12 @@ export default function UserLogsPage() {
                       {logs.map((log) => (
                         <TableRow
                           key={log.id}
-                          className="hover:bg-teal-50/50 transition-colors"
+                          className="hover:bg-teal-50/50 transition-colors cursor-pointer"
+                          onClick={() => {
+                            console.log('[UserLogs] Row clicked!', log)
+                            setSelectedLog(log)
+                            setShowModal(true)
+                          }}
                         >
                           <TableCell className="text-sm">{formatDate(log.timestamp)}</TableCell>
                           <TableCell className="font-medium">{log.fullName}</TableCell>
@@ -373,15 +378,7 @@ export default function UserLogsPage() {
                             </Badge>
                           </TableCell>
                           <TableCell className="text-xs text-gray-500 max-w-md">
-                            <button
-                              onClick={() => {
-                                setSelectedLog(log)
-                                setShowModal(true)
-                              }}
-                              className="text-left hover:text-teal-600 hover:underline transition-colors"
-                            >
-                              {formatMetadata(log.metadata, log.eventType)}
-                            </button>
+                            {formatMetadata(log.metadata, log.eventType)}
                           </TableCell>
                         </TableRow>
                       ))}
