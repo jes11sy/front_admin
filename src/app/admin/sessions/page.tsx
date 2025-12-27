@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
@@ -96,6 +97,7 @@ const mockSessions: Session[] = [
 ]
 
 export default function SessionsPage() {
+  const router = useRouter()
   const [sessions, setSessions] = useState<Session[]>(mockSessions)
   const [loading, setLoading] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
@@ -162,6 +164,24 @@ export default function SessionsPage() {
     })
   }
 
+  const handleDeauthorize = async (sessionId: string, userName: string) => {
+    if (!confirm(`Вы уверены, что хотите деавторизовать ${userName}?`)) {
+      return
+    }
+
+    try {
+      // TODO: Здесь будет запрос к API для деавторизации
+      // await apiClient.deauthorizeSession(sessionId)
+      
+      // Пока просто удаляем из локального стейта
+      setSessions(sessions.filter(s => s.id !== sessionId))
+      alert('Пользователь успешно деавторизован')
+    } catch (error) {
+      console.error('Ошибка деавторизации:', error)
+      alert('Ошибка при деавторизации пользователя')
+    }
+  }
+
   const filteredSessions = sessions.filter(session => {
     const matchesSearch = 
       session.fullName.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -174,79 +194,8 @@ export default function SessionsPage() {
   })
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 p-4 md:p-8">
+    <div className="min-h-screen p-4 md:p-8" style={{backgroundColor: '#114643'}}>
       <div className="max-w-7xl mx-auto">
-        {/* Заголовок */}
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-800 mb-2">Активные сессии</h1>
-          <p className="text-gray-600">Мониторинг авторизованных пользователей системы</p>
-        </div>
-
-        {/* Статистика */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-          <Card className="border-0 shadow-md">
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-gray-600">Всего сессий</p>
-                  <p className="text-2xl font-bold text-gray-800">{sessions.length}</p>
-                </div>
-                <div className="p-3 bg-teal-100 rounded-lg">
-                  <User className="h-6 w-6 text-teal-600" />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="border-0 shadow-md">
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-gray-600">Администраторы</p>
-                  <p className="text-2xl font-bold text-purple-600">
-                    {sessions.filter(s => s.role === 'admin').length}
-                  </p>
-                </div>
-                <div className="p-3 bg-purple-100 rounded-lg">
-                  <Shield className="h-6 w-6 text-purple-600" />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="border-0 shadow-md">
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-gray-600">Мобильные</p>
-                  <p className="text-2xl font-bold text-blue-600">
-                    {sessions.filter(s => s.deviceType === 'mobile').length}
-                  </p>
-                </div>
-                <div className="p-3 bg-blue-100 rounded-lg">
-                  <Smartphone className="h-6 w-6 text-blue-600" />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="border-0 shadow-md">
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-gray-600">Десктоп</p>
-                  <p className="text-2xl font-bold text-green-600">
-                    {sessions.filter(s => s.deviceType === 'desktop').length}
-                  </p>
-                </div>
-                <div className="p-3 bg-green-100 rounded-lg">
-                  <Monitor className="h-6 w-6 text-green-600" />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-
         {/* Фильтры */}
         <Card className="border-0 shadow-md mb-6">
           <CardContent className="p-4">
@@ -304,7 +253,7 @@ export default function SessionsPage() {
                     <TableHead className="font-semibold">IP Адрес</TableHead>
                     <TableHead className="font-semibold">Дата авторизации</TableHead>
                     <TableHead className="font-semibold">Последний вход</TableHead>
-                    <TableHead className="font-semibold text-center">Статус</TableHead>
+                    <TableHead className="font-semibold text-center">Действия</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -325,7 +274,11 @@ export default function SessionsPage() {
                     </TableRow>
                   ) : (
                     filteredSessions.map((session) => (
-                      <TableRow key={session.id} className="hover:bg-gray-50 transition-colors">
+                      <TableRow 
+                        key={session.id} 
+                        className="hover:bg-gray-50 transition-colors cursor-pointer"
+                        onClick={() => router.push(`/admin/sessions/${session.userId}`)}
+                      >
                         <TableCell className="font-medium">
                           {session.fullName}
                         </TableCell>
@@ -344,16 +297,14 @@ export default function SessionsPage() {
                         <TableCell>
                           <span className="text-sm">{formatDate(session.lastActivity)}</span>
                         </TableCell>
-                        <TableCell className="text-center">
-                          {session.isActive ? (
-                            <Badge className="bg-green-100 text-green-700 border border-green-300">
-                              Активна
-                            </Badge>
-                          ) : (
-                            <Badge className="bg-gray-100 text-gray-700 border border-gray-300">
-                              Неактивна
-                            </Badge>
-                          )}
+                        <TableCell className="text-center" onClick={(e) => e.stopPropagation()}>
+                          <Button
+                            onClick={() => handleDeauthorize(session.id, session.fullName)}
+                            variant="outline"
+                            className="text-red-600 hover:bg-red-50 hover:text-red-700 border-red-300"
+                          >
+                            Деавторизовать
+                          </Button>
                         </TableCell>
                       </TableRow>
                     ))
