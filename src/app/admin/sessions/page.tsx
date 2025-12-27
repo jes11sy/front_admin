@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
+import { apiClient } from '@/lib/api'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
@@ -24,8 +25,7 @@ import {
 } from 'lucide-react'
 
 interface Session {
-  id: string
-  userId: string
+  userId: number
   fullName: string
   role: 'admin' | 'director' | 'callcenter' | 'master'
   device: string
@@ -33,76 +33,11 @@ interface Session {
   ip: string
   loginDate: string
   lastActivity: string
-  isActive: boolean
 }
-
-// Моковые данные для демонстрации
-const mockSessions: Session[] = [
-  {
-    id: '1',
-    userId: '101',
-    fullName: 'Иванов Иван Иванович',
-    role: 'admin',
-    device: 'Windows 10 - Chrome 120',
-    deviceType: 'desktop',
-    ip: '192.168.1.100',
-    loginDate: '2025-12-27T08:30:00',
-    lastActivity: '2025-12-27T14:25:00',
-    isActive: true
-  },
-  {
-    id: '2',
-    userId: '102',
-    fullName: 'Петров Петр Петрович',
-    role: 'director',
-    device: 'iPhone 14 - Safari',
-    deviceType: 'mobile',
-    ip: '192.168.1.101',
-    loginDate: '2025-12-27T09:15:00',
-    lastActivity: '2025-12-27T14:20:00',
-    isActive: true
-  },
-  {
-    id: '3',
-    userId: '103',
-    fullName: 'Сидорова Мария Александровна',
-    role: 'callcenter',
-    device: 'macOS - Safari 17',
-    deviceType: 'desktop',
-    ip: '192.168.1.102',
-    loginDate: '2025-12-27T07:45:00',
-    lastActivity: '2025-12-27T14:18:00',
-    isActive: true
-  },
-  {
-    id: '4',
-    userId: '104',
-    fullName: 'Козлов Алексей Викторович',
-    role: 'master',
-    device: 'Samsung Galaxy S23 - Chrome',
-    deviceType: 'mobile',
-    ip: '192.168.1.103',
-    loginDate: '2025-12-27T10:00:00',
-    lastActivity: '2025-12-27T13:45:00',
-    isActive: true
-  },
-  {
-    id: '5',
-    userId: '105',
-    fullName: 'Морозова Елена Сергеевна',
-    role: 'callcenter',
-    device: 'iPad Pro - Safari',
-    deviceType: 'tablet',
-    ip: '192.168.1.104',
-    loginDate: '2025-12-27T08:00:00',
-    lastActivity: '2025-12-27T14:10:00',
-    isActive: true
-  },
-]
 
 export default function SessionsPage() {
   const router = useRouter()
-  const [sessions, setSessions] = useState<Session[]>(mockSessions)
+  const [sessions, setSessions] = useState<Session[]>([])
   const [loading, setLoading] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const [filterRole, setFilterRole] = useState<string>('all')
@@ -110,15 +45,16 @@ export default function SessionsPage() {
 
   const loadSessions = async () => {
     setLoading(true)
-    // TODO: Здесь будет запрос к API
-    // const response = await apiClient.getSessions()
-    // setSessions(response.data)
-    
-    // Симуляция загрузки
-    setTimeout(() => {
-      setSessions(mockSessions)
+    try {
+      const response = await apiClient.getSessions()
+      if (response.success && response.data) {
+        setSessions(response.data.sessions)
+      }
+    } catch (error) {
+      console.error('Error loading sessions:', error)
+    } finally {
       setLoading(false)
-    }, 500)
+    }
   }
 
   useEffect(() => {
@@ -169,18 +105,21 @@ export default function SessionsPage() {
     })
   }
 
-  const handleDeauthorize = async (sessionId: string, userName: string) => {
+  const handleDeauthorize = async (sessionId: string, userName: string, userId: number, role: string) => {
     if (!confirm(`Вы уверены, что хотите деавторизовать ${userName}?`)) {
       return
     }
 
     try {
-      // TODO: Здесь будет запрос к API для деавторизации
-      // await apiClient.deauthorizeSession(sessionId)
+      const response = await apiClient.deauthorizeUser(userId, role)
       
-      // Пока просто удаляем из локального стейта
-      setSessions(sessions.filter(s => s.id !== sessionId))
-      alert('Пользователь успешно деавторизован')
+      if (response.success) {
+        // Удаляем сессию из локального стейта
+        setSessions(sessions.filter(s => s.userId !== userId))
+        alert('Пользователь успешно деавторизован')
+      } else {
+        alert('Ошибка при деавторизации пользователя')
+      }
     } catch (error) {
       console.error('Ошибка деавторизации:', error)
       alert('Ошибка при деавторизации пользователя')
@@ -325,9 +264,9 @@ export default function SessionsPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {filteredSessions.map((session) => (
+                    {                    filteredSessions.map((session) => (
                       <tr 
-                        key={session.id}
+                        key={session.userId}
                         onClick={() => router.push(`/admin/sessions/${session.userId}`)}
                         className="border-b border-gray-100 hover:bg-teal-50/50 transition-all duration-200 cursor-pointer group"
                       >
@@ -351,7 +290,7 @@ export default function SessionsPage() {
                         </td>
                         <td className="py-3 px-3 text-center" onClick={(e) => e.stopPropagation()}>
                           <button
-                            onClick={() => handleDeauthorize(session.id, session.fullName)}
+                            onClick={() => handleDeauthorize(session.id, session.fullName, session.userId, session.role)}
                             className="px-3 py-1.5 text-xs font-medium text-red-600 bg-red-50 hover:bg-red-100 rounded-lg transition-all duration-200 border border-red-200"
                           >
                             Деавторизовать

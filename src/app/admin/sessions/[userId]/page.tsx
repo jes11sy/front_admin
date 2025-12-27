@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
+import { apiClient } from '@/lib/api'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
@@ -21,7 +22,7 @@ import {
 } from 'lucide-react'
 
 interface LoginAttempt {
-  id: string
+  id: number
   timestamp: string
   ip: string
   device: string
@@ -31,7 +32,7 @@ interface LoginAttempt {
 }
 
 interface UserSession {
-  userId: string
+  userId: number
   fullName: string
   role: 'admin' | 'director' | 'callcenter' | 'master'
   currentSession: {
@@ -40,72 +41,14 @@ interface UserSession {
     ip: string
     loginDate: string
     lastActivity: string
-  }
+  } | null
   loginHistory: LoginAttempt[]
-}
-
-// Моковые данные
-const mockUserSession: UserSession = {
-  userId: '101',
-  fullName: 'Иванов Иван Иванович',
-  role: 'admin',
-  currentSession: {
-    device: 'Windows 10 - Chrome 120',
-    deviceType: 'desktop',
-    ip: '192.168.1.100',
-    loginDate: '2025-12-27T08:30:00',
-    lastActivity: '2025-12-27T14:25:00'
-  },
-  loginHistory: [
-    {
-      id: '1',
-      timestamp: '2025-12-27T08:30:00',
-      ip: '192.168.1.100',
-      device: 'Windows 10 - Chrome 120',
-      deviceType: 'desktop',
-      status: 'success'
-    },
-    {
-      id: '2',
-      timestamp: '2025-12-26T18:45:00',
-      ip: '192.168.1.100',
-      device: 'Windows 10 - Chrome 120',
-      deviceType: 'desktop',
-      status: 'success'
-    },
-    {
-      id: '3',
-      timestamp: '2025-12-26T15:20:00',
-      ip: '192.168.1.105',
-      device: 'iPhone 14 - Safari',
-      deviceType: 'mobile',
-      status: 'failed',
-      reason: 'Неверный пароль'
-    },
-    {
-      id: '4',
-      timestamp: '2025-12-25T09:15:00',
-      ip: '192.168.1.100',
-      device: 'Windows 10 - Chrome 120',
-      deviceType: 'desktop',
-      status: 'success'
-    },
-    {
-      id: '5',
-      timestamp: '2025-12-24T11:30:00',
-      ip: '10.0.0.50',
-      device: 'macOS - Safari 17',
-      deviceType: 'desktop',
-      status: 'failed',
-      reason: 'Подозрительная активность'
-    },
-  ]
 }
 
 export default function UserSessionDetailPage({ params }: { params: { userId: string } }) {
   const router = useRouter()
-  const [userSession, setUserSession] = useState<UserSession | null>(mockUserSession)
-  const [loading, setLoading] = useState(false)
+  const [userSession, setUserSession] = useState<UserSession | null>(null)
+  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     loadUserSession()
@@ -113,14 +56,16 @@ export default function UserSessionDetailPage({ params }: { params: { userId: st
 
   const loadUserSession = async () => {
     setLoading(true)
-    // TODO: Здесь будет запрос к API
-    // const response = await apiClient.getUserSession(params.userId)
-    // setUserSession(response.data)
-    
-    setTimeout(() => {
-      setUserSession(mockUserSession)
+    try {
+      const response = await apiClient.getUserSession(parseInt(params.userId, 10))
+      if (response.success && response.data) {
+        setUserSession(response.data)
+      }
+    } catch (error) {
+      console.error('Error loading user session:', error)
+    } finally {
       setLoading(false)
-    }, 500)
+    }
   }
 
   const handleDeauthorize = async () => {
@@ -131,11 +76,14 @@ export default function UserSessionDetailPage({ params }: { params: { userId: st
     }
 
     try {
-      // TODO: Здесь будет запрос к API
-      // await apiClient.deauthorizeUser(params.userId)
+      const response = await apiClient.deauthorizeUser(userSession.userId, userSession.role)
       
-      alert('Пользователь успешно деавторизован')
-      router.push('/admin/sessions')
+      if (response.success) {
+        alert('Пользователь успешно деавторизован')
+        router.push('/admin/sessions')
+      } else {
+        alert('Ошибка при деавторизации пользователя')
+      }
     } catch (error) {
       console.error('Ошибка деавторизации:', error)
       alert('Ошибка при деавторизации пользователя')

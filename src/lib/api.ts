@@ -760,6 +760,64 @@ class ApiClient {
       }
     }>('/stats/dashboard')
   }
+
+  // ==================== SESSIONS ====================
+
+  /**
+   * Получить список всех активных сессий (только для admin)
+   */
+  async getSessions() {
+    return this.request<{
+      sessions: Array<{
+        userId: number
+        fullName: string
+        role: string
+        device: string
+        deviceType: 'mobile' | 'tablet' | 'desktop'
+        ip: string
+        loginDate: string
+        lastActivity: string
+      }>
+      total: number
+    }>('/auth/admin/sessions')
+  }
+
+  /**
+   * Получить детальную информацию о сессиях пользователя (только для admin)
+   */
+  async getUserSession(userId: number) {
+    return this.request<{
+      userId: number
+      fullName: string
+      role: string
+      currentSession: {
+        device: string
+        deviceType: 'mobile' | 'tablet' | 'desktop'
+        ip: string
+        loginDate: string
+        lastActivity: string
+      } | null
+      loginHistory: Array<{
+        id: number
+        timestamp: string
+        ip: string
+        device: string
+        deviceType: 'mobile' | 'tablet' | 'desktop'
+        status: 'success' | 'failed'
+        reason?: string
+      }>
+    }>(`/auth/admin/sessions/${userId}`)
+  }
+
+  /**
+   * Деавторизовать пользователя (только для admin)
+   */
+  async deauthorizeUser(userId: number, role: string) {
+    return this.request<{ message: string }>('/auth/admin/force-logout', {
+      method: 'POST',
+      body: JSON.stringify({ userId, role }),
+    })
+  }
 }
 
 export const apiClient = new ApiClient(API_BASE_URL)
