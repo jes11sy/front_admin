@@ -856,6 +856,42 @@ class ApiClient {
       }
     }>(`/auth/audit/user-logs${queryString}`, { method: 'GET' })
   }
+  /**
+   * Получить логи ошибок (только для admin)
+   */
+  async getErrorLogs(params?: {
+    service?: string
+    errorType?: string
+    startDate?: string
+    endDate?: string
+    page?: string
+    limit?: string
+  }) {
+    const queryString = params ? '?' + new URLSearchParams(params).toString() : ''
+    return this.request<{
+      logs: Array<{
+        id: number
+        timestamp: string
+        service: string
+        errorType: string
+        errorMessage: string
+        stackTrace: string | null
+        userId: number | null
+        userRole: string | null
+        requestUrl: string | null
+        requestMethod: string | null
+        ip: string | null
+        userAgent: string | null
+        metadata: any
+      }>
+      pagination: {
+        page: number
+        limit: number
+        total: number
+        totalPages: number
+      }
+    }>(`/auth/admin/errors${queryString}`, { method: 'GET' })
+  }
 }
 
 export const apiClient = new ApiClient(API_BASE_URL)

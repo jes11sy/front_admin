@@ -28,6 +28,7 @@ import {
   Settings,
   Activity,
   FileCode,
+  AlertCircle,
 } from 'lucide-react'
 
 const navigationItems = [
@@ -61,6 +62,7 @@ const navigationItems = [
     dropdown: [
       { name: 'Активные сессии', href: '/admin/sessions', icon: Activity },
       { name: 'Логирование пользователей', href: '/admin/user-logs', icon: FileCode },
+      { name: 'Ошибки', href: '/admin/errors', icon: AlertCircle },
     ]
   },
 ]
