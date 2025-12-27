@@ -25,7 +25,9 @@ import {
   Wallet,
   DollarSign,
   TrendingUp,
-  Bug
+  Settings,
+  Activity,
+  FileCode,
 } from 'lucide-react'
 
 const navigationItems = [
@@ -40,7 +42,7 @@ const navigationItems = [
     ]
   },
   { name: 'Телефония', href: '/telephony', icon: PhoneCall },
-  { name: 'Авито', href: '/avito', icon: Tag },
+  // { name: 'Авито', href: '/avito', icon: Tag }, // Временно скрыто
   { name: 'Заказы', href: '/orders', icon: ShoppingCart },
   { name: 'Касса', href: '/cashbox', icon: Wallet },
   { name: 'Зарплата', href: '/salary', icon: DollarSign },
@@ -51,6 +53,14 @@ const navigationItems = [
       { name: 'Отчет по городам', href: '/reports/cities', icon: MapPin },
       { name: 'Отчет по мастерам', href: '/reports/masters', icon: UserCheck },
       { name: 'Отчет по РК', href: '/reports/campaigns', icon: TrendingUp },
+    ]
+  },
+  {
+    name: 'Администрирование',
+    icon: Settings,
+    dropdown: [
+      { name: 'Активные сессии', href: '/admin/sessions', icon: Activity },
+      { name: 'Логирование пользователей', href: '/admin/user-logs', icon: FileCode },
     ]
   },
 ]
@@ -199,16 +209,8 @@ export function Navigation() {
             })}
           </nav>
 
-          {/* Кнопка Debug и выхода */}
+          {/* Кнопка выхода */}
           <div className="px-4 pb-4 space-y-2">
-            <Link
-              href="/debug"
-              onClick={() => setSidebarOpen(false)}
-              className="flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium text-blue-600 hover:bg-blue-50 transition-all duration-200 w-full"
-            >
-              <Bug className="h-5 w-5" />
-              <span>Отладка</span>
-            </Link>
             <Link
               href="/logout"
               onClick={() => setSidebarOpen(false)}
