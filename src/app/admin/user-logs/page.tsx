@@ -155,14 +155,42 @@ export default function UserLogsPage() {
       const keys = Object.keys(changes)
       if (keys.length === 0) return `Заказ #${metadata.orderId || '?'} изменен`
       
-      // Показываем основные изменения
-      const mainChanges = []
-      if (changes.statusOrder) mainChanges.push(`статус: ${changes.statusOrder}`)
-      if (changes.masterId) mainChanges.push(`мастер: #${changes.masterId}`)
-      if (changes.address) mainChanges.push('адрес изменен')
+      // Показываем изменения в формате "поле: старое → новое"
+      const changesList = []
       
-      const summary = mainChanges.length > 0 ? mainChanges.join(', ') : `${keys.length} полей изменено`
-      return `Заказ #${metadata.orderId || '?'} изменен (${summary})`
+      if (changes.statusOrder) {
+        changesList.push(`статус: "${changes.statusOrder.old}" → "${changes.statusOrder.new}"`)
+      }
+      if (changes.masterId) {
+        changesList.push(`мастер: #${changes.masterId.old || 'нет'} → #${changes.masterId.new}`)
+      }
+      if (changes.address) {
+        changesList.push(`адрес изменен`)
+      }
+      if (changes.phone) {
+        changesList.push(`телефон: ${changes.phone.old} → ${changes.phone.new}`)
+      }
+      if (changes.clientName) {
+        changesList.push(`клиент: "${changes.clientName.old}" → "${changes.clientName.new}"`)
+      }
+      if (changes.dateMeeting) {
+        const oldDate = new Date(changes.dateMeeting.old).toLocaleString('ru-RU')
+        const newDate = new Date(changes.dateMeeting.new).toLocaleString('ru-RU')
+        changesList.push(`дата встречи: ${oldDate} → ${newDate}`)
+      }
+      if (changes.problem) {
+        changesList.push(`проблема изменена`)
+      }
+      
+      // Показываем остальные изменения
+      const otherKeys = Object.keys(changes).filter(k => 
+        !['statusOrder', 'masterId', 'address', 'phone', 'clientName', 'dateMeeting', 'problem'].includes(k)
+      )
+      if (otherKeys.length > 0) {
+        changesList.push(`+${otherKeys.length} других полей`)
+      }
+      
+      return `Заказ #${metadata.orderId || '?'}: ${changesList.join(', ')}`
     }
     
     // 💰 Касса
