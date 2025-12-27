@@ -94,6 +94,7 @@ export default function UserSessionDetailPage({ params }: { params: { userId: st
     const colors: Record<string, string> = {
       admin: 'bg-purple-100 text-purple-700 border-purple-300',
       director: 'bg-blue-100 text-blue-700 border-blue-300',
+      operator: 'bg-green-100 text-green-700 border-green-300',
       callcenter: 'bg-green-100 text-green-700 border-green-300',
       master: 'bg-orange-100 text-orange-700 border-orange-300',
     }
@@ -101,13 +102,14 @@ export default function UserSessionDetailPage({ params }: { params: { userId: st
     const labels: Record<string, string> = {
       admin: 'Администратор',
       director: 'Директор',
+      operator: 'Оператор',
       callcenter: 'Кол-центр',
       master: 'Мастер',
     }
 
     return (
-      <Badge className={`${colors[role]} border`}>
-        {labels[role]}
+      <Badge className={`${colors[role] || 'bg-gray-100 text-gray-700'} border`}>
+        {labels[role] || role}
       </Badge>
     )
   }
