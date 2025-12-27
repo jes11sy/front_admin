@@ -194,126 +194,141 @@ export default function SessionsPage() {
   })
 
   return (
-    <div className="min-h-screen p-4 md:p-8" style={{backgroundColor: '#114643'}}>
-      <div className="max-w-7xl mx-auto">
-        {/* Фильтры */}
-        <Card className="border-0 shadow-md mb-6">
-          <CardContent className="p-4">
-            <div className="flex flex-col md:flex-row gap-4">
-              <div className="flex-1 relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-                <Input
-                  placeholder="Поиск по ФИО, IP или устройству..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-10"
-                />
+    <div className="min-h-screen" style={{backgroundColor: '#114643'}}>
+      <div className="container mx-auto px-2 sm:px-4 py-8">
+        <div className="max-w-none mx-auto">
+          <div className="backdrop-blur-lg shadow-2xl rounded-2xl p-6 md:p-8 border bg-white/95 hover:bg-white transition-all duration-500 hover:shadow-3xl" style={{borderColor: '#114643'}}>
+            
+            {/* Фильтры */}
+            <div className="mb-6">
+              <h2 className="text-lg font-semibold text-gray-700 mb-4">Фильтры</h2>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                {/* Поиск */}
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">
+                    Поиск (ФИО, IP, устройство)
+                  </label>
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                    <input
+                      type="text"
+                      placeholder="Введите для поиска..."
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      className="w-full pl-10 pr-3 py-2 bg-white border-2 border-gray-200 rounded-lg text-gray-800 text-sm focus:outline-none focus:border-teal-500 transition-all duration-200 hover:border-gray-300 shadow-sm hover:shadow-md"
+                    />
+                  </div>
+                </div>
+
+                {/* Фильтр по роли */}
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">
+                    Роль
+                  </label>
+                  <select
+                    value={filterRole}
+                    onChange={(e) => setFilterRole(e.target.value)}
+                    className="w-full px-3 py-2 bg-white border-2 border-gray-200 rounded-lg text-gray-800 text-sm focus:outline-none focus:border-teal-500 transition-all duration-200 hover:border-gray-300 shadow-sm hover:shadow-md"
+                  >
+                    <option value="all">Все роли</option>
+                    <option value="admin">Администратор</option>
+                    <option value="director">Директор</option>
+                    <option value="callcenter">Кол-центр</option>
+                    <option value="master">Мастер</option>
+                  </select>
+                </div>
+
+                {/* Кнопка обновить */}
+                <div className="flex items-end">
+                  <button
+                    onClick={loadSessions}
+                    disabled={loading}
+                    className="w-full px-4 py-2 text-white rounded-lg transition-all duration-200 hover:shadow-md text-sm font-medium bg-gradient-to-r from-teal-600 to-emerald-600 hover:from-teal-700 hover:to-emerald-700 disabled:opacity-50"
+                  >
+                    <RefreshCw className={`h-4 w-4 inline mr-2 ${loading ? 'animate-spin' : ''}`} />
+                    Обновить
+                  </button>
+                </div>
               </div>
               
-              <select
-                value={filterRole}
-                onChange={(e) => setFilterRole(e.target.value)}
-                className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500"
-              >
-                <option value="all">Все роли</option>
-                <option value="admin">Администратор</option>
-                <option value="director">Директор</option>
-                <option value="callcenter">Кол-центр</option>
-                <option value="master">Мастер</option>
-              </select>
-
-              <Button
-                onClick={loadSessions}
-                disabled={loading}
-                className="bg-gradient-to-r from-teal-600 to-emerald-600 hover:from-teal-700 hover:to-emerald-700 text-white"
-              >
-                <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
-                Обновить
-              </Button>
+              <div className="mt-3 text-sm text-gray-600">
+                Всего сессий: <span className="font-semibold text-teal-600">{filteredSessions.length}</span>
+              </div>
             </div>
-          </CardContent>
-        </Card>
 
-        {/* Таблица сессий */}
-        <Card className="border-0 shadow-lg">
-          <CardHeader className="bg-gradient-to-r from-teal-600 to-emerald-600 text-white rounded-t-lg">
-            <CardTitle className="flex items-center gap-2">
-              <User className="h-5 w-5" />
-              Список активных сессий ({filteredSessions.length})
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="p-0">
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow className="bg-gray-50">
-                    <TableHead className="font-semibold">ФИО Сотрудника</TableHead>
-                    <TableHead className="font-semibold">Роль</TableHead>
-                    <TableHead className="font-semibold">Устройство</TableHead>
-                    <TableHead className="font-semibold">IP Адрес</TableHead>
-                    <TableHead className="font-semibold">Дата авторизации</TableHead>
-                    <TableHead className="font-semibold">Последний вход</TableHead>
-                    <TableHead className="font-semibold text-center">Действия</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {loading ? (
-                    <TableRow>
-                      <TableCell colSpan={7} className="text-center py-12">
-                        <div className="flex items-center justify-center gap-2 text-gray-500">
-                          <RefreshCw className="h-5 w-5 animate-spin" />
-                          Загрузка...
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ) : filteredSessions.length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={7} className="text-center py-12">
-                        <p className="text-gray-500">Активных сессий не найдено</p>
-                      </TableCell>
-                    </TableRow>
-                  ) : (
-                    filteredSessions.map((session) => (
-                      <TableRow 
-                        key={session.id} 
-                        className="hover:bg-gray-50 transition-colors cursor-pointer"
+            {/* Состояние загрузки */}
+            {loading && (
+              <div className="text-center py-8">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-teal-600 mx-auto mb-4"></div>
+                <p className="text-gray-700 font-medium">Загрузка сессий...</p>
+              </div>
+            )}
+
+            {/* Таблица */}
+            {!loading && filteredSessions.length > 0 && (
+              <div className="overflow-x-auto">
+                <table className="w-full border-collapse text-xs bg-white rounded-lg shadow-lg">
+                  <thead>
+                    <tr className="border-b-2 bg-gray-50" style={{borderColor: '#14b8a6'}}>
+                      <th className="text-left py-3 px-3 font-semibold text-gray-700">ФИО Сотрудника</th>
+                      <th className="text-left py-3 px-3 font-semibold text-gray-700">Роль</th>
+                      <th className="text-left py-3 px-3 font-semibold text-gray-700">Устройство</th>
+                      <th className="text-left py-3 px-3 font-semibold text-gray-700">IP Адрес</th>
+                      <th className="text-left py-3 px-3 font-semibold text-gray-700">Дата авторизации</th>
+                      <th className="text-left py-3 px-3 font-semibold text-gray-700">Последний вход</th>
+                      <th className="text-center py-3 px-3 font-semibold text-gray-700">Действия</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredSessions.map((session) => (
+                      <tr 
+                        key={session.id}
                         onClick={() => router.push(`/admin/sessions/${session.userId}`)}
+                        className="border-b border-gray-100 hover:bg-teal-50/50 transition-all duration-200 cursor-pointer group"
                       >
-                        <TableCell className="font-medium">
+                        <td className="py-3 px-3 font-medium text-gray-800 group-hover:text-teal-700 transition-colors">
                           {session.fullName}
-                        </TableCell>
-                        <TableCell>
+                        </td>
+                        <td className="py-3 px-3">
                           {getRoleBadge(session.role)}
-                        </TableCell>
-                        <TableCell>
-                          <span className="text-sm text-gray-600">{session.device}</span>
-                        </TableCell>
-                        <TableCell>
-                          <span className="font-mono text-sm">{session.ip}</span>
-                        </TableCell>
-                        <TableCell>
-                          <span className="text-sm">{formatDate(session.loginDate)}</span>
-                        </TableCell>
-                        <TableCell>
-                          <span className="text-sm">{formatDate(session.lastActivity)}</span>
-                        </TableCell>
-                        <TableCell className="text-center" onClick={(e) => e.stopPropagation()}>
-                          <Button
+                        </td>
+                        <td className="py-3 px-3 text-gray-600">
+                          {session.device}
+                        </td>
+                        <td className="py-3 px-3">
+                          <span className="font-mono text-gray-600">{session.ip}</span>
+                        </td>
+                        <td className="py-3 px-3 text-gray-600">
+                          {formatDate(session.loginDate)}
+                        </td>
+                        <td className="py-3 px-3 text-gray-600">
+                          {formatDate(session.lastActivity)}
+                        </td>
+                        <td className="py-3 px-3 text-center" onClick={(e) => e.stopPropagation()}>
+                          <button
                             onClick={() => handleDeauthorize(session.id, session.fullName)}
-                            variant="outline"
-                            className="text-red-600 hover:bg-red-50 hover:text-red-700 border-red-300"
+                            className="px-3 py-1.5 text-xs font-medium text-red-600 bg-red-50 hover:bg-red-100 rounded-lg transition-all duration-200 border border-red-200"
                           >
                             Деавторизовать
-                          </Button>
-                        </TableCell>
-                      </TableRow>
-                    ))
-                  )}
-                </TableBody>
-              </Table>
-            </div>
-          </CardContent>
-        </Card>
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+
+            {/* Пустое состояние */}
+            {!loading && filteredSessions.length === 0 && (
+              <div className="text-center py-12">
+                <User className="h-16 w-16 text-gray-300 mx-auto mb-4" />
+                <p className="text-gray-500 text-lg font-medium">Активных сессий не найдено</p>
+                <p className="text-gray-400 text-sm mt-2">Попробуйте изменить параметры фильтра</p>
+              </div>
+            )}
+          </div>
+        </div>
       </div>
     </div>
   )
