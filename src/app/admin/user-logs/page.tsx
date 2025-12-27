@@ -58,8 +58,8 @@ export default function UserLogsPage() {
   // Фильтры
   const [filterFullName, setFilterFullName] = useState('')
   const [filterLogin, setFilterLogin] = useState('')
-  const [filterRole, setFilterRole] = useState('')
-  const [filterEventType, setFilterEventType] = useState('')
+  const [filterRole, setFilterRole] = useState('all')
+  const [filterEventType, setFilterEventType] = useState('all')
   const [filterStartDate, setFilterStartDate] = useState('')
   const [filterEndDate, setFilterEndDate] = useState('')
   
@@ -74,8 +74,8 @@ export default function UserLogsPage() {
     try {
       const params: any = { page: page.toString(), limit: limit.toString() }
       
-      if (filterRole) params.role = filterRole
-      if (filterEventType) params.eventType = filterEventType
+      if (filterRole && filterRole !== 'all') params.role = filterRole
+      if (filterEventType && filterEventType !== 'all') params.eventType = filterEventType
       if (filterStartDate) params.startDate = new Date(filterStartDate).toISOString()
       if (filterEndDate) params.endDate = new Date(filterEndDate).toISOString()
       
@@ -287,7 +287,7 @@ export default function UserLogsPage() {
                       <SelectValue placeholder="Все" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">Все</SelectItem>
+                      <SelectItem value="all">Все</SelectItem>
                       <SelectItem value="admin">Администратор</SelectItem>
                       <SelectItem value="director">Директор</SelectItem>
                       <SelectItem value="master">Мастер</SelectItem>
@@ -303,7 +303,7 @@ export default function UserLogsPage() {
                       <SelectValue placeholder="Все" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">Все</SelectItem>
+                      <SelectItem value="all">Все</SelectItem>
                       <SelectItem value="auth.login.success">Вход</SelectItem>
                       <SelectItem value="auth.logout">Выход</SelectItem>
                       <SelectItem value="order.create">Создание заказа</SelectItem>
