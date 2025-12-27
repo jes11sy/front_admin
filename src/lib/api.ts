@@ -818,6 +818,44 @@ class ApiClient {
       body: JSON.stringify({ userId, role }),
     })
   }
+
+  // ==================== USER LOGS ====================
+
+  /**
+   * Получить логи активности пользователей (только для admin)
+   */
+  async getUserLogs(params?: {
+    userId?: string
+    role?: string
+    eventType?: string
+    startDate?: string
+    endDate?: string
+    page?: string
+    limit?: string
+  }) {
+    const queryString = params ? '?' + new URLSearchParams(params).toString() : ''
+    return this.request<{
+      logs: Array<{
+        id: number
+        timestamp: string
+        eventType: string
+        userId: number | null
+        role: string | null
+        login: string | null
+        fullName: string
+        ip: string
+        userAgent: string
+        success: boolean
+        metadata: any
+      }>
+      pagination: {
+        page: number
+        limit: number
+        total: number
+        totalPages: number
+      }
+    }>(`/auth/audit/user-logs${queryString}`, { method: 'GET' })
+  }
 }
 
 export const apiClient = new ApiClient(API_BASE_URL)
