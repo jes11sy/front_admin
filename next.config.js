@@ -3,6 +3,11 @@ const nextConfig = {
   // Standalone режим для Docker
   output: 'standalone',
   
+  // Генерируем уникальный build ID для cache busting
+  generateBuildId: async () => {
+    return `build-${Date.now()}`
+  },
+  
   reactStrictMode: true,
   
   // Отключаем TypeScript проверки во время сборки для Docker
