@@ -16,14 +16,14 @@
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "lucide-react": "^0.451.0",
-    "next": "15.5.5",
+    "next": "15.5.9",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "recharts": "^2.10.3",
     "sonner": "^1.7.1",
     "tailwind-merge": "^2.5.4",
     "tailwindcss-animate": "^1.0.7",
-    "xlsx": "^0.18.5",
+    "exceljs": "^4.4.0",
     "zustand": "^5.0.8"
   },
   "devDependencies": {
