@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useParams } from 'next/navigation'
 import { apiClient } from '@/lib/api'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
@@ -45,29 +45,51 @@ interface UserSession {
   loginHistory: LoginAttempt[]
 }
 
-export default function UserSessionDetailPage({ params }: { params: { userId: string } }) {
+export default function UserSessionDetailPage() {
   const router = useRouter()
+  const params = useParams()
   const [userSession, setUserSession] = useState<UserSession | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    loadUserSession()
+    if (params.userId) {
+      loadUserSession()
+    }
   }, [params.userId])
 
   const loadUserSession = async () => {
+    if (!params.userId) {
+      setError('ID пользователя не указан')
+      setLoading(false)
+      return
+    }
+
     setLoading(true)
     setError(null)
     try {
-      const response = await apiClient.getUserSession(parseInt(params.userId, 10))
+      const userId = parseInt(String(params.userId), 10)
+      if (isNaN(userId)) {
+        setError('Неверный ID пользователя')
+        setLoading(false)
+        return
+      }
+
+      const response = await apiClient.getUserSession(userId)
       if (response.success && response.data) {
         setUserSession(response.data)
       } else {
-        setError(response.error || response.message || 'Не удалось загрузить данные пользователя')
+        const errorMsg = response.error || response.message || 'Не удалось загрузить данные пользователя'
+        setError(errorMsg)
+        console.error('API response error:', response)
       }
     } catch (error: any) {
       console.error('Error loading user session:', error)
-      setError(error.message || 'Ошибка при загрузке данных пользователя')
+      // Извлекаем сообщение об ошибке из разных форматов ответа
+      const errorMessage = error?.response?.data?.message || 
+                          error?.message || 
+                          'Ошибка при загрузке данных пользователя. Возможно, пользователь не найден.'
+      setError(errorMessage)
     } finally {
       setLoading(false)
     }
