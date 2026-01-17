@@ -113,7 +113,7 @@ export default function CitiesReportPage() {
             city: item.city,
             completedOrders: item.orders.closedOrders,
             revenue: item.orders.totalClean, // Оборот = сумма чистыми
-            companyIncome: item.orders.totalClean - item.orders.totalMasterChange, // Доход компании = чистыми - сдача мастера
+            companyIncome: item.orders.totalMasterChange, // Доход компании = сумма сдачи мастера
             balance: item.cash.totalAmount // Касса
           }))
           setCitiesData(mappedData)
