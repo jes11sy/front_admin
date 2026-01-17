@@ -49,6 +49,7 @@ export default function UserSessionDetailPage({ params }: { params: { userId: st
   const router = useRouter()
   const [userSession, setUserSession] = useState<UserSession | null>(null)
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     loadUserSession()
@@ -56,13 +57,17 @@ export default function UserSessionDetailPage({ params }: { params: { userId: st
 
   const loadUserSession = async () => {
     setLoading(true)
+    setError(null)
     try {
       const response = await apiClient.getUserSession(parseInt(params.userId, 10))
       if (response.success && response.data) {
         setUserSession(response.data)
+      } else {
+        setError(response.error || response.message || 'Не удалось загрузить данные пользователя')
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error loading user session:', error)
+      setError(error.message || 'Ошибка при загрузке данных пользователя')
     } finally {
       setLoading(false)
     }
@@ -148,10 +153,18 @@ export default function UserSessionDetailPage({ params }: { params: { userId: st
     )
   }
 
-  if (!userSession) {
+  if (error || !userSession) {
     return (
       <div className="min-h-screen flex items-center justify-center" style={{backgroundColor: '#114643'}}>
-        <div className="text-white text-xl">Пользователь не найден</div>
+        <div className="text-center">
+          <div className="text-white text-xl mb-4">{error || 'Пользователь не найден'}</div>
+          <button
+            onClick={() => router.push('/admin/sessions')}
+            className="px-4 py-2 text-white bg-white/10 hover:bg-white/20 rounded-lg transition-all duration-200"
+          >
+            Вернуться к списку сессий
+          </button>
+        </div>
       </div>
     )
   }
@@ -192,30 +205,32 @@ export default function UserSessionDetailPage({ params }: { params: { userId: st
             </div>
 
             {/* Текущая сессия */}
-            <div className="mb-6">
-              <h2 className="text-lg font-semibold text-gray-700 mb-4 flex items-center gap-2">
-                <Shield className="h-5 w-5 text-green-600" />
-                Текущая активная сессия
-              </h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 bg-gray-50 p-4 rounded-lg border-2 border-gray-200">
-                <div>
-                  <p className="text-xs font-medium text-gray-600 mb-1">Устройство</p>
-                  <p className="text-sm font-medium text-gray-800">{userSession.currentSession.device}</p>
-                </div>
-                <div>
-                  <p className="text-xs font-medium text-gray-600 mb-1">IP Адрес</p>
-                  <p className="font-mono text-sm font-medium text-gray-800">{userSession.currentSession.ip}</p>
-                </div>
-                <div>
-                  <p className="text-xs font-medium text-gray-600 mb-1">Дата авторизации</p>
-                  <p className="text-sm font-medium text-gray-800">{formatDate(userSession.currentSession.loginDate)}</p>
-                </div>
-                <div>
-                  <p className="text-xs font-medium text-gray-600 mb-1">Последняя активность</p>
-                  <p className="text-sm font-medium text-gray-800">{formatDate(userSession.currentSession.lastActivity)}</p>
+            {userSession.currentSession && (
+              <div className="mb-6">
+                <h2 className="text-lg font-semibold text-gray-700 mb-4 flex items-center gap-2">
+                  <Shield className="h-5 w-5 text-green-600" />
+                  Текущая активная сессия
+                </h2>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 bg-gray-50 p-4 rounded-lg border-2 border-gray-200">
+                  <div>
+                    <p className="text-xs font-medium text-gray-600 mb-1">Устройство</p>
+                    <p className="text-sm font-medium text-gray-800">{userSession.currentSession.device}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs font-medium text-gray-600 mb-1">IP Адрес</p>
+                    <p className="font-mono text-sm font-medium text-gray-800">{userSession.currentSession.ip}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs font-medium text-gray-600 mb-1">Дата авторизации</p>
+                    <p className="text-sm font-medium text-gray-800">{formatDate(userSession.currentSession.loginDate)}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs font-medium text-gray-600 mb-1">Последняя активность</p>
+                    <p className="text-sm font-medium text-gray-800">{formatDate(userSession.currentSession.lastActivity)}</p>
+                  </div>
                 </div>
               </div>
-            </div>
+            )}
 
             {/* История авторизаций */}
             <div>
