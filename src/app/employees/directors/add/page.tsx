@@ -27,7 +27,7 @@ export default function AddDirectorPage() {
   const [showCityDropdown, setShowCityDropdown] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
 
-  const availableCities = ['Саратов', 'Энгельс', 'Ульяновск', 'Пенза', 'Тольятти']
+  const availableCities = ['Саратов', 'Энгельс', 'Ульяновск', 'Пенза', 'Тольятти', 'Омск']
 
   const filteredCities = availableCities.filter(city =>
     city.toLowerCase().includes(citySearch.toLowerCase()) &&
