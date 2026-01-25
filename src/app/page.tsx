@@ -45,6 +45,9 @@ const ALL_PURPOSES = [
   ...PAYMENT_PURPOSES.income.filter(p => !PAYMENT_PURPOSES.expense.find(e => e.value === p.value))
 ]
 
+// Все доступные города (хардкод из системы)
+const ALL_CITIES = ['Саратов', 'Энгельс', 'Ульяновск', 'Пенза', 'Тольятти', 'Омск', 'Ярославль']
+
 // Критерии для отчёта по кассе
 interface CashCriteria {
   showIncome: boolean
@@ -93,11 +96,18 @@ export default function ReportsPage() {
   const [purposeDropdownOpen, setPurposeDropdownOpen] = useState(false)
   const purposeDropdownRef = useRef<HTMLDivElement>(null)
   
+  // Выпадающий список городов
+  const [cityDropdownOpen, setCityDropdownOpen] = useState(false)
+  const cityDropdownRef = useRef<HTMLDivElement>(null)
+  
   // Закрытие dropdown при клике вне
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (purposeDropdownRef.current && !purposeDropdownRef.current.contains(event.target as Node)) {
         setPurposeDropdownOpen(false)
+      }
+      if (cityDropdownRef.current && !cityDropdownRef.current.contains(event.target as Node)) {
+        setCityDropdownOpen(false)
       }
     }
     
@@ -112,22 +122,10 @@ export default function ReportsPage() {
   
   // Загрузка списка городов
   useEffect(() => {
-    const loadCities = async () => {
-      setIsLoadingCities(true)
-      try {
-        const response = await apiClient.getFilterOptions()
-        if (response.success && response.data?.cities) {
-          setAvailableCities(response.data.cities)
-          setSelectedCities(response.data.cities)
-        }
-      } catch (error) {
-        logger.error('Failed to load cities', { error: String(error) })
-        toast.error('Не удалось загрузить список городов')
-      } finally {
-        setIsLoadingCities(false)
-      }
-    }
-    loadCities()
+    // Используем полный список городов из константы
+    setAvailableCities(ALL_CITIES)
+    setSelectedCities(ALL_CITIES)
+    setIsLoadingCities(false)
   }, [])
   
   // Обработка выбора города
@@ -174,41 +172,63 @@ export default function ReportsPage() {
       
       switch (selectedReport) {
         case 'cash':
-          // Используем новый API reports/cash/by-purpose
-          const cashResponse = await apiClient.getCashByPurpose({
-            startDate: dateFrom,
-            endDate: dateTo,
-            city: selectedCities.length === 1 ? selectedCities[0] : undefined,
-            purposes: filterByPurpose && selectedPurposes.length > 0 ? selectedPurposes : undefined
-          })
-          
-          if (cashResponse.success && cashResponse.data) {
-            // Фильтруем по выбранным городам (если выбраны не все)
-            let cashResults = cashResponse.data.cities || []
+          if (filterByPurpose) {
+            // Детальный отчёт с группировкой по назначениям платежа
+            const cashResponse = await apiClient.getCashByPurpose({
+              startDate: dateFrom,
+              endDate: dateTo,
+              city: selectedCities.length === 1 ? selectedCities[0] : undefined,
+              purposes: selectedPurposes.length > 0 ? selectedPurposes : undefined
+            })
             
-            if (selectedCities.length < availableCities.length && selectedCities.length > 1) {
-              cashResults = cashResults.filter((c: any) => selectedCities.includes(c.city))
+            if (cashResponse.success && cashResponse.data) {
+              let cashResults = cashResponse.data.cities || []
               
-              // Пересчитываем итоги
+              if (selectedCities.length < availableCities.length && selectedCities.length > 1) {
+                cashResults = cashResults.filter((c: any) => selectedCities.includes(c.city))
+                
+                const totals = cashResults.reduce((acc: any, curr: any) => ({
+                  income: acc.income + curr.totalIncome,
+                  expense: acc.expense + curr.totalExpense,
+                  balance: acc.balance + curr.balance
+                }), { income: 0, expense: 0, balance: 0 })
+                
+                data = { cities: cashResults, totals, groupByPurpose: true }
+              } else {
+                data = { cities: cashResults, totals: cashResponse.data.totals, groupByPurpose: true }
+              }
+            }
+          } else {
+            // Простой отчёт - итоги по городам
+            const cityReportResponse = await apiClient.getCitiesReport({
+              startDate: dateFrom,
+              endDate: dateTo,
+              city: selectedCities.length === 1 ? selectedCities[0] : undefined
+            })
+            
+            if (cityReportResponse.success && cityReportResponse.data) {
+              const cityStats = cityReportResponse.data
+              
+              const filteredStats = selectedCities.length === availableCities.length 
+                ? cityStats 
+                : cityStats.filter((c: any) => selectedCities.includes(c.city))
+              
+              const cashResults = filteredStats.map((city: any) => ({
+                city: city.city,
+                turnover: city.stats?.turnover || 0,
+                profit: city.stats?.profit || 0,
+                balance: city.cash?.totalAmount || 0,
+                ordersCount: city.stats?.totalOrders || 0
+              }))
+              
               const totals = cashResults.reduce((acc: any, curr: any) => ({
-                income: acc.income + curr.totalIncome,
-                expense: acc.expense + curr.totalExpense,
-                balance: acc.balance + curr.balance
-              }), { income: 0, expense: 0, balance: 0 })
+                turnover: acc.turnover + curr.turnover,
+                profit: acc.profit + curr.profit,
+                balance: acc.balance + curr.balance,
+                ordersCount: acc.ordersCount + curr.ordersCount
+              }), { turnover: 0, profit: 0, balance: 0, ordersCount: 0 })
               
-              data = { 
-                cities: cashResults, 
-                totals,
-                criteria: cashCriteria,
-                groupByPurpose: filterByPurpose
-              }
-            } else {
-              data = { 
-                cities: cashResults, 
-                totals: cashResponse.data.totals,
-                criteria: cashCriteria,
-                groupByPurpose: filterByPurpose
-              }
+              data = { cities: cashResults, totals, groupByPurpose: false }
             }
           }
           break
@@ -563,8 +583,93 @@ export default function ReportsPage() {
                   </div>
                 </div>
                 
+                {/* Таблица кассы */}
+                {reportData.type === 'cash' && !reportData.data.groupByPurpose && (
+                  <Table>
+                    <TableHeader className="bg-gray-50/50">
+                      <TableRow>
+                        <TableHead className="text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                          Город
+                        </TableHead>
+                        {cashCriteria.showIncome && (
+                          <TableHead className="text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                            Оборот
+                          </TableHead>
+                        )}
+                        {cashCriteria.showExpenses && (
+                          <TableHead className="text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                            Прибыль
+                          </TableHead>
+                        )}
+                        {cashCriteria.showBalance && (
+                          <TableHead className="text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                            Касса
+                          </TableHead>
+                        )}
+                        {cashCriteria.showTransactions && (
+                          <TableHead className="text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                            Заказов
+                          </TableHead>
+                        )}
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {reportData.data.cities.map((city: any) => (
+                        <TableRow key={city.city} className="hover:bg-gray-50">
+                          <TableCell className="font-medium text-gray-900">{city.city}</TableCell>
+                          {cashCriteria.showIncome && (
+                            <TableCell className="text-right font-medium text-green-600">
+                              {formatCurrency(city.turnover)}
+                            </TableCell>
+                          )}
+                          {cashCriteria.showExpenses && (
+                            <TableCell className="text-right font-medium text-teal-600">
+                              {formatCurrency(city.profit)}
+                            </TableCell>
+                          )}
+                          {cashCriteria.showBalance && (
+                            <TableCell className="text-right font-bold text-teal-700">
+                              {formatCurrency(city.balance)}
+                            </TableCell>
+                          )}
+                          {cashCriteria.showTransactions && (
+                            <TableCell className="text-right text-gray-600">
+                              {city.ordersCount}
+                            </TableCell>
+                          )}
+                        </TableRow>
+                      ))}
+                      
+                      {/* Итого */}
+                      <TableRow className="bg-gray-100 font-bold">
+                        <TableCell className="text-gray-900">ИТОГО</TableCell>
+                        {cashCriteria.showIncome && (
+                          <TableCell className="text-right text-green-700">
+                            {formatCurrency(reportData.data.totals.turnover)}
+                          </TableCell>
+                        )}
+                        {cashCriteria.showExpenses && (
+                          <TableCell className="text-right text-teal-700">
+                            {formatCurrency(reportData.data.totals.profit)}
+                          </TableCell>
+                        )}
+                        {cashCriteria.showBalance && (
+                          <TableCell className="text-right text-teal-800">
+                            {formatCurrency(reportData.data.totals.balance)}
+                          </TableCell>
+                        )}
+                        {cashCriteria.showTransactions && (
+                          <TableCell className="text-right text-gray-700">
+                            {reportData.data.totals.ordersCount}
+                          </TableCell>
+                        )}
+                      </TableRow>
+                    </TableBody>
+                  </Table>
+                )}
+                
                 {/* Таблица кассы с группировкой по назначениям */}
-                {reportData.type === 'cash' && (
+                {reportData.type === 'cash' && reportData.data.groupByPurpose && (
                   <Table>
                     <TableHeader className="bg-gray-50/50">
                       <TableRow>
@@ -600,7 +705,7 @@ export default function ReportsPage() {
                           </TableRow>
                           
                           {/* Строки назначений платежа */}
-                          {city.purposes.map((purpose: any) => (
+                          {city.purposes?.map((purpose: any) => (
                             <TableRow key={`${city.city}-${purpose.purpose}`} className="hover:bg-gray-50">
                               <TableCell className="pl-8 text-gray-700">
                                 {purpose.purpose}
