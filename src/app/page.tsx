@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback, useRef } from 'react'
+import React, { useState, useEffect, useCallback, useRef } from 'react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Button } from '@/components/ui/button'
@@ -9,9 +9,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { 
   Calendar,
   Download,
-  TrendingUp,
-  TrendingDown,
-  DollarSign,
   RefreshCw,
   Loader2,
   ChevronDown
@@ -177,41 +174,42 @@ export default function ReportsPage() {
       
       switch (selectedReport) {
         case 'cash':
-          // Используем reports API для получения данных по городам
-          const cityReportResponse = await apiClient.getCitiesReport({
+          // Используем новый API reports/cash/by-purpose
+          const cashResponse = await apiClient.getCashByPurpose({
             startDate: dateFrom,
             endDate: dateTo,
-            city: selectedCities.length === 1 ? selectedCities[0] : undefined
+            city: selectedCities.length === 1 ? selectedCities[0] : undefined,
+            purposes: filterByPurpose && selectedPurposes.length > 0 ? selectedPurposes : undefined
           })
           
-          if (cityReportResponse.success && cityReportResponse.data) {
-            const cityStats = cityReportResponse.data
+          if (cashResponse.success && cashResponse.data) {
+            // Фильтруем по выбранным городам (если выбраны не все)
+            let cashResults = cashResponse.data.cities || []
             
-            // Фильтруем по выбранным городам
-            const filteredStats = selectedCities.length === availableCities.length 
-              ? cityStats 
-              : cityStats.filter((c: any) => selectedCities.includes(c.city))
-            
-            const cashResults = filteredStats.map((city: any) => ({
-              city: city.city,
-              income: city.cash?.totalAmount > 0 ? city.cash.totalAmount : 0,
-              expenses: city.cash?.totalAmount < 0 ? Math.abs(city.cash.totalAmount) : 0,
-              balance: city.cash?.totalAmount || 0,
-              turnover: city.stats?.turnover || 0,
-              profit: city.stats?.profit || 0,
-              transactionsCount: city.stats?.totalOrders || 0
-            }))
-            
-            const totals = cashResults.reduce((acc: any, curr: any) => ({
-              income: acc.income + curr.income,
-              expenses: acc.expenses + curr.expenses,
-              balance: acc.balance + curr.balance,
-              turnover: acc.turnover + curr.turnover,
-              profit: acc.profit + curr.profit,
-              transactionsCount: acc.transactionsCount + curr.transactionsCount
-            }), { income: 0, expenses: 0, balance: 0, turnover: 0, profit: 0, transactionsCount: 0 })
-            
-            data = { cities: cashResults, totals, criteria: cashCriteria }
+            if (selectedCities.length < availableCities.length && selectedCities.length > 1) {
+              cashResults = cashResults.filter((c: any) => selectedCities.includes(c.city))
+              
+              // Пересчитываем итоги
+              const totals = cashResults.reduce((acc: any, curr: any) => ({
+                income: acc.income + curr.totalIncome,
+                expense: acc.expense + curr.totalExpense,
+                balance: acc.balance + curr.balance
+              }), { income: 0, expense: 0, balance: 0 })
+              
+              data = { 
+                cities: cashResults, 
+                totals,
+                criteria: cashCriteria,
+                groupByPurpose: filterByPurpose
+              }
+            } else {
+              data = { 
+                cities: cashResults, 
+                totals: cashResponse.data.totals,
+                criteria: cashCriteria,
+                groupByPurpose: filterByPurpose
+              }
+            }
           }
           break
           
@@ -538,122 +536,6 @@ export default function ReportsPage() {
         {/* Результат - показываем только после генерации */}
         {reportData && (
           <>
-            {/* Статистика для кассы */}
-            {reportData.type === 'cash' && reportData.data && (
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
-                {cashCriteria.showIncome && (
-                  <Card className="border-0 shadow-lg">
-                    <CardContent className="pt-6">
-                      <div className="flex items-center justify-between mb-2">
-                        <div className="text-sm text-gray-500">Оборот</div>
-                        <TrendingUp className="h-4 w-4 text-green-600" />
-                      </div>
-                      <div className="text-3xl font-bold text-green-600">
-                        {formatCurrency(reportData.data.totals.turnover)}
-                      </div>
-                      <p className="text-xs text-gray-500 mt-1">
-                        {formatDate(reportData.period.from)} — {formatDate(reportData.period.to)}
-                      </p>
-                    </CardContent>
-                  </Card>
-                )}
-                
-                {cashCriteria.showExpenses && (
-                  <Card className="border-0 shadow-lg">
-                    <CardContent className="pt-6">
-                      <div className="flex items-center justify-between mb-2">
-                        <div className="text-sm text-gray-500">Прибыль</div>
-                        <TrendingDown className="h-4 w-4 text-teal-600" />
-                      </div>
-                      <div className="text-3xl font-bold text-teal-600">
-                        {formatCurrency(reportData.data.totals.profit)}
-                      </div>
-                      <p className="text-xs text-gray-500 mt-1">
-                        {formatDate(reportData.period.from)} — {formatDate(reportData.period.to)}
-                      </p>
-                    </CardContent>
-                  </Card>
-                )}
-                
-                {cashCriteria.showBalance && (
-                  <Card className="border-0 shadow-lg bg-gradient-to-br from-teal-50 to-emerald-50">
-                    <CardContent className="pt-6">
-                      <div className="flex items-center justify-between mb-2">
-                        <div className="text-sm text-teal-700">Касса</div>
-                        <DollarSign className="h-4 w-4 text-teal-700" />
-                      </div>
-                      <div className="text-3xl font-bold text-teal-700">
-                        {formatCurrency(reportData.data.totals.balance)}
-                      </div>
-                      <p className="text-xs text-teal-600 mt-1">Баланс</p>
-                    </CardContent>
-                  </Card>
-                )}
-                
-                {cashCriteria.showTransactions && (
-                  <Card className="border-0 shadow-lg">
-                    <CardContent className="pt-6">
-                      <div className="text-sm text-gray-500 mb-2">Заказов</div>
-                      <div className="text-3xl font-bold text-gray-800">
-                        {reportData.data.totals.transactionsCount}
-                      </div>
-                      <p className="text-xs text-gray-500 mt-1">за период</p>
-                    </CardContent>
-                  </Card>
-                )}
-              </div>
-            )}
-            
-            {/* Статистика для заказов */}
-            {reportData.type === 'orders' && reportData.data && (
-              <div className="grid grid-cols-1 md:grid-cols-5 gap-6 mb-6">
-                <Card className="border-0 shadow-lg">
-                  <CardContent className="pt-6">
-                    <div className="text-sm text-gray-500 mb-2">Всего заказов</div>
-                    <div className="text-3xl font-bold text-gray-800">
-                      {reportData.data.totals.total}
-                    </div>
-                  </CardContent>
-                </Card>
-                
-                <Card className="border-0 shadow-lg">
-                  <CardContent className="pt-6">
-                    <div className="text-sm text-gray-500 mb-2">Выполнено</div>
-                    <div className="text-3xl font-bold text-green-600">
-                      {reportData.data.totals.completed}
-                    </div>
-                  </CardContent>
-                </Card>
-                
-                <Card className="border-0 shadow-lg">
-                  <CardContent className="pt-6">
-                    <div className="text-sm text-gray-500 mb-2">Отказы</div>
-                    <div className="text-3xl font-bold text-red-600">
-                      {reportData.data.totals.zeroOrders}
-                    </div>
-                  </CardContent>
-                </Card>
-                
-                <Card className="border-0 shadow-lg">
-                  <CardContent className="pt-6">
-                    <div className="text-sm text-gray-500 mb-2">Конверсия</div>
-                    <div className="text-3xl font-bold text-purple-600">
-                      {reportData.data.totals.conversion}%
-                    </div>
-                  </CardContent>
-                </Card>
-                
-                <Card className="border-0 shadow-lg bg-gradient-to-br from-teal-50 to-emerald-50">
-                  <CardContent className="pt-6">
-                    <div className="text-sm text-teal-700 mb-2">Средний чек</div>
-                    <div className="text-3xl font-bold text-teal-700">
-                      {formatCurrency(reportData.data.totals.avgCheck)}
-                    </div>
-                  </CardContent>
-                </Card>
-              </div>
-            )}
-            
             {/* Таблица */}
             <Card className="border-0 shadow-lg">
               <CardContent className="p-4">
@@ -681,86 +563,74 @@ export default function ReportsPage() {
                   </div>
                 </div>
                 
-                {/* Таблица кассы */}
+                {/* Таблица кассы с группировкой по назначениям */}
                 {reportData.type === 'cash' && (
                   <Table>
                     <TableHeader className="bg-gray-50/50">
                       <TableRow>
                         <TableHead className="text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                          Город
+                          Город / Назначение платежа
                         </TableHead>
-                        {cashCriteria.showIncome && (
-                          <TableHead className="text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                            Оборот
-                          </TableHead>
-                        )}
-                        {cashCriteria.showExpenses && (
-                          <TableHead className="text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                            Прибыль
-                          </TableHead>
-                        )}
-                        {cashCriteria.showBalance && (
-                          <TableHead className="text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                            Касса
-                          </TableHead>
-                        )}
-                        {cashCriteria.showTransactions && (
-                          <TableHead className="text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                            Заказов
-                          </TableHead>
-                        )}
+                        <TableHead className="text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                          Приход
+                        </TableHead>
+                        <TableHead className="text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                          Расход
+                        </TableHead>
+                        <TableHead className="text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                          Итого
+                        </TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       {reportData.data.cities.map((city: any) => (
-                        <TableRow key={city.city} className="hover:bg-gray-50">
-                          <TableCell className="font-medium text-gray-900">{city.city}</TableCell>
-                          {cashCriteria.showIncome && (
-                            <TableCell className="text-right font-medium text-green-600">
-                              {formatCurrency(city.turnover)}
+                        <React.Fragment key={city.city}>
+                          {/* Строка города */}
+                          <TableRow className="bg-gray-50">
+                            <TableCell className="font-bold text-gray-900">{city.city}</TableCell>
+                            <TableCell className="text-right font-bold text-green-600">
+                              {formatCurrency(city.totalIncome)}
                             </TableCell>
-                          )}
-                          {cashCriteria.showExpenses && (
-                            <TableCell className="text-right font-medium text-teal-600">
-                              {formatCurrency(city.profit)}
+                            <TableCell className="text-right font-bold text-red-600">
+                              {formatCurrency(city.totalExpense)}
                             </TableCell>
-                          )}
-                          {cashCriteria.showBalance && (
                             <TableCell className="text-right font-bold text-teal-700">
                               {formatCurrency(city.balance)}
                             </TableCell>
-                          )}
-                          {cashCriteria.showTransactions && (
-                            <TableCell className="text-right text-gray-600">
-                              {city.transactionsCount}
-                            </TableCell>
-                          )}
-                        </TableRow>
+                          </TableRow>
+                          
+                          {/* Строки назначений платежа */}
+                          {city.purposes.map((purpose: any) => (
+                            <TableRow key={`${city.city}-${purpose.purpose}`} className="hover:bg-gray-50">
+                              <TableCell className="pl-8 text-gray-700">
+                                {purpose.purpose}
+                              </TableCell>
+                              <TableCell className="text-right text-green-600">
+                                {purpose.income > 0 ? formatCurrency(purpose.income) : '-'}
+                              </TableCell>
+                              <TableCell className="text-right text-red-600">
+                                {purpose.expense > 0 ? formatCurrency(purpose.expense) : '-'}
+                              </TableCell>
+                              <TableCell className="text-right text-gray-700">
+                                {formatCurrency(purpose.balance)}
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </React.Fragment>
                       ))}
                       
                       {/* Итого */}
-                      <TableRow className="bg-gray-100 font-bold">
-                        <TableCell className="text-gray-900">ИТОГО</TableCell>
-                        {cashCriteria.showIncome && (
-                          <TableCell className="text-right text-green-700">
-                            {formatCurrency(reportData.data.totals.turnover)}
-                          </TableCell>
-                        )}
-                        {cashCriteria.showExpenses && (
-                          <TableCell className="text-right text-teal-700">
-                            {formatCurrency(reportData.data.totals.profit)}
-                          </TableCell>
-                        )}
-                        {cashCriteria.showBalance && (
-                          <TableCell className="text-right text-teal-800">
-                            {formatCurrency(reportData.data.totals.balance)}
-                          </TableCell>
-                        )}
-                        {cashCriteria.showTransactions && (
-                          <TableCell className="text-right text-gray-700">
-                            {reportData.data.totals.transactionsCount}
-                          </TableCell>
-                        )}
+                      <TableRow className="bg-teal-50 font-bold border-t-2 border-teal-500">
+                        <TableCell className="text-teal-900">ИТОГО</TableCell>
+                        <TableCell className="text-right text-green-700">
+                          {formatCurrency(reportData.data.totals.income)}
+                        </TableCell>
+                        <TableCell className="text-right text-red-700">
+                          {formatCurrency(reportData.data.totals.expense)}
+                        </TableCell>
+                        <TableCell className="text-right text-teal-800">
+                          {formatCurrency(reportData.data.totals.balance)}
+                        </TableCell>
                       </TableRow>
                     </TableBody>
                   </Table>

@@ -735,6 +735,27 @@ class ApiClient {
   }
 
   /**
+   * Отчёт по кассе с группировкой по городам и назначениям платежа
+   */
+  async getCashByPurpose(params?: {
+    startDate?: string
+    endDate?: string
+    city?: string
+    purposes?: string[]
+  }) {
+    const searchParams = new URLSearchParams()
+    if (params?.startDate) searchParams.append('startDate', params.startDate)
+    if (params?.endDate) searchParams.append('endDate', params.endDate)
+    if (params?.city) searchParams.append('city', params.city)
+    if (params?.purposes && params.purposes.length > 0) {
+      searchParams.append('purposes', params.purposes.join(','))
+    }
+
+    const query = searchParams.toString()
+    return this.request<any>(`/reports/cash/by-purpose${query ? `?${query}` : ''}`)
+  }
+
+  /**
    * Отчёт по заказам
    */
   async getOrdersReport(params?: {
