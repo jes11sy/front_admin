@@ -1,14 +1,16 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { Card } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
-import { Filter, ChevronDown, ChevronUp, AlertCircle } from 'lucide-react'
-import apiClient from '@/lib/api'
+import { ChevronDown, ChevronUp, AlertCircle } from 'lucide-react'
+import { apiClient } from '@/lib/api'
+import { toast } from '@/components/ui/toast'
+import { logger } from '@/lib/logger'
 
 interface ErrorLog {
   id: number
@@ -57,10 +59,10 @@ export default function ErrorLogsPage() {
   const [totalPages, setTotalPages] = useState(0)
   const limit = 50
 
-  const loadLogs = async () => {
+  const loadLogs = useCallback(async () => {
     setLoading(true)
     try {
-      const params: any = { page: page.toString(), limit: limit.toString() }
+      const params: Record<string, string> = { page: page.toString(), limit: limit.toString() }
       
       if (filterService && filterService !== 'all') params.service = filterService
       if (filterErrorType) params.errorType = filterErrorType
@@ -75,15 +77,16 @@ export default function ErrorLogsPage() {
         setTotalPages(response.data.pagination.totalPages)
       }
     } catch (error) {
-      console.error('[ErrorLogs] Error loading logs:', error)
+      logger.error('[ErrorLogs] Error loading logs', { error: String(error) })
+      toast.error('Ошибка загрузки логов')
     } finally {
       setLoading(false)
     }
-  }
+  }, [page, filterService, filterErrorType, filterStartDate, filterEndDate])
 
   useEffect(() => {
     loadLogs()
-  }, [page, filterService, filterStartDate, filterEndDate])
+  }, [loadLogs])
 
   const handleApplyFilters = () => {
     setPage(1)

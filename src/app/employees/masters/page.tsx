@@ -5,8 +5,10 @@ import { Plus, Edit, Trash2, Search, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import { apiClient } from '@/lib/api'
 import { toast } from 'sonner'
+import { logger } from '@/lib/logger'
 
 interface Master {
   id: number
@@ -21,6 +23,7 @@ interface Master {
 }
 
 export default function MastersPage() {
+  const router = useRouter()
   const [searchQuery, setSearchQuery] = useState('')
   const [masters, setMasters] = useState<Master[]>([])
   const [isLoading, setIsLoading] = useState(true)
@@ -40,7 +43,7 @@ export default function MastersPage() {
         toast.error('Не удалось загрузить список мастеров')
       }
     } catch (error) {
-      console.error('Error loading masters:', error)
+      logger.error('Error loading masters', { error: String(error) })
       toast.error('Ошибка при загрузке мастеров')
     } finally {
       setIsLoading(false)
@@ -80,7 +83,7 @@ export default function MastersPage() {
               </div>
               <Button 
                 className="bg-gradient-to-r from-teal-600 to-emerald-600 hover:from-teal-700 hover:to-emerald-700 text-white"
-                onClick={() => window.location.href = '/employees/masters/add'}
+                onClick={() => router.push('/employees/masters/add')}
                 disabled={isLoading}
               >
                 <Plus className="h-4 w-4 mr-2" />
@@ -144,7 +147,7 @@ export default function MastersPage() {
                                 variant="outline"
                                 size="sm"
                                 className="text-teal-600 hover:text-teal-700 hover:bg-teal-50"
-                                onClick={() => window.location.href = `/employees/masters/edit/${master.id}`}
+                                onClick={() => router.push(`/employees/masters/edit/${master.id}`)}
                               >
                                 <Edit className="h-4 w-4" />
                               </Button>

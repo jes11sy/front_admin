@@ -8,6 +8,33 @@ const DB_VERSION = 1
 const STORE_NAME = 'credentials'
 const CREDENTIALS_KEY = 'saved_credentials'
 const EXPIRY_DAYS = 90 // Срок хранения учетных данных
+const OPERATION_TIMEOUT = 3000 // Таймаут для операций IndexedDB (мс)
+
+/**
+ * Обёртка для Promise с таймаутом
+ */
+function withTimeout<T>(promise: Promise<T>, ms: number, errorMessage: string): Promise<T> {
+  return Promise.race([
+    promise,
+    new Promise<T>((_, reject) => 
+      setTimeout(() => reject(new Error(errorMessage)), ms)
+    )
+  ])
+}
+
+/**
+ * Проверяет доступность IndexedDB
+ */
+function isIndexedDBAvailable(): boolean {
+  try {
+    if (typeof window === 'undefined') return false
+    if (!window.indexedDB) return false
+    // Проверяем, что IndexedDB не заблокирована (приватный режим Safari)
+    return true
+  } catch {
+    return false
+  }
+}
 
 interface SavedCredentials {
   encryptedData: string
@@ -22,22 +49,33 @@ interface Credentials {
 }
 
 /**
- * Открывает или создает IndexedDB
+ * Открывает или создает IndexedDB с таймаутом
  */
 async function openDB(): Promise<IDBDatabase> {
-  return new Promise((resolve, reject) => {
-    const request = indexedDB.open(DB_NAME, DB_VERSION)
+  if (!isIndexedDBAvailable()) {
+    throw new Error('IndexedDB is not available')
+  }
 
-    request.onerror = () => reject(request.error)
-    request.onsuccess = () => resolve(request.result)
+  const openPromise = new Promise<IDBDatabase>((resolve, reject) => {
+    try {
+      const request = indexedDB.open(DB_NAME, DB_VERSION)
 
-    request.onupgradeneeded = (event) => {
-      const db = (event.target as IDBOpenDBRequest).result
-      if (!db.objectStoreNames.contains(STORE_NAME)) {
-        db.createObjectStore(STORE_NAME)
+      request.onerror = () => reject(request.error || new Error('Failed to open IndexedDB'))
+      request.onsuccess = () => resolve(request.result)
+      request.onblocked = () => reject(new Error('IndexedDB is blocked'))
+
+      request.onupgradeneeded = (event) => {
+        const db = (event.target as IDBOpenDBRequest).result
+        if (!db.objectStoreNames.contains(STORE_NAME)) {
+          db.createObjectStore(STORE_NAME)
+        }
       }
+    } catch (error) {
+      reject(error)
     }
   })
+
+  return withTimeout(openPromise, OPERATION_TIMEOUT, 'IndexedDB open timeout')
 }
 
 /**
@@ -148,32 +186,50 @@ async function decryptCredentials(saved: SavedCredentials): Promise<Credentials 
  * Сохраняет учетные данные в IndexedDB
  */
 export async function saveCredentials(login: string, password: string): Promise<void> {
+  if (!isIndexedDBAvailable()) {
+    console.log('[RememberMe] IndexedDB not available, skipping save')
+    return
+  }
+
   console.log('[RememberMe] Attempting to save credentials for:', login)
+  
   try {
     const encrypted = await encryptCredentials({ login, password })
     console.log('[RememberMe] Credentials encrypted successfully')
     const db = await openDB()
     console.log('[RememberMe] IndexedDB opened')
 
-    return new Promise((resolve, reject) => {
-      const transaction = db.transaction(STORE_NAME, 'readwrite')
-      const store = transaction.objectStore(STORE_NAME)
-      const request = store.put(encrypted, CREDENTIALS_KEY)
+    const savePromise = new Promise<void>((resolve, reject) => {
+      try {
+        const transaction = db.transaction(STORE_NAME, 'readwrite')
+        const store = transaction.objectStore(STORE_NAME)
+        const request = store.put(encrypted, CREDENTIALS_KEY)
 
-      request.onsuccess = () => {
-        console.log('[RememberMe] Credentials saved successfully to IndexedDB')
-        resolve()
-      }
-      request.onerror = () => {
-        console.error('[RememberMe] Error saving to IndexedDB:', request.error)
-        reject(request.error)
-      }
+        request.onsuccess = () => {
+          console.log('[RememberMe] Credentials saved successfully to IndexedDB')
+          db.close()
+          resolve()
+        }
+        request.onerror = () => {
+          console.error('[RememberMe] Error saving to IndexedDB:', request.error)
+          db.close()
+          reject(request.error)
+        }
 
-      transaction.oncomplete = () => db.close()
+        transaction.onerror = () => {
+          db.close()
+          reject(new Error('Transaction failed'))
+        }
+      } catch (txError) {
+        db.close()
+        reject(txError)
+      }
     })
+
+    await withTimeout(savePromise, OPERATION_TIMEOUT, 'Save credentials timeout')
   } catch (error) {
     console.error('[RememberMe] Failed to save credentials:', error)
-    throw error
+    // Не бросаем ошибку - пользователь просто не будет запомнен
   }
 }
 
@@ -181,40 +237,68 @@ export async function saveCredentials(login: string, password: string): Promise<
  * Получает сохраненные учетные данные из IndexedDB
  */
 export async function getSavedCredentials(): Promise<Credentials | null> {
+  // Быстрая проверка доступности IndexedDB
+  if (!isIndexedDBAvailable()) {
+    console.log('[RememberMe] IndexedDB not available')
+    return null
+  }
+
   console.log('[RememberMe] Attempting to get saved credentials...')
+  
   try {
     const db = await openDB()
     console.log('[RememberMe] IndexedDB opened for reading')
 
-    return new Promise((resolve, reject) => {
-      const transaction = db.transaction(STORE_NAME, 'readonly')
-      const store = transaction.objectStore(STORE_NAME)
-      const request = store.get(CREDENTIALS_KEY)
+    const getPromise = new Promise<Credentials | null>((resolve, reject) => {
+      try {
+        const transaction = db.transaction(STORE_NAME, 'readonly')
+        const store = transaction.objectStore(STORE_NAME)
+        const request = store.get(CREDENTIALS_KEY)
 
-      request.onsuccess = async () => {
-        const saved = request.result as SavedCredentials | undefined
-        if (!saved) {
-          console.log('[RememberMe] No saved credentials found in IndexedDB')
+        request.onsuccess = async () => {
+          try {
+            const saved = request.result as SavedCredentials | undefined
+            if (!saved) {
+              console.log('[RememberMe] No saved credentials found in IndexedDB')
+              db.close()
+              resolve(null)
+              return
+            }
+
+            console.log('[RememberMe] Found encrypted credentials, attempting to decrypt...')
+            const credentials = await decryptCredentials(saved)
+            db.close()
+            
+            if (credentials) {
+              console.log('[RememberMe] Credentials decrypted successfully for user:', credentials.login)
+            } else {
+              console.log('[RememberMe] Failed to decrypt credentials (expired or invalid)')
+            }
+            resolve(credentials)
+          } catch (decryptError) {
+            db.close()
+            console.error('[RememberMe] Decryption error:', decryptError)
+            resolve(null)
+          }
+        }
+        
+        request.onerror = () => {
+          db.close()
+          console.error('[RememberMe] Error reading from IndexedDB:', request.error)
+          resolve(null) // Не бросаем ошибку, просто возвращаем null
+        }
+
+        transaction.onerror = () => {
+          db.close()
           resolve(null)
-          return
         }
-
-        console.log('[RememberMe] Found encrypted credentials, attempting to decrypt...')
-        const credentials = await decryptCredentials(saved)
-        if (credentials) {
-          console.log('[RememberMe] Credentials decrypted successfully for user:', credentials.login)
-        } else {
-          console.log('[RememberMe] Failed to decrypt credentials (expired or invalid)')
-        }
-        resolve(credentials)
+      } catch (txError) {
+        db.close()
+        reject(txError)
       }
-      request.onerror = () => {
-        console.error('[RememberMe] Error reading from IndexedDB:', request.error)
-        reject(request.error)
-      }
-
-      transaction.oncomplete = () => db.close()
     })
+
+    return await withTimeout(getPromise, OPERATION_TIMEOUT, 'Get credentials timeout')
   } catch (error) {
     console.error('[RememberMe] Failed to get credentials:', error)
     return null
@@ -225,25 +309,43 @@ export async function getSavedCredentials(): Promise<Credentials | null> {
  * Удаляет сохраненные учетные данные
  */
 export async function clearSavedCredentials(): Promise<void> {
+  if (!isIndexedDBAvailable()) {
+    return
+  }
+
   try {
     const db = await openDB()
 
-    return new Promise((resolve, reject) => {
-      const transaction = db.transaction(STORE_NAME, 'readwrite')
-      const store = transaction.objectStore(STORE_NAME)
-      const request = store.delete(CREDENTIALS_KEY)
+    const clearPromise = new Promise<void>((resolve, reject) => {
+      try {
+        const transaction = db.transaction(STORE_NAME, 'readwrite')
+        const store = transaction.objectStore(STORE_NAME)
+        const request = store.delete(CREDENTIALS_KEY)
 
-      request.onsuccess = () => {
-        console.log('[RememberMe] Credentials cleared')
-        resolve()
+        request.onsuccess = () => {
+          console.log('[RememberMe] Credentials cleared')
+          db.close()
+          resolve()
+        }
+        request.onerror = () => {
+          db.close()
+          reject(request.error)
+        }
+
+        transaction.onerror = () => {
+          db.close()
+          reject(new Error('Transaction failed'))
+        }
+      } catch (txError) {
+        db.close()
+        reject(txError)
       }
-      request.onerror = () => reject(request.error)
-
-      transaction.oncomplete = () => db.close()
     })
+
+    await withTimeout(clearPromise, OPERATION_TIMEOUT, 'Clear credentials timeout')
   } catch (error) {
     console.error('[RememberMe] Failed to clear credentials:', error)
-    throw error
+    // Не бросаем ошибку - просто логируем
   }
 }
 

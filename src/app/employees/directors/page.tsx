@@ -5,8 +5,10 @@ import { Plus, Edit, Trash2, Search, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import { apiClient } from '@/lib/api'
 import { toast } from 'sonner'
+import { logger } from '@/lib/logger'
 
 interface Director {
   id: number
@@ -20,6 +22,7 @@ interface Director {
 }
 
 export default function DirectorsPage() {
+  const router = useRouter()
   const [searchQuery, setSearchQuery] = useState('')
   const [directors, setDirectors] = useState<Director[]>([])
   const [isLoading, setIsLoading] = useState(true)
@@ -39,7 +42,7 @@ export default function DirectorsPage() {
         toast.error('Не удалось загрузить список директоров')
       }
     } catch (error) {
-      console.error('Error loading directors:', error)
+      logger.error('Error loading directors', { error: String(error) })
       toast.error('Ошибка при загрузке директоров')
     } finally {
       setIsLoading(false)
@@ -79,7 +82,7 @@ export default function DirectorsPage() {
               </div>
               <Button 
                 className="bg-gradient-to-r from-teal-600 to-emerald-600 hover:from-teal-700 hover:to-emerald-700 text-white"
-                onClick={() => window.location.href = '/employees/directors/add'}
+                onClick={() => router.push('/employees/directors/add')}
                 disabled={isLoading}
               >
                 <Plus className="h-4 w-4 mr-2" />
@@ -133,7 +136,7 @@ export default function DirectorsPage() {
                                 variant="outline"
                                 size="sm"
                                 className="text-teal-600 hover:text-teal-700 hover:bg-teal-50"
-                                onClick={() => window.location.href = `/employees/directors/edit/${director.id}`}
+                                onClick={() => router.push(`/employees/directors/edit/${director.id}`)}
                               >
                                 <Edit className="h-4 w-4" />
                               </Button>

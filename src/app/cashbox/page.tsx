@@ -5,10 +5,11 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Search, Download, TrendingUp, TrendingDown, DollarSign, Calendar } from 'lucide-react'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { apiClient } from '@/lib/api'
 import { toast } from 'sonner'
+import { logger } from '@/lib/logger'
 
 interface CashTransaction {
   id: number
@@ -158,7 +159,7 @@ export default function CashboxPage() {
           balance: totalInc - totalExp
         })
       } catch (error) {
-        console.error('Error loading cash data:', error)
+        logger.error('Error loading cash data', { error: String(error) })
         const errorMessage = error instanceof Error ? error.message : 'Ошибка при загрузке данных'
         toast.error(errorMessage)
       } finally {
@@ -361,9 +362,9 @@ export default function CashboxPage() {
                       Загрузка...
                     </TableCell>
                   </TableRow>
-                ) : filteredCities.map((city, index) => (
+                ) : filteredCities.map((city) => (
                   <TableRow 
-                    key={index}
+                    key={city.city}
                     className="cursor-pointer hover:bg-gray-100"
                     onClick={() => router.push(`/cashbox/${encodeURIComponent(city.city)}`)}
                   >

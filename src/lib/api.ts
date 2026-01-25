@@ -1,3 +1,5 @@
+import { logger } from './logger'
+
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://api.lead-schem.ru/api/v1'
 
 interface ApiResponse<T> {
@@ -5,6 +7,20 @@ interface ApiResponse<T> {
   data?: T
   error?: string
   message?: string
+}
+
+/**
+ * Кастомная ошибка API с дополнительной информацией
+ */
+export class ApiError extends Error {
+  constructor(
+    message: string,
+    public statusCode?: number,
+    public endpoint?: string
+  ) {
+    super(message)
+    this.name = 'ApiError'
+  }
 }
 
 class ApiClient {
@@ -121,14 +137,40 @@ class ApiClient {
         throw new Error('Сервер вернул неожиданный формат ответа')
       }
 
-      const data = await response.json()
+      let data
+      try {
+        data = await response.json()
+      } catch (parseError) {
+        logger.error('Failed to parse JSON response', { 
+          endpoint, 
+          status: response.status,
+          error: String(parseError)
+        })
+        throw new ApiError('Ошибка обработки ответа сервера', response.status, endpoint)
+      }
 
       if (!response.ok) {
-        throw new Error(data.error || data.message || `Ошибка сервера: ${response.status}`)
+        const errorMessage = data.error || data.message || `Ошибка сервера: ${response.status}`
+        logger.error('API request failed', { 
+          endpoint, 
+          status: response.status, 
+          error: errorMessage 
+        })
+        throw new ApiError(errorMessage, response.status, endpoint)
       }
 
       return data
-    } catch (error: any) {
+    } catch (error) {
+      // Если уже ApiError - пробрасываем как есть
+      if (error instanceof ApiError) {
+        throw error
+      }
+      
+      // Логируем неизвестные ошибки
+      logger.error('Unexpected API error', { 
+        endpoint, 
+        error: error instanceof Error ? error.message : String(error) 
+      })
       throw error
     }
   }
@@ -172,7 +214,7 @@ class ApiClient {
           const { saveCredentials } = await import('./remember-me')
           await saveCredentials(login, password)
         } catch (error) {
-          console.error('[Login] Failed to save credentials:', error)
+          logger.error('[Login] Failed to save credentials', { error: String(error) })
           // Не прерываем процесс логина, если не удалось сохранить
         }
       }
@@ -191,7 +233,7 @@ class ApiClient {
       const { clearSavedCredentials } = await import('./remember-me')
       await clearSavedCredentials()
     } catch (error) {
-      console.error('[Logout] Failed to clear saved credentials:', error)
+      logger.error('[Logout] Failed to clear saved credentials', { error: String(error) })
     }
 
     // Отправляем запрос logout на сервер для очистки cookies

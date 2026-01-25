@@ -1,8 +1,9 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, useCallback } from 'react'
 import { Button } from '@/components/ui/button'
 import { toast } from 'sonner'
+import { logger } from '@/lib/logger'
 
 interface BrowserAuthModalProps {
   accountId: number
@@ -13,18 +14,24 @@ interface BrowserAuthModalProps {
 
 export function BrowserAuthModal({ accountId, proxyConfig, onSuccess, onClose }: BrowserAuthModalProps) {
   const iframeRef = useRef<HTMLIFrameElement>(null)
+  const checkIntervalRef = useRef<NodeJS.Timeout | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [wsUrl, setWsUrl] = useState<string>('')
   const [isAuthorized, setIsAuthorized] = useState(false)
-  const [checkInterval, setCheckInterval] = useState<NodeJS.Timeout | null>(null)
 
+  // Очистка интервала при размонтировании
   useEffect(() => {
-    startBrowser()
     return () => {
-      if (checkInterval) {
-        clearInterval(checkInterval)
+      if (checkIntervalRef.current) {
+        clearInterval(checkIntervalRef.current)
+        checkIntervalRef.current = null
       }
     }
+  }, [])
+
+  // Запуск браузера при монтировании
+  useEffect(() => {
+    startBrowser()
   }, [])
 
   const startBrowser = async () => {
@@ -42,14 +49,13 @@ export function BrowserAuthModal({ accountId, proxyConfig, onSuccess, onClose }:
 
       const data = await response.json()
       
-      console.log('Browser start response:', data)
+      logger.info('Browser start response', { success: data.success })
       
       if (data.success && data.data.publicWsUrl) {
         setWsUrl(data.data.publicWsUrl)
         
         // Начинаем проверять статус авторизации
-        const interval = setInterval(() => checkAuthStatus(), 2000)
-        setCheckInterval(interval)
+        checkIntervalRef.current = setInterval(() => checkAuthStatus(), 2000)
         
         toast.success('Браузер запущен! Войдите в аккаунт Avito')
       } else {
@@ -57,7 +63,7 @@ export function BrowserAuthModal({ accountId, proxyConfig, onSuccess, onClose }:
         onClose()
       }
     } catch (error) {
-      console.error('Start browser error:', error)
+      logger.error('Start browser error', { error: String(error) })
       toast.error('Ошибка запуска браузера')
       onClose()
     } finally {
@@ -74,12 +80,13 @@ export function BrowserAuthModal({ accountId, proxyConfig, onSuccess, onClose }:
 
       if (data.success && data.data.isAuthorized) {
         setIsAuthorized(true)
-        if (checkInterval) {
-          clearInterval(checkInterval)
+        if (checkIntervalRef.current) {
+          clearInterval(checkIntervalRef.current)
+          checkIntervalRef.current = null
         }
       }
     } catch (error) {
-      console.error('Check status error:', error)
+      logger.error('Check status error', { error: String(error) })
     }
   }
 
@@ -104,18 +111,24 @@ export function BrowserAuthModal({ accountId, proxyConfig, onSuccess, onClose }:
         toast.error(data.error || 'Не удалось получить cookies')
       }
     } catch (error) {
-      console.error('Get cookies error:', error)
+      logger.error('Get cookies error', { error: String(error) })
       toast.error('Ошибка получения cookies')
     }
   }
 
   const handleCancel = async () => {
+    // Очищаем интервал перед закрытием
+    if (checkIntervalRef.current) {
+      clearInterval(checkIntervalRef.current)
+      checkIntervalRef.current = null
+    }
+    
     try {
       const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'https://api.lead-schem.ru/api/v1'
       const API_URL = baseUrl.endsWith('/api/v1') ? baseUrl : `${baseUrl}/api/v1`
       await fetch(`${API_URL}/browser/${accountId}`, { method: 'DELETE' })
     } catch (error) {
-      console.error('Close browser error:', error)
+      logger.error('Close browser error', { error: String(error) })
     }
     onClose()
   }

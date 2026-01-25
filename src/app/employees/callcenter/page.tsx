@@ -5,8 +5,10 @@ import { Plus, Edit, Trash2, Search, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import { apiClient } from '@/lib/api'
 import { toast } from 'sonner'
+import { logger } from '@/lib/logger'
 
 interface Operator {
   id: number
@@ -30,6 +32,7 @@ interface OperatorsResponse {
 }
 
 export default function CallCenterPage() {
+  const router = useRouter()
   const [searchQuery, setSearchQuery] = useState('')
   const [operators, setOperators] = useState<Operator[]>([])
   const [isLoading, setIsLoading] = useState(true)
@@ -49,7 +52,7 @@ export default function CallCenterPage() {
         toast.error('Не удалось загрузить список операторов')
       }
     } catch (error) {
-      console.error('Error loading operators:', error)
+      logger.error('Error loading operators', { error: String(error) })
       toast.error('Ошибка при загрузке операторов')
     } finally {
       setIsLoading(false)
@@ -84,7 +87,7 @@ export default function CallCenterPage() {
         toast.error('Не удалось удалить сотрудника')
       }
     } catch (error) {
-      console.error('Error deleting employee:', error)
+      logger.error('Error deleting employee', { error: String(error) })
       toast.error('Ошибка при удалении сотрудника')
     }
   }
@@ -108,7 +111,7 @@ export default function CallCenterPage() {
               </div>
               <Button 
                 className="bg-gradient-to-r from-teal-600 to-emerald-600 hover:from-teal-700 hover:to-emerald-700 text-white"
-                onClick={() => window.location.href = '/employees/callcenter/add'}
+                onClick={() => router.push('/employees/callcenter/add')}
                 disabled={isLoading}
               >
                 <Plus className="h-4 w-4 mr-2" />
@@ -160,7 +163,7 @@ export default function CallCenterPage() {
                                 variant="outline"
                                 size="sm"
                                 className="text-teal-600 hover:text-teal-700 hover:bg-teal-50"
-                                onClick={() => window.location.href = `/employees/callcenter/edit/${operator.id}`}
+                                onClick={() => router.push(`/employees/callcenter/edit/${operator.id}`)}
                               >
                                 <Edit className="h-4 w-4" />
                               </Button>

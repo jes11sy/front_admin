@@ -9,16 +9,14 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { toast } from '@/components/ui/toast'
+import { logger } from '@/lib/logger'
 import { 
   Monitor, 
   Smartphone, 
   Tablet, 
   Search,
-  RefreshCw,
   User,
-  Clock,
-  MapPin,
-  Shield,
   ChevronDown,
   ChevronUp,
   X
@@ -44,27 +42,26 @@ export default function SessionsPage() {
   const [showFilters, setShowFilters] = useState(false)
 
   const loadSessions = async () => {
-    console.log('[Sessions] Starting to load sessions...')
+    logger.info('[Sessions] Loading sessions...')
     setLoading(true)
     try {
-      console.log('[Sessions] Calling apiClient.getSessions()...')
       const response = await apiClient.getSessions()
-      console.log('[Sessions] Response:', response)
       if (response.success && response.data) {
-        console.log('[Sessions] Sessions loaded:', response.data.sessions.length)
+        logger.info('[Sessions] Sessions loaded', { count: response.data.sessions.length })
         setSessions(response.data.sessions)
       } else {
-        console.error('[Sessions] Response not successful:', response)
+        logger.error('[Sessions] Response not successful', { response })
+        toast.error('Не удалось загрузить сессии')
       }
     } catch (error) {
-      console.error('[Sessions] Error loading sessions:', error)
+      logger.error('[Sessions] Error loading sessions', { error: String(error) })
+      toast.error('Ошибка загрузки сессий')
     } finally {
       setLoading(false)
     }
   }
 
   useEffect(() => {
-    console.log('[Sessions] useEffect triggered, calling loadSessions()')
     loadSessions()
   }, [])
 
@@ -125,13 +122,13 @@ export default function SessionsPage() {
       if (response.success) {
         // Удаляем сессию из локального стейта
         setSessions(sessions.filter(s => s.userId !== userId))
-        alert('Пользователь успешно деавторизован')
+        toast.success('Пользователь успешно деавторизован')
       } else {
-        alert('Ошибка при деавторизации пользователя')
+        toast.error('Ошибка при деавторизации пользователя')
       }
     } catch (error) {
-      console.error('Ошибка деавторизации:', error)
-      alert('Ошибка при деавторизации пользователя')
+      logger.error('Ошибка деавторизации', { error: String(error) })
+      toast.error('Ошибка при деавторизации пользователя')
     }
   }
 
@@ -273,7 +270,7 @@ export default function SessionsPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {                    filteredSessions.map((session) => (
+                    {filteredSessions.map((session) => (
                       <tr 
                         key={session.userId}
                         onClick={() => router.push(`/admin/sessions/${session.userId}`)}

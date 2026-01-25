@@ -4,6 +4,7 @@ import { useRouter, useParams } from 'next/navigation'
 import { useState, useEffect } from 'react'
 import { apiClient } from '@/lib/api'
 import { toast } from 'sonner'
+import { logger } from '@/lib/logger'
 
 interface Order {
   id: number
@@ -66,7 +67,7 @@ export default function OrderDetailPage() {
           toast.error('Заказ не найден')
         }
       } catch (err) {
-        console.error('Error loading order:', err)
+        logger.error('Error loading order', { error: String(err) })
         const errorMessage = err instanceof Error ? err.message : 'Ошибка при загрузке заказа'
         setError(errorMessage)
         toast.error(errorMessage)
@@ -333,7 +334,7 @@ export default function OrderDetailPage() {
                             <div className="space-y-2">
                               {order.bsoDoc.map((doc, index) => (
                                 <button
-                                  key={index}
+                                  key={`bso-${doc}-${index}`}
                                   onClick={() => window.open(doc, '_blank')}
                                   className="w-full text-left text-teal-600 hover:text-teal-700 bg-gray-50 rounded-lg px-4 py-2 border border-gray-200 hover:border-teal-300 transition-all"
                                 >
@@ -349,7 +350,7 @@ export default function OrderDetailPage() {
                             <div className="space-y-2">
                               {order.expenditureDoc.map((doc, index) => (
                                 <button
-                                  key={index}
+                                  key={`exp-${doc}-${index}`}
                                   onClick={() => window.open(doc, '_blank')}
                                   className="w-full text-left text-teal-600 hover:text-teal-700 bg-gray-50 rounded-lg px-4 py-2 border border-gray-200 hover:border-teal-300 transition-all"
                                 >

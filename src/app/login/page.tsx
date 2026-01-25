@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, Suspense } from 'react'
+import { useState, useEffect, Suspense, useCallback } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Image from 'next/image'
 import { Button } from "@/components/ui/button"
@@ -33,72 +33,11 @@ function LoginForm() {
   const MAX_ATTEMPTS = 10 // Максимум попыток
   const BLOCK_DURATION = 5 * 60 * 1000 // 5 минут в миллисекундах
   
-  // Проверяем автовход при загрузке страницы логина
-  useEffect(() => {
-    const tryAutoLogin = async () => {
-      try {
-        const { getSavedCredentials } = await import('@/lib/remember-me')
-        const credentials = await getSavedCredentials()
-        
-        if (credentials) {
-          console.log('[Login] Found saved credentials, attempting auto-login...')
-          if (typeof window !== 'undefined') {
-            localStorage.setItem('auto_login_debug', 'Попытка автовхода на странице логина')
-            localStorage.setItem('auto_login_last_attempt', new Date().toISOString())
-          }
-          
-          setIsLoading(true)
-          const loginResponse = await apiClient.login(
-            credentials.login,
-            credentials.password,
-            true
-          )
-          
-          if (loginResponse.success && loginResponse.data?.user) {
-            setUser(loginResponse.data.user)
-            if (typeof window !== 'undefined') {
-              localStorage.setItem('auto_login_debug', 'Автовход успешен!')
-              localStorage.setItem('auto_login_last_success', new Date().toISOString())
-            }
-            // Сразу редиректим БЕЗ изменения isCheckingAutoLogin чтобы не было мигания
-            router.replace(getSafeRedirectUrl())
-            return
-          } else {
-            console.warn('[Login] Auto-login failed')
-            if (typeof window !== 'undefined') {
-              localStorage.setItem('auto_login_debug', 'Автовход не удался: неверные данные')
-            }
-            // Только если автовход не удался - показываем форму
-            setIsLoading(false)
-            setIsCheckingAutoLogin(false)
-          }
-        } else {
-          console.log('[Login] No saved credentials found')
-          if (typeof window !== 'undefined') {
-            localStorage.setItem('auto_login_debug', 'Нет сохраненных данных для автовхода')
-          }
-          // Нет сохраненных данных - показываем форму
-          setIsCheckingAutoLogin(false)
-        }
-      } catch (error) {
-        console.error('[Login] Auto-login error:', error)
-        if (typeof window !== 'undefined') {
-          localStorage.setItem('auto_login_debug', 'Ошибка автовхода: ' + String(error))
-        }
-        // Ошибка - показываем форму
-        setIsLoading(false)
-        setIsCheckingAutoLogin(false)
-      }
-    }
-    
-    tryAutoLogin()
-  }, [router, setUser])
-  
   /**
    * Безопасная валидация redirect URL
    * Защита от Open Redirect атаки
    */
-  const getSafeRedirectUrl = (): string => {
+  const getSafeRedirectUrl = useCallback((): string => {
     const redirect = searchParams.get('redirect')
     
     // Если redirect не указан - дефолтная страница
@@ -132,8 +71,101 @@ function LoginForm() {
     
     // Валидация пройдена - можно редиректить
     return redirect
-  }
+  }, [searchParams])
 
+  // Проверяем автовход при загрузке страницы логина
+  useEffect(() => {
+    let isMounted = true
+    let timeoutId: NodeJS.Timeout | null = null
+    
+    const tryAutoLogin = async () => {
+      // Таймаут безопасности - если проверка зависла, показываем форму
+      timeoutId = setTimeout(() => {
+        if (isMounted) {
+          logger.warn('[Login] Auto-login timeout')
+          if (typeof window !== 'undefined') {
+            localStorage.setItem('auto_login_debug', 'Таймаут автовхода')
+          }
+          setIsLoading(false)
+          setIsCheckingAutoLogin(false)
+        }
+      }, 5000) // 5 секунд таймаут
+      
+      try {
+        const { getSavedCredentials } = await import('@/lib/remember-me')
+        const credentials = await getSavedCredentials()
+        
+        if (!isMounted) return
+        
+        if (credentials) {
+          logger.info('[Login] Found saved credentials, attempting auto-login...')
+          
+          setIsLoading(true)
+          
+          try {
+            const loginResponse = await apiClient.login(
+              credentials.login,
+              credentials.password,
+              true
+            )
+            
+            if (!isMounted) return
+            
+            if (loginResponse.success && loginResponse.data?.user) {
+              if (timeoutId) clearTimeout(timeoutId)
+              setUser(loginResponse.data.user)
+              if (typeof window !== 'undefined') {
+                localStorage.setItem('auto_login_debug', 'Автовход успешен!')
+              }
+              router.replace(getSafeRedirectUrl())
+              return
+            }
+          } catch (loginError) {
+            logger.error('[Login] Login request failed', { error: String(loginError) })
+          }
+          
+          // Логин не удался
+          if (isMounted) {
+            logger.warn('[Login] Auto-login failed')
+            if (typeof window !== 'undefined') {
+              localStorage.setItem('auto_login_debug', 'Автовход не удался')
+            }
+            if (timeoutId) clearTimeout(timeoutId)
+            setIsLoading(false)
+            setIsCheckingAutoLogin(false)
+          }
+        } else {
+          // Нет сохраненных данных - показываем форму
+          if (isMounted) {
+            logger.info('[Login] No saved credentials found')
+            if (typeof window !== 'undefined') {
+              localStorage.setItem('auto_login_debug', 'Нет сохраненных данных')
+            }
+            if (timeoutId) clearTimeout(timeoutId)
+            setIsCheckingAutoLogin(false)
+          }
+        }
+      } catch (error) {
+        if (isMounted) {
+          logger.error('[Login] Auto-login error', { error: String(error) })
+          if (typeof window !== 'undefined') {
+            localStorage.setItem('auto_login_debug', 'Ошибка: ' + String(error))
+          }
+          if (timeoutId) clearTimeout(timeoutId)
+          setIsLoading(false)
+          setIsCheckingAutoLogin(false)
+        }
+      }
+    }
+    
+    tryAutoLogin()
+    
+    return () => {
+      isMounted = false
+      if (timeoutId) clearTimeout(timeoutId)
+    }
+  }, [router, setUser, getSafeRedirectUrl])
+  
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     

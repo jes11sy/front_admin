@@ -5,8 +5,10 @@ import { Star, Wifi, Shield, Zap, Plus, Clock, Download } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { useState, useEffect, useCallback } from 'react'
+import { useRouter } from 'next/navigation'
 import { apiClient } from '@/lib/api'
 import { toast } from 'sonner'
+import { logger } from '@/lib/logger'
 
 interface AvitoAccount {
   id: number
@@ -34,6 +36,7 @@ interface AvitoStats {
 }
 
 export default function AvitoPage() {
+  const router = useRouter()
   const [stats, setStats] = useState<AvitoStats>({
     accountsCount: 0,
     adsCount: 0,
@@ -47,7 +50,7 @@ export default function AvitoPage() {
   const [accounts, setAccounts] = useState<AvitoAccount[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [isCheckingConnections, setIsCheckingConnections] = useState(false)
-  const [, setCurrentTime] = useState(Date.now())
+  const [lastCheckTime, setLastCheckTime] = useState(Date.now())
 
   // Константа для интервала проверки1 (12 часов в миллисекундах)
   const CHECK_INTERVAL = 12 * 60 * 60 * 1000
@@ -109,7 +112,7 @@ export default function AvitoPage() {
       
       // Сохраняем время последней проверки
       localStorage.setItem('lastAvitoCheck', Date.now().toString())
-      setCurrentTime(Date.now()) // Обновляем UI
+      setLastCheckTime(Date.now()) // Обновляем UI
       
       if (hasErrors) {
         toast.warning('Проверка завершена с ошибками')
@@ -143,12 +146,12 @@ export default function AvitoPage() {
     }, CHECK_INTERVAL)
 
     return () => clearInterval(intervalId)
-  }, [checkAllConnectionsAndProxies, CHECK_INTERVAL])
+  }, [checkAllConnectionsAndProxies])
 
   // Обновление времени для отображения каждую минуту
   useEffect(() => {
     const timeUpdateInterval = setInterval(() => {
-      setCurrentTime(Date.now())
+      setLastCheckTime(Date.now())
     }, 60000) // Обновляем каждую минуту
 
     return () => clearInterval(timeUpdateInterval)
@@ -375,9 +378,9 @@ export default function AvitoPage() {
                   Следующая проверка: {getNextCheckTime()}
                 </div>
               </div>
-              <Button 
+                <Button 
                 className="bg-gradient-to-r from-teal-600 to-emerald-600 hover:from-teal-700 hover:to-emerald-700 text-white"
-                onClick={() => window.location.href = '/avito/add'}
+                onClick={() => router.push('/avito/add')}
               >
                 <Plus className="h-4 w-4 mr-2" />
                 Добавить аккаунт
@@ -402,7 +405,7 @@ export default function AvitoPage() {
                   <TableRow 
                     key={account.id}
                     className="cursor-pointer hover:bg-gray-100"
-                    onClick={() => window.location.href = `/avito/edit/${account.id}`}
+                    onClick={() => router.push(`/avito/edit/${account.id}`)}
                   >
                     <TableCell className="text-gray-500">#{account.id}</TableCell>
                     <TableCell className="font-medium text-gray-900">{account.name}</TableCell>

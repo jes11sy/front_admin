@@ -8,9 +8,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Label } from '@/components/ui/label'
 import { Search, ChevronDown, ChevronUp, X } from 'lucide-react'
 import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import { apiClient } from '@/lib/api'
 import { toast } from 'sonner'
 import { OptimizedPagination } from '@/components/ui/optimized-pagination'
+import { logger } from '@/lib/logger'
 
 interface Order {
   id: number
@@ -33,6 +35,7 @@ interface Order {
 }
 
 export default function OrdersPage() {
+  const router = useRouter()
   const [searchQuery, setSearchQuery] = useState('')
   const [statusFilter, setStatusFilter] = useState('all')
   const [masterFilter, setMasterFilter] = useState('')
@@ -131,7 +134,7 @@ export default function OrdersPage() {
           })
         }
       } catch (error) {
-        console.error('Error loading orders:', error)
+        logger.error('Error loading orders', { error: String(error) })
         const errorMessage = error instanceof Error ? error.message : 'Ошибка при загрузке заказов'
         toast.error(errorMessage)
       } finally {
@@ -510,7 +513,7 @@ export default function OrdersPage() {
                         key={order.id}
                         className="border-b hover:bg-teal-50 transition-colors cursor-pointer" 
                         style={{borderColor: '#e5e7eb'}}
-                        onClick={() => window.location.href = `/orders/${order.id}`}
+                        onClick={() => router.push(`/orders/${order.id}`)}
                       >
                         <td className="py-2 px-2 text-gray-800 font-medium">{order.id}</td>
                         <td className="py-2 px-2">
@@ -553,7 +556,7 @@ export default function OrdersPage() {
                   <div 
                     key={order.id}
                     className="bg-white rounded-lg p-4 border border-gray-200 cursor-pointer hover:bg-teal-50 transition-all duration-200 shadow-sm hover:shadow-md"
-                    onClick={() => window.location.href = `/orders/${order.id}`}
+                    onClick={() => router.push(`/orders/${order.id}`)}
                   >
                     <div className="flex justify-between items-start mb-3">
                       <div className="flex items-center gap-2">

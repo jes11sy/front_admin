@@ -2,8 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { useState } from 'react'
-import * as React from 'react'
+import { useState, useCallback, useEffect } from 'react'
 import {
   LayoutDashboard,
   Users,
@@ -73,20 +72,20 @@ export function Navigation() {
   const [expandedItem, setExpandedItem] = useState<string | null>(null)
 
   // Автоматически раскрываем dropdown если находимся на дочерней странице
-  const checkAndExpandParent = () => {
+  const checkAndExpandParent = useCallback(() => {
     navigationItems.forEach(item => {
       if (item.dropdown) {
         const isChildActive = item.dropdown.some(child => pathname === child.href)
-        if (isChildActive && expandedItem !== item.name) {
+        if (isChildActive) {
           setExpandedItem(item.name)
         }
       }
     })
-  }
-
-  React.useEffect(() => {
-    checkAndExpandParent()
   }, [pathname])
+
+  useEffect(() => {
+    checkAndExpandParent()
+  }, [checkAndExpandParent])
 
   return (
     <>
