@@ -18,7 +18,7 @@ import { toast } from 'sonner'
 import { logger } from '@/lib/logger'
 
 // Типы отчётов
-type ReportType = 'cash' | 'orders'
+type ReportType = 'cash' | 'orders' | 'campaigns'
 
 // Назначения платежей (хардкоры из фронта директора)
 const PAYMENT_PURPOSES = {
@@ -288,6 +288,52 @@ export default function ReportsPage() {
             }
           }
           break
+          
+        case 'campaigns':
+          // Отчёт по рекламным кампаниям
+          const campaignsResponse = await apiClient.getCampaignsReport({
+            startDate: dateFrom,
+            endDate: dateTo,
+            city: selectedCities.length === 1 ? selectedCities[0] : undefined
+          })
+          
+          if (campaignsResponse.success && campaignsResponse.data) {
+            let cityData = campaignsResponse.data
+            
+            // Фильтруем по выбранным городам
+            if (selectedCities.length < availableCities.length) {
+              cityData = cityData.filter((c: any) => selectedCities.includes(c.city))
+            }
+            
+            // Собираем все кампании в единый список с итогами
+            const allCampaigns: any[] = []
+            const campaignTotals = { ordersCount: 0, revenue: 0, profit: 0 }
+            
+            cityData.forEach((cityReport: any) => {
+              cityReport.campaigns?.forEach((campaign: any) => {
+                allCampaigns.push({
+                  city: cityReport.city,
+                  rk: campaign.rk,
+                  avitoName: campaign.avitoName || '-',
+                  ordersCount: campaign.ordersCount,
+                  revenue: campaign.revenue,
+                  profit: campaign.profit
+                })
+                campaignTotals.ordersCount += campaign.ordersCount
+                campaignTotals.revenue += campaign.revenue
+                campaignTotals.profit += campaign.profit
+              })
+            })
+            
+            // Сортируем по обороту
+            allCampaigns.sort((a, b) => b.revenue - a.revenue)
+            
+            data = {
+              campaigns: allCampaigns,
+              totals: campaignTotals
+            }
+          }
+          break
       }
       
       setReportData({
@@ -347,6 +393,7 @@ export default function ReportsPage() {
                     <SelectContent>
                       <SelectItem value="cash">По кассе</SelectItem>
                       <SelectItem value="orders">По заказам</SelectItem>
+                      <SelectItem value="campaigns">По рекламным кампаниям</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -787,7 +834,69 @@ export default function ReportsPage() {
                   </Table>
                 )}
                 
-                {reportData.data?.cities?.length === 0 && (
+                {/* Таблица рекламных кампаний */}
+                {reportData.type === 'campaigns' && reportData.data?.campaigns && (
+                  <Table>
+                    <TableHeader className="bg-gray-50/50">
+                      <TableRow>
+                        <TableHead className="text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                          Город
+                        </TableHead>
+                        <TableHead className="text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                          РК
+                        </TableHead>
+                        <TableHead className="text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                          Авито
+                        </TableHead>
+                        <TableHead className="text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                          Заказов
+                        </TableHead>
+                        <TableHead className="text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                          Оборот
+                        </TableHead>
+                        <TableHead className="text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                          Прибыль
+                        </TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {reportData.data.campaigns.map((campaign: any, idx: number) => (
+                        <TableRow key={`${campaign.city}-${campaign.rk}-${idx}`} className="hover:bg-gray-50">
+                          <TableCell className="font-medium text-gray-900">{campaign.city}</TableCell>
+                          <TableCell className="text-gray-700">{campaign.rk}</TableCell>
+                          <TableCell className="text-gray-500 text-sm">{campaign.avitoName}</TableCell>
+                          <TableCell className="text-right text-gray-600">{campaign.ordersCount}</TableCell>
+                          <TableCell className="text-right font-medium text-green-600">
+                            {formatCurrency(campaign.revenue)}
+                          </TableCell>
+                          <TableCell className="text-right font-medium text-teal-600">
+                            {formatCurrency(campaign.profit)}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                      
+                      {/* Итого */}
+                      <TableRow className="bg-gray-100 font-bold border-t-2 border-gray-300">
+                        <TableCell colSpan={3} className="text-gray-900">ИТОГО</TableCell>
+                        <TableCell className="text-right text-gray-700">{reportData.data.totals.ordersCount}</TableCell>
+                        <TableCell className="text-right text-green-700">
+                          {formatCurrency(reportData.data.totals.revenue)}
+                        </TableCell>
+                        <TableCell className="text-right text-teal-700">
+                          {formatCurrency(reportData.data.totals.profit)}
+                        </TableCell>
+                      </TableRow>
+                    </TableBody>
+                  </Table>
+                )}
+                
+                {reportData.type === 'campaigns' && (!reportData.data?.campaigns || reportData.data.campaigns.length === 0) && (
+                  <div className="text-center py-8 text-gray-500">
+                    Нет данных по рекламным кампаниям за выбранный период
+                  </div>
+                )}
+
+                {reportData.type !== 'campaigns' && reportData.data?.cities?.length === 0 && (
                   <div className="text-center py-8 text-gray-500">
                     Нет данных за выбранный период
                   </div>
