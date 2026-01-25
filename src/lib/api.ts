@@ -718,6 +718,43 @@ class ApiClient {
   }
 
   // Отчеты (Reports Service)
+  
+  /**
+   * Финансовый отчёт (касса)
+   */
+  async getFinanceReport(params?: {
+    startDate?: string
+    endDate?: string
+  }) {
+    const searchParams = new URLSearchParams()
+    if (params?.startDate) searchParams.append('startDate', params.startDate)
+    if (params?.endDate) searchParams.append('endDate', params.endDate)
+
+    const query = searchParams.toString()
+    return this.request<any>(`/reports/finance${query ? `?${query}` : ''}`)
+  }
+
+  /**
+   * Отчёт по заказам
+   */
+  async getOrdersReport(params?: {
+    startDate?: string
+    endDate?: string
+    city?: string
+    status?: string
+    masterId?: number
+  }) {
+    const searchParams = new URLSearchParams()
+    if (params?.startDate) searchParams.append('startDate', params.startDate)
+    if (params?.endDate) searchParams.append('endDate', params.endDate)
+    if (params?.city) searchParams.append('city', params.city)
+    if (params?.status) searchParams.append('status', params.status)
+    if (params?.masterId) searchParams.append('masterId', params.masterId.toString())
+
+    const query = searchParams.toString()
+    return this.request<any>(`/reports/orders${query ? `?${query}` : ''}`)
+  }
+
   async getCitiesReport(params?: {
     startDate?: string
     endDate?: string

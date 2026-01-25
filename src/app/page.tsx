@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Button } from '@/components/ui/button'
@@ -13,7 +13,8 @@ import {
   TrendingDown,
   DollarSign,
   RefreshCw,
-  Loader2
+  Loader2,
+  ChevronDown
 } from 'lucide-react'
 import { apiClient } from '@/lib/api'
 import { toast } from 'sonner'
@@ -21,6 +22,31 @@ import { logger } from '@/lib/logger'
 
 // Типы отчётов
 type ReportType = 'cash' | 'orders'
+
+// Назначения платежей (хардкоры из фронта директора)
+const PAYMENT_PURPOSES = {
+  expense: [
+    { value: 'Авито', label: 'Авито' },
+    { value: 'Офис', label: 'Офис' },
+    { value: 'Промоутеры', label: 'Промоутеры' },
+    { value: 'Листовки', label: 'Листовки' },
+    { value: 'Инкасс', label: 'Инкасс' },
+    { value: 'Зарплата директора', label: 'Зарплата директора' },
+    { value: 'Иное', label: 'Иное' }
+  ],
+  income: [
+    { value: 'Заказ', label: 'Заказ' },
+    { value: 'Депозит', label: 'Депозит' },
+    { value: 'Штраф', label: 'Штраф' },
+    { value: 'Иное', label: 'Иное' }
+  ]
+}
+
+// Все назначения платежей
+const ALL_PURPOSES = [
+  ...PAYMENT_PURPOSES.expense,
+  ...PAYMENT_PURPOSES.income.filter(p => !PAYMENT_PURPOSES.expense.find(e => e.value === p.value))
+]
 
 // Критерии для отчёта по кассе
 interface CashCriteria {
@@ -37,6 +63,7 @@ interface ReportData {
   period: { from: string; to: string }
   cities: string[]
   data: any
+  purposes?: string[]
 }
 
 export default function ReportsPage() {
@@ -62,6 +89,24 @@ export default function ReportsPage() {
     showBalance: true,
     showTransactions: false
   })
+  
+  // Фильтр по назначению платежа
+  const [filterByPurpose, setFilterByPurpose] = useState(false)
+  const [selectedPurposes, setSelectedPurposes] = useState<string[]>([])
+  const [purposeDropdownOpen, setPurposeDropdownOpen] = useState(false)
+  const purposeDropdownRef = useRef<HTMLDivElement>(null)
+  
+  // Закрытие dropdown при клике вне
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (purposeDropdownRef.current && !purposeDropdownRef.current.contains(event.target as Node)) {
+        setPurposeDropdownOpen(false)
+      }
+    }
+    
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
   
   // Состояние UI
   const [isLoadingCities, setIsLoadingCities] = useState(true)
@@ -97,6 +142,26 @@ export default function ReportsPage() {
     }
   }
   
+  // Обработка выбора назначения платежа
+  const handlePurposeToggle = (purpose: string) => {
+    setSelectedPurposes(prev => {
+      if (prev.includes(purpose)) {
+        return prev.filter(p => p !== purpose)
+      } else {
+        return [...prev, purpose]
+      }
+    })
+  }
+  
+  // Выбрать все назначения
+  const handleSelectAllPurposes = () => {
+    if (selectedPurposes.length === ALL_PURPOSES.length) {
+      setSelectedPurposes([])
+    } else {
+      setSelectedPurposes(ALL_PURPOSES.map(p => p.value))
+    }
+  }
+  
   // Генерация отчёта
   const generateReport = useCallback(async () => {
     if (selectedCities.length === 0) {
@@ -112,88 +177,86 @@ export default function ReportsPage() {
       
       switch (selectedReport) {
         case 'cash':
-          const cashResults: any[] = []
-          for (const city of selectedCities) {
-            const response = await apiClient.getCashByCity(city, {
-              startDate: dateFrom,
-              endDate: dateTo,
-              limit: 10000
-            })
-            if (response.success && response.data) {
-              const transactions = response.data.data || response.data
-              let income = 0
-              let expenses = 0
-              
-              transactions.forEach((t: any) => {
-                const amount = Number(t.amount)
-                if (t.name === 'приход') income += amount
-                else if (t.name === 'расход') expenses += amount
-              })
-              
-              cashResults.push({
-                city,
-                income,
-                expenses,
-                balance: income - expenses,
-                transactionsCount: transactions.length
-              })
-            }
+          // Используем reports API для получения данных по городам
+          const cityReportResponse = await apiClient.getCitiesReport({
+            startDate: dateFrom,
+            endDate: dateTo,
+            city: selectedCities.length === 1 ? selectedCities[0] : undefined
+          })
+          
+          if (cityReportResponse.success && cityReportResponse.data) {
+            const cityStats = cityReportResponse.data
+            
+            // Фильтруем по выбранным городам
+            const filteredStats = selectedCities.length === availableCities.length 
+              ? cityStats 
+              : cityStats.filter((c: any) => selectedCities.includes(c.city))
+            
+            const cashResults = filteredStats.map((city: any) => ({
+              city: city.city,
+              income: city.cash?.totalAmount > 0 ? city.cash.totalAmount : 0,
+              expenses: city.cash?.totalAmount < 0 ? Math.abs(city.cash.totalAmount) : 0,
+              balance: city.cash?.totalAmount || 0,
+              turnover: city.stats?.turnover || 0,
+              profit: city.stats?.profit || 0,
+              transactionsCount: city.stats?.totalOrders || 0
+            }))
+            
+            const totals = cashResults.reduce((acc: any, curr: any) => ({
+              income: acc.income + curr.income,
+              expenses: acc.expenses + curr.expenses,
+              balance: acc.balance + curr.balance,
+              turnover: acc.turnover + curr.turnover,
+              profit: acc.profit + curr.profit,
+              transactionsCount: acc.transactionsCount + curr.transactionsCount
+            }), { income: 0, expenses: 0, balance: 0, turnover: 0, profit: 0, transactionsCount: 0 })
+            
+            data = { cities: cashResults, totals, criteria: cashCriteria }
           }
-          
-          const totals = cashResults.reduce((acc, curr) => ({
-            income: acc.income + curr.income,
-            expenses: acc.expenses + curr.expenses,
-            balance: acc.balance + curr.balance,
-            transactionsCount: acc.transactionsCount + curr.transactionsCount
-          }), { income: 0, expenses: 0, balance: 0, transactionsCount: 0 })
-          
-          data = { cities: cashResults, totals, criteria: cashCriteria }
           break
           
         case 'orders':
-          const ordersResults: any[] = []
+          // Используем reports API для получения статистики заказов
+          const ordersReportResponse = await apiClient.getCitiesReport({
+            startDate: dateFrom,
+            endDate: dateTo,
+            city: selectedCities.length === 1 ? selectedCities[0] : undefined
+          })
           
-          for (const city of selectedCities) {
-            const response = await apiClient.getOrders({
-              city,
-              dateFrom,
-              dateTo,
-              limit: 10000
-            })
+          if (ordersReportResponse.success && ordersReportResponse.data) {
+            const cityStats = ordersReportResponse.data
             
-            if (response.success && response.data) {
-              const orders = response.data.orders || response.data
-              
-              const stats = {
-                city,
-                total: orders.length,
-                byStatus: {} as Record<string, number>,
-                totalRevenue: 0,
-                completed: 0
+            // Фильтруем по выбранным городам
+            const filteredStats = selectedCities.length === availableCities.length 
+              ? cityStats 
+              : cityStats.filter((c: any) => selectedCities.includes(c.city))
+            
+            const ordersResults = filteredStats.map((city: any) => ({
+              city: city.city,
+              total: city.stats?.totalOrders || 0,
+              completed: city.stats?.completedOrders || 0,
+              zeroOrders: city.stats?.zeroOrders || 0,
+              notOrders: city.stats?.notOrders || 0,
+              totalRevenue: city.stats?.turnover || 0,
+              avgCheck: city.stats?.avgCheck || 0,
+              completedPercent: city.stats?.completedPercent || 0
+            }))
+            
+            const totals = ordersResults.reduce((acc: any, curr: any) => ({
+              total: acc.total + curr.total,
+              completed: acc.completed + curr.completed,
+              zeroOrders: acc.zeroOrders + curr.zeroOrders,
+              notOrders: acc.notOrders + curr.notOrders,
+              totalRevenue: acc.totalRevenue + curr.totalRevenue
+            }), { total: 0, completed: 0, zeroOrders: 0, notOrders: 0, totalRevenue: 0 })
+            
+            data = {
+              cities: ordersResults,
+              totals: {
+                ...totals,
+                avgCheck: totals.completed > 0 ? totals.totalRevenue / totals.completed : 0,
+                conversion: totals.total > 0 ? (totals.completed / totals.total * 100).toFixed(1) : 0
               }
-              
-              orders.forEach((order: any) => {
-                stats.byStatus[order.statusOrder] = (stats.byStatus[order.statusOrder] || 0) + 1
-                if (order.result) stats.totalRevenue += Number(order.result)
-                if (order.statusOrder === 'Готово') stats.completed++
-              })
-              
-              ordersResults.push(stats)
-            }
-          }
-          
-          const ordersTotals = ordersResults.reduce((acc, curr) => ({
-            total: acc.total + curr.total,
-            completed: acc.completed + curr.completed,
-            totalRevenue: acc.totalRevenue + curr.totalRevenue
-          }), { total: 0, completed: 0, totalRevenue: 0 })
-          
-          data = {
-            cities: ordersResults,
-            totals: {
-              ...ordersTotals,
-              avgCheck: ordersTotals.completed > 0 ? ordersTotals.totalRevenue / ordersTotals.completed : 0,
-              conversion: ordersTotals.total > 0 ? (ordersTotals.completed / ordersTotals.total * 100).toFixed(1) : 0
             }
           }
           break
@@ -204,8 +267,9 @@ export default function ReportsPage() {
         generatedAt: new Date().toISOString(),
         period: { from: dateFrom, to: dateTo },
         cities: selectedCities,
-        data
-      })
+        data,
+        purposes: filterByPurpose && selectedPurposes.length > 0 ? selectedPurposes : undefined
+      } as ReportData)
       
       toast.success('Отчёт сформирован')
       
@@ -215,7 +279,7 @@ export default function ReportsPage() {
     } finally {
       setIsGenerating(false)
     }
-  }, [selectedReport, selectedCities, dateFrom, dateTo, cashCriteria])
+  }, [selectedReport, selectedCities, dateFrom, dateTo, cashCriteria, availableCities.length, filterByPurpose, selectedPurposes])
   
   // Форматирование валюты
   const formatCurrency = (amount: number) => {
@@ -277,8 +341,19 @@ export default function ReportsPage() {
                   />
                 </div>
                 
-                {/* Быстрые периоды */}
+                {/* Быстрые периоды: День, Неделя, Месяц */}
                 <div className="flex gap-1">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      const today = new Date().toISOString().split('T')[0]
+                      setDateFrom(today)
+                      setDateTo(today)
+                    }}
+                  >
+                    День
+                  </Button>
                   <Button
                     variant="outline"
                     size="sm"
@@ -300,17 +375,6 @@ export default function ReportsPage() {
                     }}
                   >
                     Месяц
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => {
-                      const now = new Date()
-                      setDateFrom(new Date(now.getFullYear(), now.getMonth() - 3, 1).toISOString().split('T')[0])
-                      setDateTo(new Date().toISOString().split('T')[0])
-                    }}
-                  >
-                    Квартал
                   </Button>
                 </div>
               </div>
@@ -346,7 +410,7 @@ export default function ReportsPage() {
                         onChange={(e) => setCashCriteria(prev => ({ ...prev, showIncome: e.target.checked }))}
                         className="h-4 w-4 rounded border-gray-300 text-teal-600"
                       />
-                      <span className="text-sm text-gray-600">Доходы</span>
+                      <span className="text-sm text-gray-600">Оборот</span>
                     </label>
                     <label className="flex items-center gap-1.5 cursor-pointer">
                       <input
@@ -355,7 +419,7 @@ export default function ReportsPage() {
                         onChange={(e) => setCashCriteria(prev => ({ ...prev, showExpenses: e.target.checked }))}
                         className="h-4 w-4 rounded border-gray-300 text-teal-600"
                       />
-                      <span className="text-sm text-gray-600">Расходы</span>
+                      <span className="text-sm text-gray-600">Прибыль</span>
                     </label>
                     <label className="flex items-center gap-1.5 cursor-pointer">
                       <input
@@ -364,7 +428,7 @@ export default function ReportsPage() {
                         onChange={(e) => setCashCriteria(prev => ({ ...prev, showBalance: e.target.checked }))}
                         className="h-4 w-4 rounded border-gray-300 text-teal-600"
                       />
-                      <span className="text-sm text-gray-600">Баланс</span>
+                      <span className="text-sm text-gray-600">Касса</span>
                     </label>
                     <label className="flex items-center gap-1.5 cursor-pointer">
                       <input
@@ -373,8 +437,79 @@ export default function ReportsPage() {
                         onChange={(e) => setCashCriteria(prev => ({ ...prev, showTransactions: e.target.checked }))}
                         className="h-4 w-4 rounded border-gray-300 text-teal-600"
                       />
-                      <span className="text-sm text-gray-600">Транзакции</span>
+                      <span className="text-sm text-gray-600">Заказов</span>
                     </label>
+                    
+                    {/* Фильтр по назначению платежа */}
+                    <div className="flex items-center gap-2 border-l pl-4 ml-2">
+                      <label className="flex items-center gap-1.5 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={filterByPurpose}
+                          onChange={(e) => {
+                            setFilterByPurpose(e.target.checked)
+                            if (!e.target.checked) {
+                              setSelectedPurposes([])
+                              setPurposeDropdownOpen(false)
+                            }
+                          }}
+                          className="h-4 w-4 rounded border-gray-300 text-teal-600"
+                        />
+                        <span className="text-sm text-gray-600">Назначение:</span>
+                      </label>
+                      
+                      {filterByPurpose && (
+                        <div className="relative" ref={purposeDropdownRef}>
+                          <button
+                            type="button"
+                            onClick={() => setPurposeDropdownOpen(!purposeDropdownOpen)}
+                            className="flex items-center gap-2 px-3 py-1.5 text-sm border border-gray-300 rounded-lg bg-white hover:bg-gray-50"
+                          >
+                            <span className="text-gray-700">
+                              {selectedPurposes.length === 0 
+                                ? 'Выбрать' 
+                                : selectedPurposes.length === ALL_PURPOSES.length 
+                                  ? 'Все' 
+                                  : `Выбрано: ${selectedPurposes.length}`
+                              }
+                            </span>
+                            <ChevronDown className={`h-4 w-4 text-gray-500 transition-transform ${purposeDropdownOpen ? 'rotate-180' : ''}`} />
+                          </button>
+                          
+                          {purposeDropdownOpen && (
+                            <div className="absolute top-full left-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-50 min-w-48">
+                              <div className="p-2 border-b border-gray-100">
+                                <label className="flex items-center gap-2 cursor-pointer hover:bg-gray-50 p-1.5 rounded">
+                                  <input
+                                    type="checkbox"
+                                    checked={selectedPurposes.length === ALL_PURPOSES.length}
+                                    onChange={handleSelectAllPurposes}
+                                    className="h-4 w-4 rounded border-gray-300 text-teal-600"
+                                  />
+                                  <span className="text-sm font-medium text-gray-700">Выбрать все</span>
+                                </label>
+                              </div>
+                              <div className="p-2 max-h-48 overflow-y-auto">
+                                {ALL_PURPOSES.map(purpose => (
+                                  <label 
+                                    key={purpose.value} 
+                                    className="flex items-center gap-2 cursor-pointer hover:bg-gray-50 p-1.5 rounded"
+                                  >
+                                    <input
+                                      type="checkbox"
+                                      checked={selectedPurposes.includes(purpose.value)}
+                                      onChange={() => handlePurposeToggle(purpose.value)}
+                                      className="h-4 w-4 rounded border-gray-300 text-teal-600"
+                                    />
+                                    <span className="text-sm text-gray-700">{purpose.label}</span>
+                                  </label>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
                   </div>
                 )}
                 
@@ -403,18 +538,18 @@ export default function ReportsPage() {
         {/* Результат - показываем только после генерации */}
         {reportData && (
           <>
-            {/* Статистика */}
+            {/* Статистика для кассы */}
             {reportData.type === 'cash' && reportData.data && (
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
                 {cashCriteria.showIncome && (
                   <Card className="border-0 shadow-lg">
                     <CardContent className="pt-6">
                       <div className="flex items-center justify-between mb-2">
-                        <div className="text-sm text-gray-500">Доходы</div>
+                        <div className="text-sm text-gray-500">Оборот</div>
                         <TrendingUp className="h-4 w-4 text-green-600" />
                       </div>
                       <div className="text-3xl font-bold text-green-600">
-                        {formatCurrency(reportData.data.totals.income)}
+                        {formatCurrency(reportData.data.totals.turnover)}
                       </div>
                       <p className="text-xs text-gray-500 mt-1">
                         {formatDate(reportData.period.from)} — {formatDate(reportData.period.to)}
@@ -427,11 +562,11 @@ export default function ReportsPage() {
                   <Card className="border-0 shadow-lg">
                     <CardContent className="pt-6">
                       <div className="flex items-center justify-between mb-2">
-                        <div className="text-sm text-gray-500">Расходы</div>
-                        <TrendingDown className="h-4 w-4 text-red-600" />
+                        <div className="text-sm text-gray-500">Прибыль</div>
+                        <TrendingDown className="h-4 w-4 text-teal-600" />
                       </div>
-                      <div className="text-3xl font-bold text-red-600">
-                        {formatCurrency(reportData.data.totals.expenses)}
+                      <div className="text-3xl font-bold text-teal-600">
+                        {formatCurrency(reportData.data.totals.profit)}
                       </div>
                       <p className="text-xs text-gray-500 mt-1">
                         {formatDate(reportData.period.from)} — {formatDate(reportData.period.to)}
@@ -444,21 +579,34 @@ export default function ReportsPage() {
                   <Card className="border-0 shadow-lg bg-gradient-to-br from-teal-50 to-emerald-50">
                     <CardContent className="pt-6">
                       <div className="flex items-center justify-between mb-2">
-                        <div className="text-sm text-teal-700">Баланс</div>
+                        <div className="text-sm text-teal-700">Касса</div>
                         <DollarSign className="h-4 w-4 text-teal-700" />
                       </div>
                       <div className="text-3xl font-bold text-teal-700">
                         {formatCurrency(reportData.data.totals.balance)}
                       </div>
-                      <p className="text-xs text-teal-600 mt-1">Чистая прибыль</p>
+                      <p className="text-xs text-teal-600 mt-1">Баланс</p>
+                    </CardContent>
+                  </Card>
+                )}
+                
+                {cashCriteria.showTransactions && (
+                  <Card className="border-0 shadow-lg">
+                    <CardContent className="pt-6">
+                      <div className="text-sm text-gray-500 mb-2">Заказов</div>
+                      <div className="text-3xl font-bold text-gray-800">
+                        {reportData.data.totals.transactionsCount}
+                      </div>
+                      <p className="text-xs text-gray-500 mt-1">за период</p>
                     </CardContent>
                   </Card>
                 )}
               </div>
             )}
             
+            {/* Статистика для заказов */}
             {reportData.type === 'orders' && reportData.data && (
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
+              <div className="grid grid-cols-1 md:grid-cols-5 gap-6 mb-6">
                 <Card className="border-0 shadow-lg">
                   <CardContent className="pt-6">
                     <div className="text-sm text-gray-500 mb-2">Всего заказов</div>
@@ -473,6 +621,15 @@ export default function ReportsPage() {
                     <div className="text-sm text-gray-500 mb-2">Выполнено</div>
                     <div className="text-3xl font-bold text-green-600">
                       {reportData.data.totals.completed}
+                    </div>
+                  </CardContent>
+                </Card>
+                
+                <Card className="border-0 shadow-lg">
+                  <CardContent className="pt-6">
+                    <div className="text-sm text-gray-500 mb-2">Отказы</div>
+                    <div className="text-3xl font-bold text-red-600">
+                      {reportData.data.totals.zeroOrders}
                     </div>
                   </CardContent>
                 </Card>
@@ -508,6 +665,9 @@ export default function ReportsPage() {
                     }
                     {' | '}
                     {formatDate(reportData.period.from)} — {formatDate(reportData.period.to)}
+                    {reportData.purposes && reportData.purposes.length > 0 && (
+                      <> | Назначение: {reportData.purposes.length === ALL_PURPOSES.length ? 'Все' : reportData.purposes.join(', ')}</>
+                    )}
                   </div>
                   <div className="flex gap-2">
                     <Button variant="outline" size="sm" onClick={() => window.print()}>
@@ -531,22 +691,22 @@ export default function ReportsPage() {
                         </TableHead>
                         {cashCriteria.showIncome && (
                           <TableHead className="text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                            Доходы
+                            Оборот
                           </TableHead>
                         )}
                         {cashCriteria.showExpenses && (
                           <TableHead className="text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                            Расходы
+                            Прибыль
                           </TableHead>
                         )}
                         {cashCriteria.showBalance && (
                           <TableHead className="text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                            Баланс
+                            Касса
                           </TableHead>
                         )}
                         {cashCriteria.showTransactions && (
                           <TableHead className="text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                            Транзакций
+                            Заказов
                           </TableHead>
                         )}
                       </TableRow>
@@ -557,12 +717,12 @@ export default function ReportsPage() {
                           <TableCell className="font-medium text-gray-900">{city.city}</TableCell>
                           {cashCriteria.showIncome && (
                             <TableCell className="text-right font-medium text-green-600">
-                              {formatCurrency(city.income)}
+                              {formatCurrency(city.turnover)}
                             </TableCell>
                           )}
                           {cashCriteria.showExpenses && (
-                            <TableCell className="text-right font-medium text-red-600">
-                              {formatCurrency(city.expenses)}
+                            <TableCell className="text-right font-medium text-teal-600">
+                              {formatCurrency(city.profit)}
                             </TableCell>
                           )}
                           {cashCriteria.showBalance && (
@@ -583,12 +743,12 @@ export default function ReportsPage() {
                         <TableCell className="text-gray-900">ИТОГО</TableCell>
                         {cashCriteria.showIncome && (
                           <TableCell className="text-right text-green-700">
-                            {formatCurrency(reportData.data.totals.income)}
+                            {formatCurrency(reportData.data.totals.turnover)}
                           </TableCell>
                         )}
                         {cashCriteria.showExpenses && (
-                          <TableCell className="text-right text-red-700">
-                            {formatCurrency(reportData.data.totals.expenses)}
+                          <TableCell className="text-right text-teal-700">
+                            {formatCurrency(reportData.data.totals.profit)}
                           </TableCell>
                         )}
                         {cashCriteria.showBalance && (
@@ -621,7 +781,13 @@ export default function ReportsPage() {
                           Выполнено
                         </TableHead>
                         <TableHead className="text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                          Выручка
+                          Отказы
+                        </TableHead>
+                        <TableHead className="text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                          Незаказы
+                        </TableHead>
+                        <TableHead className="text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                          Ср. чек
                         </TableHead>
                         <TableHead className="text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">
                           Конверсия
@@ -634,11 +800,13 @@ export default function ReportsPage() {
                           <TableCell className="font-medium text-gray-900">{city.city}</TableCell>
                           <TableCell className="text-right text-gray-600">{city.total}</TableCell>
                           <TableCell className="text-right font-medium text-green-600">{city.completed}</TableCell>
+                          <TableCell className="text-right font-medium text-red-600">{city.zeroOrders}</TableCell>
+                          <TableCell className="text-right text-gray-500">{city.notOrders}</TableCell>
                           <TableCell className="text-right font-medium text-teal-600">
-                            {formatCurrency(city.totalRevenue)}
+                            {formatCurrency(city.avgCheck)}
                           </TableCell>
                           <TableCell className="text-right font-medium text-purple-600">
-                            {city.total > 0 ? ((city.completed / city.total) * 100).toFixed(1) : 0}%
+                            {city.completedPercent.toFixed(1)}%
                           </TableCell>
                         </TableRow>
                       ))}
@@ -648,8 +816,10 @@ export default function ReportsPage() {
                         <TableCell className="text-gray-900">ИТОГО</TableCell>
                         <TableCell className="text-right text-gray-700">{reportData.data.totals.total}</TableCell>
                         <TableCell className="text-right text-green-700">{reportData.data.totals.completed}</TableCell>
+                        <TableCell className="text-right text-red-700">{reportData.data.totals.zeroOrders}</TableCell>
+                        <TableCell className="text-right text-gray-600">{reportData.data.totals.notOrders}</TableCell>
                         <TableCell className="text-right text-teal-700">
-                          {formatCurrency(reportData.data.totals.totalRevenue)}
+                          {formatCurrency(reportData.data.totals.avgCheck)}
                         </TableCell>
                         <TableCell className="text-right text-purple-700">{reportData.data.totals.conversion}%</TableCell>
                       </TableRow>
@@ -657,7 +827,7 @@ export default function ReportsPage() {
                   </Table>
                 )}
                 
-                {reportData.data.cities.length === 0 && (
+                {reportData.data?.cities?.length === 0 && (
                   <div className="text-center py-8 text-gray-500">
                     Нет данных за выбранный период
                   </div>
