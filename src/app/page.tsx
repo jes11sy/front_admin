@@ -252,29 +252,38 @@ export default function ReportsPage() {
             
             const ordersResults = filteredStats.map((city: any) => ({
               city: city.city,
-              total: city.stats?.totalOrders || 0,
-              completed: city.stats?.completedOrders || 0,
-              zeroOrders: city.stats?.zeroOrders || 0,
+              totalOrders: city.stats?.totalOrders || 0,
               notOrders: city.stats?.notOrders || 0,
-              totalRevenue: city.stats?.turnover || 0,
-              avgCheck: city.stats?.avgCheck || 0,
-              completedPercent: city.stats?.completedPercent || 0
+              zeroOrders: city.stats?.zeroOrders || 0,
+              completedOrders: city.stats?.completedOrders || 0,
+              microUnder1500: city.stats?.microUnder1500 || 0,
+              micro1500to10000: city.stats?.micro1500to10000 || 0,
+              over10kCount: city.stats?.over10kCount || 0,
+              maxCheck: city.stats?.maxCheck || 0,
+              turnover: city.stats?.turnover || 0,
+              avgCheck: city.stats?.avgCheck || 0
             }))
             
             const totals = ordersResults.reduce((acc: any, curr: any) => ({
-              total: acc.total + curr.total,
-              completed: acc.completed + curr.completed,
-              zeroOrders: acc.zeroOrders + curr.zeroOrders,
+              totalOrders: acc.totalOrders + curr.totalOrders,
               notOrders: acc.notOrders + curr.notOrders,
-              totalRevenue: acc.totalRevenue + curr.totalRevenue
-            }), { total: 0, completed: 0, zeroOrders: 0, notOrders: 0, totalRevenue: 0 })
+              zeroOrders: acc.zeroOrders + curr.zeroOrders,
+              completedOrders: acc.completedOrders + curr.completedOrders,
+              microUnder1500: acc.microUnder1500 + curr.microUnder1500,
+              micro1500to10000: acc.micro1500to10000 + curr.micro1500to10000,
+              over10kCount: acc.over10kCount + curr.over10kCount,
+              maxCheck: Math.max(acc.maxCheck, curr.maxCheck),
+              turnover: acc.turnover + curr.turnover
+            }), { 
+              totalOrders: 0, notOrders: 0, zeroOrders: 0, completedOrders: 0, 
+              microUnder1500: 0, micro1500to10000: 0, over10kCount: 0, maxCheck: 0, turnover: 0 
+            })
             
             data = {
               cities: ordersResults,
               totals: {
                 ...totals,
-                avgCheck: totals.completed > 0 ? totals.totalRevenue / totals.completed : 0,
-                conversion: totals.total > 0 ? (totals.completed / totals.total * 100).toFixed(1) : 0
+                avgCheck: totals.completedOrders > 0 ? totals.turnover / totals.completedOrders : 0
               }
             }
           }
@@ -718,22 +727,28 @@ export default function ReportsPage() {
                           Город
                         </TableHead>
                         <TableHead className="text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                          Всего
-                        </TableHead>
-                        <TableHead className="text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                          Выполнено
-                        </TableHead>
-                        <TableHead className="text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                          Отказы
+                          Создано
                         </TableHead>
                         <TableHead className="text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">
                           Незаказы
                         </TableHead>
                         <TableHead className="text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                          Ср. чек
+                          Отказы
                         </TableHead>
                         <TableHead className="text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                          Конверсия
+                          В деньги
+                        </TableHead>
+                        <TableHead className="text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                          &lt;1500
+                        </TableHead>
+                        <TableHead className="text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                          &lt;10000
+                        </TableHead>
+                        <TableHead className="text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                          10000+
+                        </TableHead>
+                        <TableHead className="text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                          Макс. чек
                         </TableHead>
                       </TableRow>
                     </TableHeader>
@@ -741,30 +756,32 @@ export default function ReportsPage() {
                       {reportData.data.cities.map((city: any) => (
                         <TableRow key={city.city} className="hover:bg-gray-50">
                           <TableCell className="font-medium text-gray-900">{city.city}</TableCell>
-                          <TableCell className="text-right text-gray-600">{city.total}</TableCell>
-                          <TableCell className="text-right font-medium text-green-600">{city.completed}</TableCell>
-                          <TableCell className="text-right font-medium text-red-600">{city.zeroOrders}</TableCell>
+                          <TableCell className="text-right text-gray-600">{city.totalOrders}</TableCell>
                           <TableCell className="text-right text-gray-500">{city.notOrders}</TableCell>
-                          <TableCell className="text-right font-medium text-teal-600">
-                            {formatCurrency(city.avgCheck)}
-                          </TableCell>
+                          <TableCell className="text-right text-red-600">{city.zeroOrders}</TableCell>
+                          <TableCell className="text-right font-medium text-green-600">{city.completedOrders}</TableCell>
+                          <TableCell className="text-right text-orange-500">{city.microUnder1500}</TableCell>
+                          <TableCell className="text-right text-amber-600">{city.micro1500to10000}</TableCell>
+                          <TableCell className="text-right text-teal-600">{city.over10kCount}</TableCell>
                           <TableCell className="text-right font-medium text-purple-600">
-                            {city.completedPercent.toFixed(1)}%
+                            {formatCurrency(city.maxCheck)}
                           </TableCell>
                         </TableRow>
                       ))}
                       
                       {/* Итого */}
-                      <TableRow className="bg-gray-100 font-bold">
+                      <TableRow className="bg-gray-100 font-bold border-t-2 border-gray-300">
                         <TableCell className="text-gray-900">ИТОГО</TableCell>
-                        <TableCell className="text-right text-gray-700">{reportData.data.totals.total}</TableCell>
-                        <TableCell className="text-right text-green-700">{reportData.data.totals.completed}</TableCell>
-                        <TableCell className="text-right text-red-700">{reportData.data.totals.zeroOrders}</TableCell>
+                        <TableCell className="text-right text-gray-700">{reportData.data.totals.totalOrders}</TableCell>
                         <TableCell className="text-right text-gray-600">{reportData.data.totals.notOrders}</TableCell>
-                        <TableCell className="text-right text-teal-700">
-                          {formatCurrency(reportData.data.totals.avgCheck)}
+                        <TableCell className="text-right text-red-700">{reportData.data.totals.zeroOrders}</TableCell>
+                        <TableCell className="text-right text-green-700">{reportData.data.totals.completedOrders}</TableCell>
+                        <TableCell className="text-right text-orange-600">{reportData.data.totals.microUnder1500}</TableCell>
+                        <TableCell className="text-right text-amber-700">{reportData.data.totals.micro1500to10000}</TableCell>
+                        <TableCell className="text-right text-teal-700">{reportData.data.totals.over10kCount}</TableCell>
+                        <TableCell className="text-right text-purple-700">
+                          {formatCurrency(reportData.data.totals.maxCheck)}
                         </TableCell>
-                        <TableCell className="text-right text-purple-700">{reportData.data.totals.conversion}%</TableCell>
                       </TableRow>
                     </TableBody>
                   </Table>
