@@ -290,7 +290,7 @@ export default function ReportsPage() {
           break
           
         case 'campaigns':
-          // Отчёт по рекламным кампаниям
+          // Отчёт по рекламным кампаниям с группировкой по городам и типам РК
           const campaignsResponse = await apiClient.getCampaignsReport({
             startDate: dateFrom,
             endDate: dateTo,
@@ -305,32 +305,64 @@ export default function ReportsPage() {
               cityData = cityData.filter((c: any) => selectedCities.includes(c.city))
             }
             
-            // Собираем все кампании в единый список с итогами
-            const allCampaigns: any[] = []
+            // Группируем кампании по типу (rk) внутри каждого города
             const campaignTotals = { ordersCount: 0, revenue: 0, profit: 0 }
             
-            cityData.forEach((cityReport: any) => {
+            const citiesWithGroupedCampaigns = cityData.map((cityReport: any) => {
+              // Группируем кампании по rk (тип рекламы)
+              const rkMap = new Map<string, { ordersCount: number; revenue: number; profit: number; avitoNames: string[] }>()
+              
               cityReport.campaigns?.forEach((campaign: any) => {
-                allCampaigns.push({
-                  city: cityReport.city,
-                  rk: campaign.rk,
-                  avitoName: campaign.avitoName || '-',
-                  ordersCount: campaign.ordersCount,
-                  revenue: campaign.revenue,
-                  profit: campaign.profit
-                })
-                campaignTotals.ordersCount += campaign.ordersCount
-                campaignTotals.revenue += campaign.revenue
-                campaignTotals.profit += campaign.profit
+                const rk = campaign.rk || 'Неизвестно'
+                if (!rkMap.has(rk)) {
+                  rkMap.set(rk, { ordersCount: 0, revenue: 0, profit: 0, avitoNames: [] })
+                }
+                const rkData = rkMap.get(rk)!
+                rkData.ordersCount += campaign.ordersCount
+                rkData.revenue += campaign.revenue
+                rkData.profit += campaign.profit
+                if (campaign.avitoName && !rkData.avitoNames.includes(campaign.avitoName)) {
+                  rkData.avitoNames.push(campaign.avitoName)
+                }
               })
+              
+              // Преобразуем в массив и сортируем по обороту
+              const groupedCampaigns = Array.from(rkMap.entries())
+                .map(([rk, data]) => ({
+                  rk,
+                  ordersCount: data.ordersCount,
+                  revenue: data.revenue,
+                  profit: data.profit,
+                  avitoNames: data.avitoNames.join(', ') || '-'
+                }))
+                .sort((a, b) => b.revenue - a.revenue)
+              
+              // Считаем итоги по городу
+              const cityTotals = groupedCampaigns.reduce((acc, c) => ({
+                ordersCount: acc.ordersCount + c.ordersCount,
+                revenue: acc.revenue + c.revenue,
+                profit: acc.profit + c.profit
+              }), { ordersCount: 0, revenue: 0, profit: 0 })
+              
+              // Добавляем к общим итогам
+              campaignTotals.ordersCount += cityTotals.ordersCount
+              campaignTotals.revenue += cityTotals.revenue
+              campaignTotals.profit += cityTotals.profit
+              
+              return {
+                city: cityReport.city,
+                campaigns: groupedCampaigns,
+                totals: cityTotals
+              }
             })
             
-            // Сортируем по обороту
-            allCampaigns.sort((a, b) => b.revenue - a.revenue)
+            // Сортируем города по обороту
+            citiesWithGroupedCampaigns.sort((a: any, b: any) => b.totals.revenue - a.totals.revenue)
             
             data = {
-              campaigns: allCampaigns,
-              totals: campaignTotals
+              cities: citiesWithGroupedCampaigns,
+              totals: campaignTotals,
+              groupByCity: true
             }
           }
           break
@@ -834,19 +866,16 @@ export default function ReportsPage() {
                   </Table>
                 )}
                 
-                {/* Таблица рекламных кампаний */}
-                {reportData.type === 'campaigns' && reportData.data?.campaigns && (
+                {/* Таблица рекламных кампаний с группировкой по городам */}
+                {reportData.type === 'campaigns' && reportData.data?.cities && (
                   <Table>
                     <TableHeader className="bg-gray-50/50">
                       <TableRow>
                         <TableHead className="text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                          Город
+                          Город / Тип РК
                         </TableHead>
                         <TableHead className="text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                          РК
-                        </TableHead>
-                        <TableHead className="text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                          Авито
+                          Авито аккаунты
                         </TableHead>
                         <TableHead className="text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">
                           Заказов
@@ -860,24 +889,46 @@ export default function ReportsPage() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {reportData.data.campaigns.map((campaign: any, idx: number) => (
-                        <TableRow key={`${campaign.city}-${campaign.rk}-${idx}`} className="hover:bg-gray-50">
-                          <TableCell className="font-medium text-gray-900">{campaign.city}</TableCell>
-                          <TableCell className="text-gray-700">{campaign.rk}</TableCell>
-                          <TableCell className="text-gray-500 text-sm">{campaign.avitoName}</TableCell>
-                          <TableCell className="text-right text-gray-600">{campaign.ordersCount}</TableCell>
-                          <TableCell className="text-right font-medium text-green-600">
-                            {formatCurrency(campaign.revenue)}
-                          </TableCell>
-                          <TableCell className="text-right font-medium text-teal-600">
-                            {formatCurrency(campaign.profit)}
-                          </TableCell>
-                        </TableRow>
+                      {reportData.data.cities.map((cityData: any) => (
+                        <React.Fragment key={cityData.city}>
+                          {/* Строка города */}
+                          <TableRow className="bg-gray-50">
+                            <TableCell className="font-bold text-gray-900">{cityData.city}</TableCell>
+                            <TableCell></TableCell>
+                            <TableCell className="text-right font-bold text-gray-700">
+                              {cityData.totals.ordersCount}
+                            </TableCell>
+                            <TableCell className="text-right font-bold text-green-600">
+                              {formatCurrency(cityData.totals.revenue)}
+                            </TableCell>
+                            <TableCell className="text-right font-bold text-teal-600">
+                              {formatCurrency(cityData.totals.profit)}
+                            </TableCell>
+                          </TableRow>
+                          
+                          {/* Строки типов РК внутри города */}
+                          {cityData.campaigns?.map((campaign: any, idx: number) => (
+                            <TableRow key={`${cityData.city}-${campaign.rk}-${idx}`} className="hover:bg-gray-50">
+                              <TableCell className="pl-8 text-gray-700">
+                                {campaign.rk}
+                              </TableCell>
+                              <TableCell className="text-gray-500 text-sm">{campaign.avitoNames}</TableCell>
+                              <TableCell className="text-right text-gray-600">{campaign.ordersCount}</TableCell>
+                              <TableCell className="text-right font-medium text-green-600">
+                                {formatCurrency(campaign.revenue)}
+                              </TableCell>
+                              <TableCell className="text-right font-medium text-teal-600">
+                                {formatCurrency(campaign.profit)}
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </React.Fragment>
                       ))}
                       
                       {/* Итого */}
-                      <TableRow className="bg-gray-100 font-bold border-t-2 border-gray-300">
-                        <TableCell colSpan={3} className="text-gray-900">ИТОГО</TableCell>
+                      <TableRow className="bg-teal-50 font-bold border-t-2 border-teal-500">
+                        <TableCell className="text-teal-900">ИТОГО</TableCell>
+                        <TableCell></TableCell>
                         <TableCell className="text-right text-gray-700">{reportData.data.totals.ordersCount}</TableCell>
                         <TableCell className="text-right text-green-700">
                           {formatCurrency(reportData.data.totals.revenue)}
@@ -890,7 +941,7 @@ export default function ReportsPage() {
                   </Table>
                 )}
                 
-                {reportData.type === 'campaigns' && (!reportData.data?.campaigns || reportData.data.campaigns.length === 0) && (
+                {reportData.type === 'campaigns' && (!reportData.data?.cities || reportData.data.cities.length === 0) && (
                   <div className="text-center py-8 text-gray-500">
                     Нет данных по рекламным кампаниям за выбранный период
                   </div>
