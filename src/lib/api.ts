@@ -504,7 +504,7 @@ class ApiClient {
 
   // Получение опций для фильтров заказов
   async getFilterOptions() {
-    return this.request<{ rks: string[], typeEquipments: string[] }>('/orders/filter-options')
+    return this.request<{ rks: string[], typeEquipments: string[], cities: string[] }>('/orders/filter-options')
   }
 
   async getOrder(id: string) {

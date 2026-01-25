@@ -88,6 +88,7 @@ export default function OrdersPage() {
         if (response.success && response.data) {
           setAllRks(response.data.rks || [])
           setAllTypeEquipments(response.data.typeEquipments || [])
+          setAllCities(response.data.cities || [])
         }
       } catch (error) {
         console.error('Error loading filter options:', error)
@@ -128,12 +129,6 @@ export default function OrdersPage() {
             orders,
             pagination
           })
-          
-          // Собираем уникальные города из заказов
-          const cities = [...new Set(orders.map((o: Order) => o.city).filter(Boolean))]
-          if (cities.length > 0) {
-            setAllCities(cities as string[])
-          }
         }
       } catch (error) {
         console.error('Error loading orders:', error)
