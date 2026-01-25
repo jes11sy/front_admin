@@ -309,31 +309,28 @@ export default function ReportsPage() {
             const campaignTotals = { ordersCount: 0, revenue: 0, profit: 0 }
             
             const citiesWithGroupedCampaigns = cityData.map((cityReport: any) => {
-              // Группируем кампании по rk (тип рекламы)
-              const rkMap = new Map<string, { ordersCount: number; revenue: number; profit: number; avitoNames: string[] }>()
+              // Группируем кампании по avitoName (тип рекламы: Газета, Сайт и т.д.)
+              const typeMap = new Map<string, { ordersCount: number; revenue: number; profit: number; rk: string }>()
               
               cityReport.campaigns?.forEach((campaign: any) => {
-                const rk = campaign.rk || 'Неизвестно'
-                if (!rkMap.has(rk)) {
-                  rkMap.set(rk, { ordersCount: 0, revenue: 0, profit: 0, avitoNames: [] })
+                const typeName = campaign.avitoName || 'Неизвестно'
+                if (!typeMap.has(typeName)) {
+                  typeMap.set(typeName, { ordersCount: 0, revenue: 0, profit: 0, rk: campaign.rk || '-' })
                 }
-                const rkData = rkMap.get(rk)!
-                rkData.ordersCount += campaign.ordersCount
-                rkData.revenue += campaign.revenue
-                rkData.profit += campaign.profit
-                if (campaign.avitoName && !rkData.avitoNames.includes(campaign.avitoName)) {
-                  rkData.avitoNames.push(campaign.avitoName)
-                }
+                const typeData = typeMap.get(typeName)!
+                typeData.ordersCount += campaign.ordersCount
+                typeData.revenue += campaign.revenue
+                typeData.profit += campaign.profit
               })
               
               // Преобразуем в массив и сортируем по обороту
-              const groupedCampaigns = Array.from(rkMap.entries())
-                .map(([rk, data]) => ({
-                  rk,
+              const groupedCampaigns = Array.from(typeMap.entries())
+                .map(([typeName, data]) => ({
+                  typeName,
+                  rk: data.rk,
                   ordersCount: data.ordersCount,
                   revenue: data.revenue,
-                  profit: data.profit,
-                  avitoNames: data.avitoNames.join(', ') || '-'
+                  profit: data.profit
                 }))
                 .sort((a, b) => b.revenue - a.revenue)
               
@@ -872,10 +869,10 @@ export default function ReportsPage() {
                     <TableHeader className="bg-gray-50/50">
                       <TableRow>
                         <TableHead className="text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                          Город / Тип РК
+                          Город / Тип
                         </TableHead>
                         <TableHead className="text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                          Авито аккаунты
+                          РК
                         </TableHead>
                         <TableHead className="text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">
                           Заказов
@@ -906,13 +903,13 @@ export default function ReportsPage() {
                             </TableCell>
                           </TableRow>
                           
-                          {/* Строки типов РК внутри города */}
+                          {/* Строки типов рекламы внутри города */}
                           {cityData.campaigns?.map((campaign: any, idx: number) => (
-                            <TableRow key={`${cityData.city}-${campaign.rk}-${idx}`} className="hover:bg-gray-50">
+                            <TableRow key={`${cityData.city}-${campaign.typeName}-${idx}`} className="hover:bg-gray-50">
                               <TableCell className="pl-8 text-gray-700">
-                                {campaign.rk}
+                                {campaign.typeName}
                               </TableCell>
-                              <TableCell className="text-gray-500 text-sm">{campaign.avitoNames}</TableCell>
+                              <TableCell className="text-gray-500 text-sm">{campaign.rk}</TableCell>
                               <TableCell className="text-right text-gray-600">{campaign.ordersCount}</TableCell>
                               <TableCell className="text-right font-medium text-green-600">
                                 {formatCurrency(campaign.revenue)}
