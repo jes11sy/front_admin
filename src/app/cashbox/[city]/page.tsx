@@ -158,52 +158,57 @@ export default function CityTransactionsPage() {
     }
   }
 
+  // 🔧 FIX: Загружаем статистику и транзакции раздельно
+  // Статистика - через серверную агрегацию (быстро)
+  // Транзакции - с серверной пагинацией (не грузим всё сразу)
   useEffect(() => {
     const loadData = async () => {
       setLoading(true)
       try {
         const dateRange = getDateRange()
         
-        // Загружаем ВСЕ транзакции для правильной пагинации и статистики
-        const resp = await apiClient.getCashByCity(cityName, { 
-          page: 1, 
-          limit: 10000,
-          type: typeFilter !== 'all' ? typeFilter : undefined,
-          startDate: dateRange.startDate || undefined,
-          endDate: dateRange.endDate || undefined
-        })
+        // Параллельно загружаем статистику и транзакции с пагинацией
+        const [statsResp, transResp] = await Promise.all([
+          // Статистика по городу через серверную агрегацию
+          apiClient.getCashStats({ 
+            city: cityName,
+            type: typeFilter !== 'all' ? typeFilter as 'приход' | 'расход' : undefined,
+            startDate: dateRange.startDate || undefined,
+            endDate: dateRange.endDate || undefined
+          }),
+          // Транзакции с серверной пагинацией (максимум 100 на страницу)
+          apiClient.getCashByCity(cityName, { 
+            page: currentPage, 
+            limit: itemsPerPage,
+            type: typeFilter !== 'all' ? typeFilter : undefined,
+            startDate: dateRange.startDate || undefined,
+            endDate: dateRange.endDate || undefined
+          })
+        ])
         
-        let allTransactions: Transaction[] = []
-        if (resp.success && resp.data) {
-          allTransactions = resp.data.data || resp.data
+        // Обновляем статистику
+        if (statsResp.success && statsResp.data) {
+          setCityStats({
+            totalIncome: statsResp.data.totalIncome,
+            totalExpenses: statsResp.data.totalExpense,
+            balance: statsResp.data.balance
+          })
         }
         
-        // Данные уже отфильтрованы сервером, но для локальной фильтрации оставим код на случай необходимости
-        let filteredData = allTransactions
-        
-        // Применяем пагинацию к отфильтрованным данным
-        const startIndex = (currentPage - 1) * itemsPerPage
-        const endIndex = startIndex + itemsPerPage
-        const paginatedData = filteredData.slice(startIndex, endIndex)
-        
-        setTransactions(paginatedData)
-        setTotalTransactions(filteredData.length)
-        setTotalPages(Math.ceil(filteredData.length / itemsPerPage))
-
-        // Рассчитываем статистику по отфильтрованным данным
-        const income = filteredData
-          .filter(t => t.name === 'приход')
-          .reduce((sum, t) => sum + Number(t.amount), 0)
-        const expenses = filteredData
-          .filter(t => t.name === 'расход')
-          .reduce((sum, t) => sum + Number(t.amount), 0)
-        const balance = income - expenses
-
-        setCityStats({
-          totalIncome: income,
-          totalExpenses: expenses,
-          balance
-        })
+        // Обновляем транзакции
+        if (transResp.success && transResp.data) {
+          const data = transResp.data.data || transResp.data
+          setTransactions(Array.isArray(data) ? data : [])
+          
+          // Используем пагинацию с сервера
+          if (transResp.data.pagination) {
+            setTotalTransactions(transResp.data.pagination.total)
+            setTotalPages(transResp.data.pagination.totalPages)
+          } else {
+            setTotalTransactions(Array.isArray(data) ? data.length : 0)
+            setTotalPages(1)
+          }
+        }
       } catch (error) {
         console.error('Error loading city transactions:', error)
         const errorMessage = error instanceof Error ? error.message : 'Ошибка при загрузке транзакций'

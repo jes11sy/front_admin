@@ -11,15 +11,6 @@ import { apiClient } from '@/lib/api'
 import { toast } from 'sonner'
 import { logger } from '@/lib/logger'
 
-interface CashTransaction {
-  id: number
-  name: string
-  amount: number
-  city: string
-  note?: string
-  createdAt: string
-}
-
 interface CityBalance {
   city: string
   income: number
@@ -106,58 +97,28 @@ export default function CashboxPage() {
     }
   }
 
-  // Загрузка данных из API
+  // 🔧 FIX: Загружаем статистику через серверную агрегацию
+  // Это быстрее и надежнее чем загрузка всех транзакций с limit=10000
   useEffect(() => {
     const loadData = async () => {
       setIsLoading(true)
       try {
         const dateRange = getDateRange()
         
-        // Загружаем ВСЕ транзакции для группировки по городам
-        const response = await apiClient.getCashTransactions({ 
-          page: 1, 
-          limit: 10000,
+        // Используем новый эндпоинт для статистики по городам
+        const response = await apiClient.getCashStatsByCity({ 
           startDate: dateRange.startDate,
           endDate: dateRange.endDate
         })
         
-        let allTransactions: CashTransaction[] = []
         if (response.success && response.data) {
-          allTransactions = response.data.data || response.data
+          setCityBalances(response.data.cities)
+          setStats({
+            totalIncome: response.data.totals.totalIncome,
+            totalExpenses: response.data.totals.totalExpense,
+            balance: response.data.totals.balance
+          })
         }
-        
-        // Группируем по городам
-        const cityMap = new Map<string, CityBalance>()
-        let totalInc = 0
-        let totalExp = 0
-        
-        allTransactions.forEach((t: CashTransaction) => {
-          const city = t.city || 'Не указан'
-          if (!cityMap.has(city)) {
-            cityMap.set(city, { city, income: 0, expenses: 0, balance: 0 })
-          }
-          
-          const cityData = cityMap.get(city)!
-          const amount = Number(t.amount)
-          
-          if (t.name === 'приход') {
-            cityData.income += amount
-            totalInc += amount
-          } else if (t.name === 'расход') {
-            cityData.expenses += amount
-            totalExp += amount
-          }
-          
-          cityData.balance = cityData.income - cityData.expenses
-        })
-        
-        const citiesData = Array.from(cityMap.values())
-        setCityBalances(citiesData)
-        setStats({
-          totalIncome: totalInc,
-          totalExpenses: totalExp,
-          balance: totalInc - totalExp
-        })
       } catch (error) {
         logger.error('Error loading cash data', { error: String(error) })
         const errorMessage = error instanceof Error ? error.message : 'Ошибка при загрузке данных'

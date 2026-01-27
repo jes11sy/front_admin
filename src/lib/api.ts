@@ -689,6 +689,63 @@ class ApiClient {
     return this.request<any>(`/cash${query ? `?${query}` : ''}`)
   }
 
+  /**
+   * 🔧 FIX: Получение статистики кассы через серверную агрегацию
+   * Используйте этот метод вместо загрузки всех транзакций с limit=10000
+   * Сервер считает суммы через SQL - это быстрее и надежнее
+   */
+  async getCashStats(params?: {
+    city?: string
+    type?: 'приход' | 'расход'
+    startDate?: string
+    endDate?: string
+  }) {
+    const searchParams = new URLSearchParams()
+    if (params?.city) searchParams.append('city', params.city)
+    if (params?.type) searchParams.append('type', params.type)
+    if (params?.startDate) searchParams.append('startDate', params.startDate)
+    if (params?.endDate) searchParams.append('endDate', params.endDate)
+
+    const query = searchParams.toString()
+    return this.request<{
+      totalIncome: number
+      totalExpense: number
+      balance: number
+      incomeCount: number
+      expenseCount: number
+    }>(`/cash/stats${query ? `?${query}` : ''}`)
+  }
+
+  /**
+   * 🔧 FIX: Получение статистики кассы сгруппированной по городам
+   * Используйте этот метод вместо загрузки всех транзакций с limit=10000
+   */
+  async getCashStatsByCity(params?: {
+    startDate?: string
+    endDate?: string
+  }) {
+    const searchParams = new URLSearchParams()
+    if (params?.startDate) searchParams.append('startDate', params.startDate)
+    if (params?.endDate) searchParams.append('endDate', params.endDate)
+
+    const query = searchParams.toString()
+    return this.request<{
+      cities: Array<{
+        city: string
+        income: number
+        expenses: number
+        balance: number
+      }>
+      totals: {
+        totalIncome: number
+        totalExpense: number
+        balance: number
+        incomeCount: number
+        expenseCount: number
+      }
+    }>(`/cash/stats/by-city${query ? `?${query}` : ''}`)
+  }
+
   // Сдачи мастеров (Handover)
   async getMasterHandovers(params?: {
     page?: number
