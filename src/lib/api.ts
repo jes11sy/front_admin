@@ -1,4 +1,6 @@
+// ✅ FIX #151: Добавлен fetch retry logic
 import { logger } from './logger'
+import { fetchWithRetry, classifyNetworkError, getUserFriendlyErrorMessage } from './fetch-with-retry'
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://api.lead-schem.ru/api/v1'
 
@@ -86,10 +88,18 @@ class ApiClient {
     }
 
     try {
-      const response = await fetch(url, {
+      // ✅ FIX #151: Используем fetchWithRetry для автоматических повторных попыток
+      const response = await fetchWithRetry(url, {
         ...options,
         headers,
         credentials: 'include',  // Всегда отправляем cookies
+        retryOptions: {
+          maxRetries: 3,
+          retryDelay: 1000,
+          backoff: true,
+          timeout: 15000,
+          retryOn: ['NETWORK_ERROR', 'TIMEOUT', 'SERVER_ERROR'],
+        },
       })
 
       // Обработка 401 - попытка обновить токен из cookie
@@ -160,10 +170,22 @@ class ApiClient {
       }
 
       return data
-    } catch (error) {
+    } catch (error: any) {
       // Если уже ApiError - пробрасываем как есть
       if (error instanceof ApiError) {
         throw error
+      }
+      
+      // ✅ FIX #151: Улучшенная обработка сетевых ошибок
+      const networkError = classifyNetworkError(error)
+      
+      if (networkError.type === 'NETWORK_ERROR' || networkError.type === 'TIMEOUT') {
+        logger.error('Network error', { 
+          endpoint, 
+          type: networkError.type,
+          error: networkError.message 
+        })
+        throw new ApiError(getUserFriendlyErrorMessage(error), undefined, endpoint)
       }
       
       // Логируем неизвестные ошибки
@@ -185,6 +207,12 @@ class ApiClient {
   /**
    * Вход в систему
    * Токены автоматически устанавливаются в httpOnly cookies сервером
+   * 
+   * @param login - Логин администратора
+   * @param password - Пароль
+   *   ⚠️ SECURITY: НЕ логировать, НЕ сохранять в storage
+   *   Хэшируется на сервере через bcrypt (12 rounds)
+   * @param rememberMe - Запомнить на устройстве
    */
   async login(login: string, password: string, rememberMe: boolean = false) {
     const response = await this.request<{

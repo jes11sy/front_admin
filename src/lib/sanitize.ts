@@ -1,45 +1,44 @@
 /**
  * Санитизация строк для защиты от XSS
- * Удаляет опасные символы и паттерны
+ * Использует DOMPurify для надежной защиты
+ */
+import DOMPurify from 'dompurify';
+
+// Конфигурация DOMPurify для строгой санитизации
+const STRICT_CONFIG: DOMPurify.Config = {
+  ALLOWED_TAGS: [], // Не разрешаем никакие теги
+  ALLOWED_ATTR: [], // Не разрешаем никакие атрибуты
+  KEEP_CONTENT: true, // Сохраняем текстовое содержимое
+};
+
+/**
+ * Санитизация строки - удаляет все HTML теги и опасные паттерны
+ * @param input - входная строка
+ * @returns очищенная строка
  */
 export function sanitizeString(input: string): string {
   if (!input) return ''
   
-  return input
-    // Удаляем HTML теги
-    .replace(/<[^>]*>/g, '')
-    // Удаляем javascript: и data: протоколы
-    .replace(/javascript:/gi, '')
-    .replace(/data:/gi, '')
-    .replace(/vbscript:/gi, '')
-    // Удаляем on* обработчики событий
-    .replace(/on\w+\s*=/gi, '')
-    // Удаляем опасные символы
-    .replace(/[<>"'`]/g, '')
-    .trim()
+  // Используем DOMPurify для надежной санитизации
+  return DOMPurify.sanitize(input, STRICT_CONFIG).trim()
 }
 
 /**
  * Экранирование HTML для безопасного отображения
+ * @param input - входная строка
+ * @returns экранированная строка
  */
 export function escapeHtml(input: string): string {
   if (!input) return ''
   
-  const htmlEscapes: Record<string, string> = {
-    '&': '&amp;',
-    '<': '&lt;',
-    '>': '&gt;',
-    '"': '&quot;',
-    "'": '&#x27;',
-    '/': '&#x2F;',
-    '`': '&#x60;',
-  }
-  
-  return input.replace(/[&<>"'`/]/g, (char) => htmlEscapes[char] || char)
+  // DOMPurify с пустым списком тегов экранирует все HTML
+  return DOMPurify.sanitize(input, STRICT_CONFIG)
 }
 
 /**
  * Санитизация URL для предотвращения open redirect
+ * @param url - URL для проверки
+ * @returns безопасный URL или '/'
  */
 export function sanitizeUrl(url: string): string {
   if (!url) return '/'
@@ -59,4 +58,3 @@ export function sanitizeUrl(url: string): string {
   
   return url
 }
-

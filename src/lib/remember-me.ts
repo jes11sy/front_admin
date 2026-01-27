@@ -155,7 +155,6 @@ async function decryptCredentials(saved: SavedCredentials): Promise<Credentials 
   try {
     // Проверяем срок действия
     if (Date.now() > saved.expiresAt) {
-      console.log('[RememberMe] Credentials expired')
       return null
     }
 
@@ -176,8 +175,8 @@ async function decryptCredentials(saved: SavedCredentials): Promise<Credentials 
 
     const decryptedData = new TextDecoder().decode(decryptedBuffer)
     return JSON.parse(decryptedData)
-  } catch (error) {
-    console.error('[RememberMe] Decryption failed:', error)
+  } catch {
+    // Ошибка расшифровки - данные повреждены или ключ изменился
     return null
   }
 }
@@ -187,17 +186,12 @@ async function decryptCredentials(saved: SavedCredentials): Promise<Credentials 
  */
 export async function saveCredentials(login: string, password: string): Promise<void> {
   if (!isIndexedDBAvailable()) {
-    console.log('[RememberMe] IndexedDB not available, skipping save')
     return
   }
 
-  console.log('[RememberMe] Attempting to save credentials for:', login)
-  
   try {
     const encrypted = await encryptCredentials({ login, password })
-    console.log('[RememberMe] Credentials encrypted successfully')
     const db = await openDB()
-    console.log('[RememberMe] IndexedDB opened')
 
     const savePromise = new Promise<void>((resolve, reject) => {
       try {
@@ -206,12 +200,10 @@ export async function saveCredentials(login: string, password: string): Promise<
         const request = store.put(encrypted, CREDENTIALS_KEY)
 
         request.onsuccess = () => {
-          console.log('[RememberMe] Credentials saved successfully to IndexedDB')
           db.close()
           resolve()
         }
         request.onerror = () => {
-          console.error('[RememberMe] Error saving to IndexedDB:', request.error)
           db.close()
           reject(request.error)
         }
@@ -227,8 +219,7 @@ export async function saveCredentials(login: string, password: string): Promise<
     })
 
     await withTimeout(savePromise, OPERATION_TIMEOUT, 'Save credentials timeout')
-  } catch (error) {
-    console.error('[RememberMe] Failed to save credentials:', error)
+  } catch {
     // Не бросаем ошибку - пользователь просто не будет запомнен
   }
 }
@@ -239,15 +230,11 @@ export async function saveCredentials(login: string, password: string): Promise<
 export async function getSavedCredentials(): Promise<Credentials | null> {
   // Быстрая проверка доступности IndexedDB
   if (!isIndexedDBAvailable()) {
-    console.log('[RememberMe] IndexedDB not available')
     return null
   }
 
-  console.log('[RememberMe] Attempting to get saved credentials...')
-  
   try {
     const db = await openDB()
-    console.log('[RememberMe] IndexedDB opened for reading')
 
     const getPromise = new Promise<Credentials | null>((resolve, reject) => {
       try {
@@ -259,32 +246,22 @@ export async function getSavedCredentials(): Promise<Credentials | null> {
           try {
             const saved = request.result as SavedCredentials | undefined
             if (!saved) {
-              console.log('[RememberMe] No saved credentials found in IndexedDB')
               db.close()
               resolve(null)
               return
             }
 
-            console.log('[RememberMe] Found encrypted credentials, attempting to decrypt...')
             const credentials = await decryptCredentials(saved)
             db.close()
-            
-            if (credentials) {
-              console.log('[RememberMe] Credentials decrypted successfully for user:', credentials.login)
-            } else {
-              console.log('[RememberMe] Failed to decrypt credentials (expired or invalid)')
-            }
             resolve(credentials)
-          } catch (decryptError) {
+          } catch {
             db.close()
-            console.error('[RememberMe] Decryption error:', decryptError)
             resolve(null)
           }
         }
         
         request.onerror = () => {
           db.close()
-          console.error('[RememberMe] Error reading from IndexedDB:', request.error)
           resolve(null) // Не бросаем ошибку, просто возвращаем null
         }
 
@@ -299,8 +276,7 @@ export async function getSavedCredentials(): Promise<Credentials | null> {
     })
 
     return await withTimeout(getPromise, OPERATION_TIMEOUT, 'Get credentials timeout')
-  } catch (error) {
-    console.error('[RememberMe] Failed to get credentials:', error)
+  } catch {
     return null
   }
 }
@@ -323,7 +299,6 @@ export async function clearSavedCredentials(): Promise<void> {
         const request = store.delete(CREDENTIALS_KEY)
 
         request.onsuccess = () => {
-          console.log('[RememberMe] Credentials cleared')
           db.close()
           resolve()
         }
@@ -343,9 +318,8 @@ export async function clearSavedCredentials(): Promise<void> {
     })
 
     await withTimeout(clearPromise, OPERATION_TIMEOUT, 'Clear credentials timeout')
-  } catch (error) {
-    console.error('[RememberMe] Failed to clear credentials:', error)
-    // Не бросаем ошибку - просто логируем
+  } catch {
+    // Не бросаем ошибку - просто игнорируем
   }
 }
 
@@ -356,4 +330,3 @@ export async function hasSavedCredentials(): Promise<boolean> {
   const credentials = await getSavedCredentials()
   return credentials !== null
 }
-

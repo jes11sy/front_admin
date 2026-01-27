@@ -163,7 +163,8 @@ export default function EditAvitoAccountPage() {
       setShowBrowserAuth(true)
     } else {
       // Если OAuth - перенаправляем
-      const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'https://api.lead-shem.ru/api/v1'
+      // ✅ FIX #173: Исправлена опечатка lead-shem -> lead-schem
+      const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'https://api.lead-schem.ru/api/v1'
       const apiUrl = baseUrl.endsWith('/api/v1') ? baseUrl.replace('/api/v1', '') : baseUrl
       const avitoAuthUrl = `${apiUrl}/api/v1/auth/avito/authorize/${accountId}`
       window.location.href = avitoAuthUrl

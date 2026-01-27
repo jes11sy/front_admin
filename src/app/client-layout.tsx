@@ -43,9 +43,6 @@ export default function ClientLayout({
       // Таймаут безопасности - если проверка зависла, редиректим на логин
       const timeoutId = setTimeout(() => {
         logger.warn('[Auth] Auth check timeout - redirecting to login')
-        if (typeof window !== 'undefined') {
-          localStorage.setItem('auto_login_debug', 'Таймаут проверки авторизации')
-        }
         setIsChecking(false)
         setIsAuthChecked(false)
         apiClient.clearToken()
@@ -67,10 +64,6 @@ export default function ClientLayout({
           })
           setIsAuthChecked(true)
           setIsChecking(false)
-          
-          if (typeof window !== 'undefined') {
-            localStorage.setItem('auto_login_debug', 'Профиль получен через cookies')
-          }
         } else {
           // Профиль не получен - пробуем автовход
           await tryAutoLogin(timeoutId)
@@ -105,9 +98,6 @@ export default function ClientLayout({
               setIsAuthChecked(true)
               setIsChecking(false)
               logger.info('[Auth] Auto-login successful')
-              if (typeof window !== 'undefined') {
-                localStorage.setItem('auto_login_debug', 'Автовход успешен!')
-              }
               return
             }
           } catch (loginError) {
@@ -139,9 +129,6 @@ export default function ClientLayout({
 
     const redirectToLogin = () => {
       logger.info('[Auth] Redirecting to login page')
-      if (typeof window !== 'undefined') {
-        localStorage.setItem('auto_login_debug', 'Редирект на страницу входа')
-      }
       // ВАЖНО: Сбрасываем состояние ПЕРЕД редиректом
       setIsChecking(false)
       setIsAuthChecked(false)

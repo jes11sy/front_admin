@@ -83,9 +83,6 @@ function LoginForm() {
       timeoutId = setTimeout(() => {
         if (isMounted) {
           logger.warn('[Login] Auto-login timeout')
-          if (typeof window !== 'undefined') {
-            localStorage.setItem('auto_login_debug', 'Таймаут автовхода')
-          }
           setIsLoading(false)
           setIsCheckingAutoLogin(false)
         }
@@ -114,9 +111,6 @@ function LoginForm() {
             if (loginResponse.success && loginResponse.data?.user) {
               if (timeoutId) clearTimeout(timeoutId)
               setUser(loginResponse.data.user)
-              if (typeof window !== 'undefined') {
-                localStorage.setItem('auto_login_debug', 'Автовход успешен!')
-              }
               router.replace(getSafeRedirectUrl())
               return
             }
@@ -127,9 +121,6 @@ function LoginForm() {
           // Логин не удался
           if (isMounted) {
             logger.warn('[Login] Auto-login failed')
-            if (typeof window !== 'undefined') {
-              localStorage.setItem('auto_login_debug', 'Автовход не удался')
-            }
             if (timeoutId) clearTimeout(timeoutId)
             setIsLoading(false)
             setIsCheckingAutoLogin(false)
@@ -138,9 +129,6 @@ function LoginForm() {
           // Нет сохраненных данных - показываем форму
           if (isMounted) {
             logger.info('[Login] No saved credentials found')
-            if (typeof window !== 'undefined') {
-              localStorage.setItem('auto_login_debug', 'Нет сохраненных данных')
-            }
             if (timeoutId) clearTimeout(timeoutId)
             setIsCheckingAutoLogin(false)
           }
@@ -148,9 +136,6 @@ function LoginForm() {
       } catch (error) {
         if (isMounted) {
           logger.error('[Login] Auto-login error', { error: String(error) })
-          if (typeof window !== 'undefined') {
-            localStorage.setItem('auto_login_debug', 'Ошибка: ' + String(error))
-          }
           if (timeoutId) clearTimeout(timeoutId)
           setIsLoading(false)
           setIsCheckingAutoLogin(false)

@@ -69,7 +69,8 @@ export default function AddAvitoAccountPage() {
           // Если OAuth - перенаправляем на авторизацию Avito
           toast.success('Аккаунт создан! Перенаправляем на авторизацию Avito...')
           setTimeout(() => {
-            const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'https://api.lead-shem.ru/api/v1'
+            // ✅ FIX #173: Исправлена опечатка lead-shem -> lead-schem
+            const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'https://api.lead-schem.ru/api/v1'
             const apiUrl = baseUrl.endsWith('/api/v1') ? baseUrl.replace('/api/v1', '') : baseUrl
             const avitoAuthUrl = `${apiUrl}/api/v1/auth/avito/authorize/${response.data.id}`
             window.location.href = avitoAuthUrl
