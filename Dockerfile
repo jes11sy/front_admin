@@ -30,6 +30,7 @@ ARG NEXT_PUBLIC_S3_BUCKET_URL=https://s3.twcstorage.ru/f7eead03-crmfiles
 # Устанавливаем как ENV для использования в сборке 1
 ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
 ENV NEXT_PUBLIC_S3_BUCKET_URL=$NEXT_PUBLIC_S3_BUCKET_URL
+ENV NODE_ENV=production
 
 # Собираем приложение
 RUN npm run build
