@@ -10,6 +10,9 @@ const nextConfig = {
   
   reactStrictMode: true,
   
+  // Отключаем source maps в production для безопасности
+  productionBrowserSourceMaps: false,
+  
   // Отключаем TypeScript проверки во время сборки для Docker  
   typescript: {
     ignoreBuildErrors: true,
@@ -93,10 +96,6 @@ const nextConfig = {
           {
             key: 'X-Content-Type-Options',
             value: 'nosniff'
-          },
-          {
-            key: 'X-XSS-Protection',
-            value: '1; mode=block'
           },
           {
             key: 'Referrer-Policy',
