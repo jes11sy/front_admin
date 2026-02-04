@@ -27,6 +27,11 @@ export class ApiError extends Error {
 
 class ApiClient {
   private baseURL: string
+  
+  // ✅ FIX: Mutex для предотвращения race condition при параллельных refresh запросах
+  // Если несколько запросов одновременно получают 401, только один делает refresh,
+  // остальные ждут его результат
+  private refreshPromise: Promise<boolean> | null = null
 
   constructor(baseURL: string) {
     this.baseURL = baseURL
@@ -45,9 +50,34 @@ class ApiClient {
 
   /**
    * Обновление токена доступа через refresh token из httpOnly cookie
+   * ✅ FIX: Используем mutex для синхронизации параллельных запросов
+   * Это предотвращает token reuse detection на backend при одновременных 401
    */
   private async refreshAccessToken(): Promise<boolean> {
+    // Если refresh уже выполняется - ждём его результат
+    if (this.refreshPromise) {
+      logger.debug('[Auth] Refresh already in progress, waiting...')
+      return this.refreshPromise
+    }
+    
+    // Запускаем refresh и сохраняем Promise для других запросов
+    this.refreshPromise = this.doRefreshToken()
+    
     try {
+      return await this.refreshPromise
+    } finally {
+      // Сбрасываем Promise после завершения (успех или ошибка)
+      this.refreshPromise = null
+    }
+  }
+
+  /**
+   * Реальная логика обновления токена (вызывается только один раз при параллельных запросах)
+   */
+  private async doRefreshToken(): Promise<boolean> {
+    try {
+      logger.debug('[Auth] Starting token refresh')
+      
       const response = await fetch(`${this.baseURL}/auth/refresh`, {
         method: 'POST',
         headers: {
@@ -59,13 +89,16 @@ class ApiClient {
       })
 
       if (!response.ok) {
+        logger.warn('[Auth] Token refresh failed', { status: response.status })
         return false
       }
 
       const data = await response.json()
       // Новые токены установлены в httpOnly cookies автоматически сервером
+      logger.debug('[Auth] Token refresh successful')
       return data.success
     } catch (error) {
+      logger.error('[Auth] Token refresh error', { error: String(error) })
       return false
     }
   }
