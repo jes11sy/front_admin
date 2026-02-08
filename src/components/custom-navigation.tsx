@@ -5,45 +5,39 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { useAuthStore } from '@/store/auth.store'
-import { 
-  Sun, Moon, Bell, User, Menu, X, ChevronDown,
-  LayoutDashboard, Users, Phone, Briefcase, Wrench,
-  PhoneCall, ShoppingCart, Wallet, DollarSign, FileText,
-  MapPin, UserCheck, TrendingUp, Settings, Activity, 
-  FileCode, AlertCircle, LogOut
-} from 'lucide-react'
+import { Sun, Moon, Bell, User, Menu, X, ChevronDown } from 'lucide-react'
 
 const navigationItems = [
-  { name: 'Дашборд', href: '/', icon: LayoutDashboard },
+  { name: 'Дашборд', href: '/', icon: '/navigate/dashboard.svg' },
   {
     name: 'Сотрудники',
-    icon: Users,
+    icon: '/navigate/employees.svg',
     dropdown: [
-      { name: 'Кол-центр', href: '/employees/callcenter', icon: Phone },
-      { name: 'Директора', href: '/employees/directors', icon: Briefcase },
-      { name: 'Мастера', href: '/employees/masters', icon: Wrench },
+      { name: 'Кол-центр', href: '/employees/callcenter' },
+      { name: 'Директора', href: '/employees/directors' },
+      { name: 'Мастера', href: '/employees/masters' },
     ]
   },
-  { name: 'Телефония', href: '/telephony', icon: PhoneCall },
-  { name: 'Заказы', href: '/orders', icon: ShoppingCart },
-  { name: 'Касса', href: '/cashbox', icon: Wallet },
-  { name: 'Зарплата', href: '/salary', icon: DollarSign },
+  { name: 'Телефония', href: '/telephony', icon: '/navigate/telephony.svg' },
+  { name: 'Заказы', href: '/orders', icon: '/navigate/orders.svg' },
+  { name: 'Касса', href: '/cashbox', icon: '/navigate/cash.svg' },
+  { name: 'Зарплата', href: '/salary', icon: '/navigate/stats.svg' },
   {
     name: 'Отчеты',
-    icon: FileText,
+    icon: '/navigate/reports.svg',
     dropdown: [
-      { name: 'Отчет по городам', href: '/reports/cities', icon: MapPin },
-      { name: 'Отчет по мастерам', href: '/reports/masters', icon: UserCheck },
-      { name: 'Отчет по РК', href: '/reports/campaigns', icon: TrendingUp },
+      { name: 'Отчет по городам', href: '/reports/cities' },
+      { name: 'Отчет по мастерам', href: '/reports/masters' },
+      { name: 'Отчет по РК', href: '/reports/campaigns' },
     ]
   },
   {
     name: 'Администрирование',
-    icon: Settings,
+    icon: '/navigate/master-handover.svg',
     dropdown: [
-      { name: 'Активные сессии', href: '/admin/sessions', icon: Activity },
-      { name: 'Логирование пользователей', href: '/admin/user-logs', icon: FileCode },
-      { name: 'Ошибки', href: '/admin/errors', icon: AlertCircle },
+      { name: 'Активные сессии', href: '/admin/sessions' },
+      { name: 'Логирование пользователей', href: '/admin/user-logs' },
+      { name: 'Ошибки', href: '/admin/errors' },
     ]
   },
 ]
@@ -87,7 +81,6 @@ const MenuContent = memo(function MenuContent({
       {/* Navigation */}
       <nav className={`flex-1 px-5 ${isMobile ? 'space-y-2' : 'space-y-1'} overflow-y-auto`}>
         {navigationItems.map((item) => {
-          const Icon = item.icon
           const hasDropdown = !!item.dropdown
           const isExpanded = expandedItem === item.name
           const childActive = isAnyChildActive(item.dropdown)
@@ -98,16 +91,8 @@ const MenuContent = memo(function MenuContent({
               {hasDropdown ? (
                 <button
                   onClick={() => setExpandedItem(isExpanded ? null : item.name)}
-                  className={`w-full relative flex items-center justify-between gap-3 px-3 font-normal group rounded-lg transition-all duration-200 ${
+                  className={`nav-icon-hover w-full relative flex items-center justify-between gap-3 px-3 font-normal group ${
                     isMobile ? 'py-3.5 text-base' : 'py-2.5 text-sm'
-                  } ${
-                    childActive
-                      ? isDark 
-                        ? 'bg-[#2a3441] text-[#0d5c4b]' 
-                        : 'bg-[#daece2]/50 text-[#0d5c4b]'
-                      : isDark
-                        ? 'text-gray-300 hover:bg-[#2a3441] hover:text-white'
-                        : 'text-gray-700 hover:bg-[#daece2]/30 hover:text-[#0d5c4b]'
                   }`}
                 >
                   <div className="flex items-center gap-3">
@@ -127,24 +112,24 @@ const MenuContent = memo(function MenuContent({
                         />
                       </svg>
                     </span>
-                    <Icon className={`${isMobile ? 'h-6 w-6' : 'h-5 w-5'} ${childActive ? 'text-[#0d5c4b]' : ''}`} />
-                    <span>{item.name}</span>
+                    <Image 
+                      src={item.icon} 
+                      alt={item.name} 
+                      width={isMobile ? 24 : 20} 
+                      height={isMobile ? 24 : 20} 
+                      className={`nav-icon ${childActive ? 'nav-icon-active' : ''} ${isMobile ? 'w-6 h-6' : 'w-5 h-5'}`}
+                    />
+                    <span className={`${isDark ? 'text-gray-200' : 'text-gray-800'} group-hover:text-[#0d5c4b]`}>
+                      {item.name}
+                    </span>
                   </div>
-                  <ChevronDown className={`h-4 w-4 transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`} />
+                  <ChevronDown className={`h-4 w-4 transition-transform duration-200 ${isDark ? 'text-gray-400' : 'text-gray-500'} group-hover:text-[#0d5c4b] ${isExpanded ? 'rotate-180' : ''}`} />
                 </button>
               ) : (
                 <Link
                   href={item.href!}
-                  className={`relative flex items-center gap-3 px-3 font-normal group rounded-lg transition-all duration-200 ${
+                  className={`nav-icon-hover relative flex items-center gap-3 px-3 font-normal group ${
                     isMobile ? 'py-3.5 text-base' : 'py-2.5 text-sm'
-                  } ${
-                    active
-                      ? isDark 
-                        ? 'bg-[#2a3441] text-[#0d5c4b]' 
-                        : 'bg-[#daece2]/50 text-[#0d5c4b]'
-                      : isDark
-                        ? 'text-gray-300 hover:bg-[#2a3441] hover:text-white'
-                        : 'text-gray-700 hover:bg-[#daece2]/30 hover:text-[#0d5c4b]'
                   }`}
                   onClick={onCloseMobileMenu}
                 >
@@ -164,8 +149,16 @@ const MenuContent = memo(function MenuContent({
                       />
                     </svg>
                   </span>
-                  <Icon className={`${isMobile ? 'h-6 w-6' : 'h-5 w-5'} ${active ? 'text-[#0d5c4b]' : ''}`} />
-                  <span>{item.name}</span>
+                  <Image 
+                    src={item.icon} 
+                    alt={item.name} 
+                    width={isMobile ? 24 : 20} 
+                    height={isMobile ? 24 : 20} 
+                    className={`nav-icon ${active ? 'nav-icon-active' : ''} ${isMobile ? 'w-6 h-6' : 'w-5 h-5'}`}
+                  />
+                  <span className={`${isDark ? 'text-gray-200' : 'text-gray-800'} group-hover:text-[#0d5c4b]`}>
+                    {item.name}
+                  </span>
                 </Link>
               )}
 
@@ -173,7 +166,6 @@ const MenuContent = memo(function MenuContent({
               {hasDropdown && isExpanded && (
                 <div className={`mt-1 ml-4 space-y-1 ${isDark ? 'border-l-2 border-[#0d5c4b]/30' : 'border-l-2 border-[#0d5c4b]/20'}`}>
                   {item.dropdown!.map((subItem) => {
-                    const SubIcon = subItem.icon
                     const isSubActive = pathname === subItem.href || pathname.startsWith(subItem.href + '/')
                     
                     return (
@@ -187,11 +179,10 @@ const MenuContent = memo(function MenuContent({
                           isSubActive 
                             ? 'text-white bg-[#0d5c4b] shadow-sm'
                             : isDark
-                              ? 'text-gray-400 hover:text-white hover:bg-[#2a3441]'
-                              : 'text-gray-600 hover:text-[#0d5c4b] hover:bg-[#daece2]/30'
+                              ? 'text-gray-400 hover:text-[#0d5c4b]'
+                              : 'text-gray-600 hover:text-[#0d5c4b]'
                         }`}
                       >
-                        <SubIcon className={`${isMobile ? 'h-5 w-5' : 'h-4 w-4'}`} />
                         <span>{subItem.name}</span>
                       </Link>
                     )
@@ -225,36 +216,26 @@ const MenuContent = memo(function MenuContent({
 
         {/* Notifications */}
         <button
-          className={`relative flex items-center gap-3 px-3 w-full group rounded-lg transition-all duration-200 ${
+          className={`relative flex items-center gap-3 px-3 w-full group ${
             isMobile ? 'py-3 text-base' : 'py-2.5 text-sm'
-          } ${
-            isDark 
-              ? 'text-gray-300 hover:bg-[#2a3441] hover:text-white' 
-              : 'text-gray-700 hover:bg-[#daece2]/30 hover:text-[#0d5c4b]'
           }`}
         >
           <div className="relative">
-            <Bell className={isMobile ? 'h-6 w-6' : 'h-5 w-5'} />
+            <Bell className={`${isMobile ? 'h-6 w-6' : 'h-5 w-5'} ${isDark ? 'text-gray-400' : 'text-gray-600'} group-hover:text-[#0d5c4b] transition-colors`} />
             <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center">
               3
             </span>
           </div>
-          <span>Уведомления</span>
+          <span className={`${isDark ? 'text-gray-200' : 'text-gray-800'} group-hover:text-[#0d5c4b]`}>
+            Уведомления
+          </span>
         </button>
 
         {/* Profile with user name */}
         <Link
           href="/profile"
-          className={`relative flex items-center gap-3 px-3 font-normal group rounded-lg transition-all duration-200 ${
+          className={`nav-icon-hover relative flex items-center gap-3 px-3 font-normal group ${
             isMobile ? 'py-3.5 text-base' : 'py-2.5 text-sm'
-          } ${
-            pathname === '/profile' || pathname.startsWith('/profile/')
-              ? isDark 
-                ? 'bg-[#2a3441] text-[#0d5c4b]' 
-                : 'bg-[#daece2]/50 text-[#0d5c4b]'
-              : isDark
-                ? 'text-gray-300 hover:bg-[#2a3441] hover:text-white'
-                : 'text-gray-700 hover:bg-[#daece2]/30 hover:text-[#0d5c4b]'
           }`}
           onClick={onCloseMobileMenu}
         >
@@ -273,21 +254,16 @@ const MenuContent = memo(function MenuContent({
               />
             </svg>
           </span>
-          <User className={`${isMobile ? 'h-6 w-6' : 'h-5 w-5'} ${pathname === '/profile' || pathname.startsWith('/profile/') ? 'text-[#0d5c4b]' : ''}`} />
-          <span>{userName || 'Профиль'}</span>
+          <User className={`${isMobile ? 'h-6 w-6' : 'h-5 w-5'} ${
+            pathname === '/profile' || pathname.startsWith('/profile/') 
+              ? 'text-[#0d5c4b]' 
+              : isDark ? 'text-gray-400' : 'text-gray-600'
+          } group-hover:text-[#0d5c4b] transition-colors`} />
+          <span className={`${isDark ? 'text-gray-200' : 'text-gray-800'} group-hover:text-[#0d5c4b]`}>
+            {userName || 'Профиль'}
+          </span>
         </Link>
 
-        {/* Logout */}
-        <Link
-          href="/logout"
-          className={`relative flex items-center gap-3 px-3 font-normal group rounded-lg transition-all duration-200 ${
-            isMobile ? 'py-3.5 text-base' : 'py-2.5 text-sm'
-          } text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20`}
-          onClick={onCloseMobileMenu}
-        >
-          <LogOut className={`${isMobile ? 'h-6 w-6' : 'h-5 w-5'}`} />
-          <span>Выйти</span>
-        </Link>
       </div>
     </>
   )

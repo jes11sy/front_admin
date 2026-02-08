@@ -254,3 +254,21 @@ input:focus {
   box-shadow: none !important;
 }
 
+/* Navigation Icon Hover Effect */
+.nav-icon-hover:hover .nav-icon {
+  filter: invert(27%) sepia(51%) saturate(1095%) hue-rotate(140deg) brightness(92%) contrast(92%);
+}
+
+.nav-icon-active {
+  filter: invert(27%) sepia(51%) saturate(1095%) hue-rotate(140deg) brightness(92%) contrast(92%);
+}
+
+/* Dark mode - инвертируем иконки навигации для светлого отображения */
+.dark .nav-icon:not(.nav-icon-active) {
+  filter: invert(1) brightness(0.8);
+}
+
+.dark .nav-icon-hover:hover .nav-icon {
+  filter: invert(27%) sepia(51%) saturate(1095%) hue-rotate(140deg) brightness(92%) contrast(92%);
+}
+

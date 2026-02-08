@@ -23,7 +23,6 @@ function LoginForm() {
   const [login, setLogin] = useState('')
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
-  const [rememberMe, setRememberMe] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [errors, setErrors] = useState<{ login?: string; password?: string }>({})
   const [isCheckingAutoLogin, setIsCheckingAutoLogin] = useState(true)
@@ -222,7 +221,7 @@ function LoginForm() {
         return
       }
       
-      const data = await apiClient.login(sanitizedLogin, sanitizedPassword, rememberMe)
+      const data = await apiClient.login(sanitizedLogin, sanitizedPassword)
       
       // ✅ УСПЕШНЫЙ ВХОД - сбрасываем счетчик попыток
       setAttemptCount(0)
@@ -397,27 +396,6 @@ function LoginForm() {
                 {sanitizeString(errors.password)}
               </p>
             )}
-          </div>
-
-          {/* Запомнить меня */}
-          <div className="flex items-center">
-            <input
-              id="remember-me"
-              name="remember-me"
-              type="checkbox"
-              checked={rememberMe}
-              onChange={(e) => setRememberMe(e.target.checked)}
-              className="h-4 w-4 rounded border-gray-300 focus:ring-2 focus:ring-teal-500"
-              style={{accentColor: '#0d5c4b'}}
-            />
-            <label 
-              htmlFor="remember-me" 
-              className={`ml-2 block text-sm cursor-pointer ${
-                theme === 'dark' ? 'text-gray-300' : 'text-gray-600'
-              }`}
-            >
-              Запомнить меня
-            </label>
           </div>
 
           <Button 
