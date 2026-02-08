@@ -39,6 +39,11 @@ class ApiClient {
   // ✅ FIX #152: Silent Refresh - фоновое обновление токена (как у директора)
   private silentRefreshInterval: ReturnType<typeof setInterval> | null = null
   private lastActivityTime: number = Date.now()
+  
+  // ✅ FIX: Proactive refresh — отслеживаем время последнего refresh
+  // Access token живёт 15 минут, делаем proactive refresh через 10 минут
+  private lastRefreshTime: number = Date.now()
+  private readonly PROACTIVE_REFRESH_INTERVAL = 10 * 60 * 1000 // 10 минут
 
   constructor(baseURL: string) {
     this.baseURL = baseURL
@@ -52,8 +57,9 @@ class ApiClient {
 
   /**
    * 🔄 Silent Refresh - фоновое обновление токена
-   * Проверяет каждые 4 минуты и обновляет токен если пользователь активен
+   * Проверяет каждые 3 минуты и обновляет токен
    * Это предотвращает вылет из профиля каждые 15 минут
+   * ✅ FIX: Убрана проверка активности — refresh нужен всегда пока вкладка открыта
    */
   private startSilentRefresh() {
     // Очищаем предыдущий интервал если был
@@ -61,21 +67,26 @@ class ApiClient {
       clearInterval(this.silentRefreshInterval)
     }
 
-    // Проверяем каждые 4 минуты (токен живёт 15 минут, обновляем заранее)
+    // ✅ FIX: Проверяем каждые 3 минуты (токен живёт 15 минут)
+    // Убрана проверка активности — если вкладка открыта, нужно поддерживать сессию
     this.silentRefreshInterval = setInterval(async () => {
-      // Обновляем только если пользователь был активен в последние 10 минут
-      const inactiveTime = Date.now() - this.lastActivityTime
-      const isActive = inactiveTime < 10 * 60 * 1000 // 10 минут
-
-      if (isActive) {
-        try {
-          await this.refreshAccessToken()
-          logger.debug('Silent refresh successful')
-        } catch (error) {
-          logger.debug('Silent refresh failed, user may need to re-login')
-        }
+      // Проверяем нужен ли refresh (прошло ли достаточно времени)
+      const timeSinceLastRefresh = Date.now() - this.lastRefreshTime
+      
+      // Если с последнего refresh прошло меньше 2 минут — пропускаем
+      // (мог быть proactive refresh от request())
+      if (timeSinceLastRefresh < 2 * 60 * 1000) {
+        logger.debug('[SilentRefresh] Skipping — recent refresh detected')
+        return
       }
-    }, 4 * 60 * 1000) // Каждые 4 минуты
+      
+      try {
+        await this.refreshAccessToken()
+        logger.debug('[SilentRefresh] Token refreshed successfully')
+      } catch (error) {
+        logger.warn('[SilentRefresh] Failed', { error: String(error) })
+      }
+    }, 3 * 60 * 1000) // Каждые 3 минуты
   }
 
   /**
@@ -178,6 +189,8 @@ class ApiClient {
           }
         }
         
+        // ✅ FIX: Обновляем время последнего успешного refresh
+        this.lastRefreshTime = Date.now()
         logger.debug('[Auth] Token refresh via cookies successful')
         return true
       }
@@ -219,6 +232,23 @@ class ApiClient {
     // Добавляем Content-Type только если есть body
     if (options.body) {
       headers['Content-Type'] = 'application/json'
+    }
+
+    // ✅ FIX: Proactive refresh — если прошло >10 минут с последнего refresh,
+    // обновляем токен ДО запроса, чтобы избежать 401
+    // Не делаем для /auth/ endpoints чтобы избежать бесконечного цикла
+    if (retryOn401 && !endpoint.startsWith('/auth/')) {
+      const timeSinceLastRefresh = Date.now() - this.lastRefreshTime
+      if (timeSinceLastRefresh > this.PROACTIVE_REFRESH_INTERVAL) {
+        logger.debug('[Auth] Proactive refresh triggered (last refresh was ' + 
+          Math.round(timeSinceLastRefresh / 1000 / 60) + ' minutes ago)')
+        try {
+          await this.refreshAccessToken()
+        } catch (e) {
+          // Игнорируем ошибку — если refresh не удался, запрос получит 401 и обработает его
+          logger.debug('[Auth] Proactive refresh failed, will retry on 401')
+        }
+      }
     }
 
     try {
@@ -372,6 +402,9 @@ class ApiClient {
     if (response.success && response.data?.user && typeof window !== 'undefined') {
       const storage = rememberMe ? localStorage : sessionStorage
       storage.setItem('user', JSON.stringify(response.data.user))
+      
+      // ✅ FIX: Обновляем время последнего refresh при успешном логине
+      this.lastRefreshTime = Date.now()
       
       // Сохраняем refresh token в IndexedDB (backup для iOS PWA)
       if (response.data.refreshToken) {
@@ -1305,6 +1338,9 @@ class ApiClient {
       
       if (response.ok) {
         const result = await response.json()
+        
+        // ✅ FIX: Обновляем время последнего refresh
+        this.lastRefreshTime = Date.now()
         
         // Обновляем токен в IndexedDB если пришёл новый
         if (result.data?.refreshToken) {
