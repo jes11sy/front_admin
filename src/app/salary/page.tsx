@@ -1,6 +1,6 @@
 'use client'
 
-import { DollarSign, User, Download } from 'lucide-react'
+import { Download } from 'lucide-react'
 import { useState, useEffect } from 'react'
 import { apiClient } from '@/lib/api'
 import { toast } from 'sonner'
@@ -236,34 +236,25 @@ export default function SalaryPage() {
     <div className={`min-h-screen transition-colors duration-300 ${isDark ? 'bg-[#1e2530]' : 'bg-white'}`}>
       <div className="px-4 py-6">
         
-        {/* Статистика - компактные карточки */}
+        {/* Статистика - минималистичные карточки */}
         <div className="grid grid-cols-3 gap-3 mb-6">
-          <div className={`rounded-xl p-4 ${isDark ? 'bg-[#2a3441]' : 'bg-blue-50'}`}>
-            <div className="flex items-center justify-between mb-2">
-              <span className={`text-xs font-medium ${isDark ? 'text-gray-400' : 'text-blue-600'}`}>Оборот Наш</span>
-              <DollarSign className="h-4 w-4 text-blue-500" />
-            </div>
-            <div className={`text-xl font-bold ${isDark ? 'text-blue-400' : 'text-blue-700'}`}>
+          <div className={`rounded-lg p-4 border ${isDark ? 'bg-[#2a3441] border-gray-700' : 'bg-white border-gray-200'}`}>
+            <div className={`text-xs font-medium mb-1 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>Оборот Наш</div>
+            <div className={`text-xl font-bold ${isDark ? 'text-gray-100' : 'text-gray-800'}`}>
               {formatCurrency(stats.totalTurnoverOur)}
             </div>
           </div>
           
-          <div className={`rounded-xl p-4 ${isDark ? 'bg-[#2a3441]' : 'bg-purple-50'}`}>
-            <div className="flex items-center justify-between mb-2">
-              <span className={`text-xs font-medium ${isDark ? 'text-gray-400' : 'text-purple-600'}`}>Оборот Партнер</span>
-              <DollarSign className="h-4 w-4 text-purple-500" />
-            </div>
-            <div className={`text-xl font-bold ${isDark ? 'text-purple-400' : 'text-purple-700'}`}>
+          <div className={`rounded-lg p-4 border ${isDark ? 'bg-[#2a3441] border-gray-700' : 'bg-white border-gray-200'}`}>
+            <div className={`text-xs font-medium mb-1 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>Оборот Партнер</div>
+            <div className={`text-xl font-bold ${isDark ? 'text-gray-100' : 'text-gray-800'}`}>
               {formatCurrency(stats.totalTurnoverPartner)}
             </div>
           </div>
           
-          <div className={`rounded-xl p-4 ${isDark ? 'bg-[#2a3441]' : 'bg-teal-50'}`}>
-            <div className="flex items-center justify-between mb-2">
-              <span className={`text-xs font-medium ${isDark ? 'text-gray-400' : 'text-teal-600'}`}>Зарплата</span>
-              <DollarSign className="h-4 w-4 text-teal-500" />
-            </div>
-            <div className={`text-xl font-bold ${isDark ? 'text-teal-400' : 'text-teal-700'}`}>
+          <div className={`rounded-lg p-4 border ${isDark ? 'bg-[#2a3441] border-gray-700' : 'bg-white border-gray-200'}`}>
+            <div className={`text-xs font-medium mb-1 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>Зарплата</div>
+            <div className={`text-xl font-bold ${isDark ? 'text-gray-100' : 'text-gray-800'}`}>
               {formatCurrency(stats.totalSalary)}
             </div>
           </div>
@@ -496,7 +487,6 @@ export default function SalaryPage() {
         {/* Пусто */}
         {!isLoading && filteredRecords.length === 0 && (
           <div className={`text-center py-16 rounded-lg ${isDark ? 'bg-[#2a3441]' : 'bg-gray-50'}`}>
-            <DollarSign className={`w-16 h-16 mx-auto mb-4 ${isDark ? 'text-gray-600' : 'text-gray-300'}`} />
             <p className={`text-lg mb-2 ${isDark ? 'text-gray-300' : 'text-gray-600'}`}>
               {searchQuery || cityFilter ? 'Записи не найдены' : 'Нет данных'}
             </p>
@@ -515,9 +505,9 @@ export default function SalaryPage() {
                   <tr className={`border-b-2 ${isDark ? 'bg-[#3a4451] border-[#0d5c4b]' : 'bg-gray-50 border-[#0d5c4b]'}`}>
                     <th className={`text-left py-3 px-4 font-semibold ${isDark ? 'text-gray-200' : 'text-gray-700'}`}>Город</th>
                     <th className={`text-left py-3 px-4 font-semibold ${isDark ? 'text-gray-200' : 'text-gray-700'}`}>Директор</th>
-                    <th className={`text-right py-3 px-4 font-semibold text-blue-500`}>Оборот Наш</th>
-                    <th className={`text-right py-3 px-4 font-semibold text-purple-500`}>Оборот Партнер</th>
-                    <th className={`text-right py-3 px-4 font-semibold text-teal-500`}>Зарплата</th>
+                    <th className={`text-right py-3 px-4 font-semibold ${isDark ? 'text-gray-200' : 'text-gray-700'}`}>Оборот Наш</th>
+                    <th className={`text-right py-3 px-4 font-semibold ${isDark ? 'text-gray-200' : 'text-gray-700'}`}>Оборот Партнер</th>
+                    <th className={`text-right py-3 px-4 font-semibold ${isDark ? 'text-gray-200' : 'text-gray-700'}`}>Зарплата</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -528,18 +518,15 @@ export default function SalaryPage() {
                     >
                       <td className={`py-3 px-4 font-medium ${isDark ? 'text-gray-100' : 'text-gray-900'}`}>{record.city}</td>
                       <td className={`py-3 px-4 ${isDark ? 'text-gray-300' : 'text-gray-600'}`}>
-                        <div className="flex items-center gap-2">
-                          <User className={`h-4 w-4 ${isDark ? 'text-gray-500' : 'text-gray-400'}`} />
-                          {record.directorName}
-                        </div>
+                        {record.directorName}
                       </td>
-                      <td className={`py-3 px-4 text-right font-medium ${isDark ? 'text-blue-400' : 'text-blue-600'}`}>
+                      <td className={`py-3 px-4 text-right font-medium ${isDark ? 'text-gray-100' : 'text-gray-800'}`}>
                         {formatCurrency(record.turnoverOur)}
                       </td>
-                      <td className={`py-3 px-4 text-right font-medium ${isDark ? 'text-purple-400' : 'text-purple-600'}`}>
+                      <td className={`py-3 px-4 text-right font-medium ${isDark ? 'text-gray-100' : 'text-gray-800'}`}>
                         {formatCurrency(record.turnoverPartner)}
                       </td>
-                      <td className={`py-3 px-4 text-right font-bold ${isDark ? 'text-teal-400' : 'text-teal-700'}`}>
+                      <td className={`py-3 px-4 text-right font-bold ${isDark ? 'text-gray-100' : 'text-gray-800'}`}>
                         {formatCurrency(record.salary)}
                       </td>
                     </tr>
@@ -547,9 +534,9 @@ export default function SalaryPage() {
                   {/* Итого */}
                   <tr className={`font-bold border-t-2 ${isDark ? 'bg-[#3a4451] border-[#0d5c4b]' : 'bg-gray-100 border-[#0d5c4b]'}`}>
                     <td className={`py-3 px-4 ${isDark ? 'text-gray-100' : 'text-gray-800'}`} colSpan={2}>ИТОГО</td>
-                    <td className={`py-3 px-4 text-right ${isDark ? 'text-blue-400' : 'text-blue-700'}`}>{formatCurrency(stats.totalTurnoverOur)}</td>
-                    <td className={`py-3 px-4 text-right ${isDark ? 'text-purple-400' : 'text-purple-700'}`}>{formatCurrency(stats.totalTurnoverPartner)}</td>
-                    <td className={`py-3 px-4 text-right ${isDark ? 'text-teal-400' : 'text-teal-700'}`}>{formatCurrency(stats.totalSalary)}</td>
+                    <td className={`py-3 px-4 text-right ${isDark ? 'text-gray-100' : 'text-gray-800'}`}>{formatCurrency(stats.totalTurnoverOur)}</td>
+                    <td className={`py-3 px-4 text-right ${isDark ? 'text-gray-100' : 'text-gray-800'}`}>{formatCurrency(stats.totalTurnoverPartner)}</td>
+                    <td className={`py-3 px-4 text-right ${isDark ? 'text-gray-100' : 'text-gray-800'}`}>{formatCurrency(stats.totalSalary)}</td>
                   </tr>
                 </tbody>
               </table>
@@ -563,31 +550,30 @@ export default function SalaryPage() {
             {filteredRecords.map((record) => (
               <div 
                 key={record.id}
-                className={`rounded-xl overflow-hidden border ${isDark ? 'bg-[#2a3441] border-gray-700' : 'bg-white border-gray-200'}`}
+                className={`rounded-lg overflow-hidden border ${isDark ? 'bg-[#2a3441] border-gray-700' : 'bg-white border-gray-200'}`}
               >
                 {/* Верхняя строка */}
                 <div className={`flex items-center justify-between px-4 py-3 border-b ${isDark ? 'bg-[#3a4451] border-gray-700' : 'bg-gray-50 border-gray-100'}`}>
                   <span className={`font-semibold ${isDark ? 'text-gray-100' : 'text-gray-800'}`}>{record.city}</span>
-                  <span className={`text-lg font-bold ${isDark ? 'text-teal-400' : 'text-teal-700'}`}>
+                  <span className={`text-lg font-bold ${isDark ? 'text-gray-100' : 'text-gray-800'}`}>
                     {formatCurrency(record.salary)}
                   </span>
                 </div>
                 
                 {/* Контент */}
                 <div className="px-4 py-3">
-                  <div className={`flex items-center gap-2 mb-3 text-sm ${isDark ? 'text-gray-300' : 'text-gray-600'}`}>
-                    <User className={`h-4 w-4 ${isDark ? 'text-gray-500' : 'text-gray-400'}`} />
+                  <div className={`mb-3 text-sm ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
                     {record.directorName}
                   </div>
                   
                   <div className="grid grid-cols-2 gap-3">
-                    <div className={`p-2 rounded-lg ${isDark ? 'bg-[#3a4451]' : 'bg-blue-50'}`}>
-                      <span className={`text-xs ${isDark ? 'text-gray-500' : 'text-blue-500'}`}>Наш</span>
-                      <p className={`font-semibold ${isDark ? 'text-blue-400' : 'text-blue-700'}`}>{formatCurrency(record.turnoverOur)}</p>
+                    <div>
+                      <span className={`text-xs ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>Оборот Наш</span>
+                      <p className={`font-semibold ${isDark ? 'text-gray-100' : 'text-gray-800'}`}>{formatCurrency(record.turnoverOur)}</p>
                     </div>
-                    <div className={`p-2 rounded-lg ${isDark ? 'bg-[#3a4451]' : 'bg-purple-50'}`}>
-                      <span className={`text-xs ${isDark ? 'text-gray-500' : 'text-purple-500'}`}>Партнер</span>
-                      <p className={`font-semibold ${isDark ? 'text-purple-400' : 'text-purple-700'}`}>{formatCurrency(record.turnoverPartner)}</p>
+                    <div>
+                      <span className={`text-xs ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>Оборот Партнер</span>
+                      <p className={`font-semibold ${isDark ? 'text-gray-100' : 'text-gray-800'}`}>{formatCurrency(record.turnoverPartner)}</p>
                     </div>
                   </div>
                 </div>
@@ -595,22 +581,22 @@ export default function SalaryPage() {
             ))}
             
             {/* Итого карточка */}
-            <div className={`rounded-xl overflow-hidden border-2 ${isDark ? 'bg-[#2a3441] border-teal-700' : 'bg-teal-50 border-teal-300'}`}>
+            <div className={`rounded-lg overflow-hidden border-2 ${isDark ? 'bg-[#2a3441] border-gray-600' : 'bg-gray-50 border-gray-300'}`}>
               <div className="px-4 py-4">
                 <div className="flex items-center justify-between mb-3">
                   <span className={`font-bold ${isDark ? 'text-gray-100' : 'text-gray-800'}`}>ИТОГО</span>
-                  <span className={`text-xl font-bold ${isDark ? 'text-teal-400' : 'text-teal-700'}`}>
+                  <span className={`text-xl font-bold ${isDark ? 'text-gray-100' : 'text-gray-800'}`}>
                     {formatCurrency(stats.totalSalary)}
                   </span>
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <span className={`text-xs ${isDark ? 'text-gray-500' : 'text-blue-500'}`}>Оборот Наш</span>
-                    <p className={`font-semibold ${isDark ? 'text-blue-400' : 'text-blue-700'}`}>{formatCurrency(stats.totalTurnoverOur)}</p>
+                    <span className={`text-xs ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>Оборот Наш</span>
+                    <p className={`font-semibold ${isDark ? 'text-gray-100' : 'text-gray-800'}`}>{formatCurrency(stats.totalTurnoverOur)}</p>
                   </div>
                   <div>
-                    <span className={`text-xs ${isDark ? 'text-gray-500' : 'text-purple-500'}`}>Оборот Партнер</span>
-                    <p className={`font-semibold ${isDark ? 'text-purple-400' : 'text-purple-700'}`}>{formatCurrency(stats.totalTurnoverPartner)}</p>
+                    <span className={`text-xs ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>Оборот Партнер</span>
+                    <p className={`font-semibold ${isDark ? 'text-gray-100' : 'text-gray-800'}`}>{formatCurrency(stats.totalTurnoverPartner)}</p>
                   </div>
                 </div>
               </div>
