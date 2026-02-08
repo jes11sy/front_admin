@@ -4,6 +4,7 @@ import { PhoneCall, PhoneIncoming, PhoneOutgoing, Plus, Edit, Trash2 } from 'luc
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { apiClient } from '@/lib/api'
+import { useDesignStore } from '@/store/design.store'
 import { toast } from 'sonner'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 
@@ -21,15 +22,7 @@ export default function TelephonyPage() {
   const router = useRouter()
   
   // Тема
-  const [theme, setTheme] = useState<'light' | 'dark'>('light')
-  
-  useEffect(() => {
-    const savedTheme = localStorage.getItem('admin-theme') as 'light' | 'dark' | null
-    if (savedTheme) {
-      setTheme(savedTheme)
-    }
-  }, [])
-  
+  const theme = useDesignStore((state) => state.theme)
   const isDark = theme === 'dark'
   
   // Состояния

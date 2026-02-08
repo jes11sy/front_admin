@@ -1,126 +1,268 @@
 'use client'
 
-import { useRouter, useParams } from 'next/navigation'
 import { useState, useEffect } from 'react'
+import { useRouter, useParams } from 'next/navigation'
 import { apiClient } from '@/lib/api'
 import { toast } from 'sonner'
 import { logger } from '@/lib/logger'
-
-interface Order {
-  id: number
-  rk: string
-  city: string
-  avitoName: string | null
-  phone: string
-  typeOrder: string
-  clientName: string
-  address: string
-  dateMeeting: string
-  closingData: string | null
-  createDate: string
-  typeEquipment: string
-  statusOrder: string
-  masterId: number | null
-  result: number | null
-  expenditure: number | null
-  clean: number | null
-  masterChange: number | null
-  prepayment: number | null
-  dateClosmod: string | null
-  operatorNameId: number
-  master?: { id: number; name: string }
-  operator?: { id: number; name: string; login: string }
-  problem?: string
-  comment?: string
-  bsoDoc?: string[] | null
-  expenditureDoc?: string[] | null
-  partner?: boolean
-  partnerPercent?: number | null
-  avitoChatId?: string | null
-  callId?: string | null
-}
+import { useDesignStore } from '@/store/design.store'
+import { useOrder, useOrderCalls, Order, Master } from '@/hooks/useOrder'
+import { useMultipleFileUpload } from '@/hooks/useMultipleFileUpload'
+import CustomSelect from '@/components/optimized/CustomSelect'
+import { StatusSelect } from '@/components/orders/StatusSelect'
+import { OrderMasterTab } from '@/components/orders/OrderMasterTab'
+import { OrderMultipleFileUpload } from '@/components/orders/OrderMultipleFileUpload'
 
 export default function OrderDetailPage() {
   const router = useRouter()
   const params = useParams()
-  const [order, setOrder] = useState<Order | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  const orderId = params.id as string
+  
+  // Тема из store
+  const { theme } = useDesignStore()
+  const isDark = theme === 'dark'
+  
+  // Используем хуки для загрузки данных
+  const { order, masters, loading, error, updating, updateOrder } = useOrder(orderId)
+  const { calls, loading: callsLoading, error: callsError, loadCalls } = useOrderCalls(orderId)
+  
   const [activeTab, setActiveTab] = useState('main')
+  const [openSelect, setOpenSelect] = useState<string | null>(null)
+  const [callsLoaded, setCallsLoaded] = useState(false)
+  
+  // Локальные состояния для полей формы
+  const [orderStatus, setOrderStatus] = useState('')
+  const [selectedMaster, setSelectedMaster] = useState('')
+  
+  // Состояние для полей формы
+  const [result, setResult] = useState<string>('')
+  const [expenditure, setExpenditure] = useState<string>('')
+  const [clean, setClean] = useState<string>('')
+  const [masterChange, setMasterChange] = useState<string>('')
+  const [comment, setComment] = useState<string>('')
+  const [prepayment, setPrepayment] = useState<string>('')
+  const [dateClosmod, setDateClosmod] = useState<string>('')
+  
+  // Файлы документов через хуки (множественная загрузка до 10 файлов)
+  const bsoUpload = useMultipleFileUpload(10)
+  const expenditureUpload = useMultipleFileUpload(10)
 
   const tabs = [
-    { id: 'main', label: 'Информация по заказу' },
+    { id: 'main', label: 'Информация' },
     { id: 'result', label: 'Мастер' },
-    { id: 'chat', label: 'Запись/Чат авито' }
+    { id: 'chat', label: 'История' }
   ]
 
+  // Админ может редактировать ВСЕ заказы - никаких ограничений
+  const isFieldsDisabled = (): boolean => {
+    return false // Админ может редактировать всё
+  }
+
+  // Функция для проверки, нужно ли скрывать поля итога, расхода, документа и чека
+  const shouldHideFinancialFields = () => {
+    return ['Ожидает', 'Принял', 'В пути'].includes(orderStatus)
+  }
+
+  // Автоматически рассчитываем "Чистыми" и "Сдача мастера" при изменении "Итог" и "Расход"
   useEffect(() => {
-    const loadOrder = async () => {
-      setLoading(true)
-      setError(null)
-      try {
-        const response = await apiClient.getOrder(params.id as string)
-        if (response.success && response.data) {
-          setOrder(response.data)
-        } else {
-          setError('Заказ не найден')
-          toast.error('Заказ не найден')
-        }
-      } catch (err) {
-        logger.error('Error loading order', { error: String(err) })
-        const errorMessage = err instanceof Error ? err.message : 'Ошибка при загрузке заказа'
-        setError(errorMessage)
-        toast.error(errorMessage)
-      } finally {
-        setLoading(false)
+    if (result && orderStatus === 'Готово') {
+      const resultAmount = Number(result)
+      const expenditureAmount = expenditure ? Number(expenditure) : 0
+      
+      if (resultAmount > 0) {
+        const cleanAmount = resultAmount - expenditureAmount
+        const masterPercent = resultAmount <= 5000 ? 0.6 : 0.5
+        const masterChangeAmount = cleanAmount * masterPercent
+        
+        setClean(cleanAmount.toString())
+        setMasterChange(masterChangeAmount.toString())
       }
     }
+  }, [result, expenditure, orderStatus])
 
-    if (params.id) {
-      loadOrder()
-    }
-  }, [params.id])
-
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleString('ru-RU', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    })
+  // Админ может менять ВСЕ статусы без ограничений
+  const getAvailableStatuses = () => {
+    return ['Ожидает', 'Принял', 'В пути', 'В работе', 'Готово', 'Отказ', 'Модерн', 'Незаказ']
   }
 
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('ru-RU', {
-      style: 'currency',
-      currency: 'RUB',
-      minimumFractionDigits: 0,
-    }).format(amount)
+  // Синхронизация данных заказа с локальными состояниями формы
+  useEffect(() => {
+    if (order) {
+      const loadDocuments = async () => {
+        setOrderStatus(order.statusOrder || '')
+        setResult(order.result?.toString() || '')
+        setExpenditure(order.expenditure?.toString() || '')
+        setClean(order.clean?.toString() || '')
+        setMasterChange(order.masterChange?.toString() || '')
+        setComment(order.comment || '')
+        setPrepayment(order.prepayment?.toString() || '')
+        try {
+          setDateClosmod(order.dateClosmod ? new Date(order.dateClosmod).toISOString().split('T')[0] : '')
+        } catch {
+          setDateClosmod('')
+        }
+        
+        // Строим прямые URL для существующих файлов в S3
+        const S3_BASE_URL = 'https://s3.twcstorage.ru/f7eead03-crmfiles'
+        
+        if (order.bsoDoc && Array.isArray(order.bsoDoc)) {
+          const bsoUrls = order.bsoDoc
+            .filter((doc: string | null): doc is string => !!doc && typeof doc === 'string' && doc.trim() !== '')
+            .map((doc: string) => doc.startsWith('http') ? doc : `${S3_BASE_URL}/${doc}`)
+          if (bsoUrls.length > 0) {
+            bsoUpload.setExistingPreviews(bsoUrls)
+          }
+        }
+        if (order.expenditureDoc && Array.isArray(order.expenditureDoc)) {
+          const expenditureUrls = order.expenditureDoc
+            .filter((doc: string | null): doc is string => !!doc && typeof doc === 'string' && doc.trim() !== '')
+            .map((doc: string) => doc.startsWith('http') ? doc : `${S3_BASE_URL}/${doc}`)
+          if (expenditureUrls.length > 0) {
+            expenditureUpload.setExistingPreviews(expenditureUrls)
+          }
+        }
+        
+        // Устанавливаем выбранного мастера
+        if (order.masterId) {
+          setSelectedMaster(order.masterId.toString())
+        }
+      }
+      
+      loadDocuments()
+    }
+  }, [order])
+
+  // Очистка превью при размонтировании
+  useEffect(() => {
+    return () => {
+      bsoUpload.cleanup()
+      expenditureUpload.cleanup()
+    }
+  }, [bsoUpload, expenditureUpload])
+
+  // Загружаем звонки при открытии таба "История"
+  useEffect(() => {
+    if (activeTab === 'chat' && !callsLoading && !callsLoaded) {
+      setCallsLoaded(true)
+      loadCalls().catch((error) => {
+        logger.warn('Calls API not available:', error.message)
+      })
+    }
+  }, [activeTab, callsLoading, callsLoaded, loadCalls])
+
+  // Функция для сохранения изменений
+  const handleSave = async () => {
+    if (!order) return
+    
+    try {
+      // Загружаем файлы в S3 если они есть
+      let bsoDocPaths: string[] = []
+      let expenditureDocPaths: string[] = []
+
+      // Загружаем новые BSO файлы
+      const newBsoFiles = bsoUpload.files.filter(f => f.file !== null).map(f => f.file);
+      if (newBsoFiles.length > 0) {
+        try {
+          const bsoResults = await Promise.all(
+            newBsoFiles.map(file => apiClient.uploadOrderBso(file))
+          )
+          const newBsoPaths = bsoResults.map((res: any) => res.filePath)
+          
+          const existingBsoPaths = bsoUpload.files
+            .filter(f => f.file === null)
+            .map(f => f.preview)
+          
+          bsoDocPaths = [...existingBsoPaths, ...newBsoPaths]
+        } catch (uploadError) {
+          logger.error('Error uploading BSO', uploadError)
+          toast.error('Ошибка загрузки документа БСО')
+          return
+        }
+      } else {
+        bsoDocPaths = bsoUpload.files
+          .filter(f => f.file === null)
+          .map(f => f.preview)
+      }
+
+      // Загружаем новые файлы расходов
+      const newExpenditureFiles = expenditureUpload.files.filter(f => f.file !== null).map(f => f.file);
+      if (newExpenditureFiles.length > 0) {
+        try {
+          const expenditureResults = await Promise.all(
+            newExpenditureFiles.map(file => apiClient.uploadOrderExpenditure(file))
+          )
+          const newExpenditurePaths = expenditureResults.map((res: any) => res.filePath)
+          
+          const existingExpenditurePaths = expenditureUpload.files
+            .filter(f => f.file === null)
+            .map(f => f.preview)
+          
+          expenditureDocPaths = [...existingExpenditurePaths, ...newExpenditurePaths]
+        } catch (uploadError) {
+          logger.error('Error uploading expenditure doc', uploadError)
+          toast.error('Ошибка загрузки чека расхода')
+          return
+        }
+      } else {
+        expenditureDocPaths = expenditureUpload.files
+          .filter(f => f.file === null)
+          .map(f => f.preview)
+      }
+      
+      const updateData: Partial<Order> = {
+        statusOrder: orderStatus,
+        masterId: selectedMaster ? Number(selectedMaster) : undefined,
+        result: result && result.trim() !== '' ? Number(result) : undefined,
+        expenditure: expenditure && expenditure.trim() !== '' ? Number(expenditure) : undefined,
+        clean: clean && clean.trim() !== '' ? Number(clean) : undefined,
+        masterChange: masterChange && masterChange.trim() !== '' ? Number(masterChange) : undefined,
+        comment: comment && comment.trim() !== '' ? comment : undefined,
+        prepayment: prepayment && prepayment.trim() !== '' ? Number(prepayment) : undefined,
+        dateClosmod: dateClosmod && dateClosmod.trim() !== '' ? (() => {
+          try {
+            return new Date(dateClosmod).toISOString()
+          } catch {
+            return undefined
+          }
+        })() : undefined,
+        bsoDoc: bsoDocPaths,
+        expenditureDoc: expenditureDocPaths,
+      }
+      
+      await updateOrder(updateData)
+      
+      // Перезагружаем страницу после сохранения
+      window.location.reload()
+    } catch (err) {
+      logger.error('Error saving order', err)
+    }
   }
 
-  const getStatusBadgeClass = (status: string) => {
-    const statusColors: Record<string, string> = {
-      'Ожидает': 'bg-blue-500',
-      'Принял': 'bg-cyan-500',
-      'В пути': 'bg-purple-500',
-      'В работе': 'bg-yellow-500',
-      'Готово': 'bg-green-500',
-      'Отказ': 'bg-red-500',
-      'Модерн': 'bg-orange-500',
-      'Незаказ': 'bg-gray-500'
+  // Форматирование даты
+  const formatDate = (dateString: string | null | undefined) => {
+    if (!dateString) return '-'
+    try {
+      const date = new Date(dateString)
+      if (isNaN(date.getTime())) return '-'
+      return date.toLocaleDateString('ru-RU', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+        timeZone: 'UTC'
+      })
+    } catch {
+      return '-'
     }
-    return statusColors[status] || 'bg-gray-500'
   }
 
   if (loading) {
     return (
-      <div className="min-h-screen" style={{backgroundColor: '#114643'}}>
-        <div className="container mx-auto px-2 sm:px-4 py-8">
-          <div className="text-center py-8 animate-fade-in">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-teal-600 mx-auto mb-4"></div>
-            <p className="text-gray-700 text-lg">Загрузка данных заказа...</p>
-          </div>
+      <div className={`flex items-center justify-center py-12 min-h-screen ${isDark ? 'bg-[#1e2530]' : 'bg-white'}`}>
+        <div className="flex items-center gap-3">
+          <div className="w-5 h-5 border-2 border-teal-600 border-t-transparent rounded-full animate-spin"></div>
+          <span className={isDark ? 'text-gray-400' : 'text-gray-500'}>Загрузка заказа...</span>
         </div>
       </div>
     )
@@ -128,264 +270,253 @@ export default function OrderDetailPage() {
 
   if (error || !order) {
     return (
-      <div className="min-h-screen" style={{backgroundColor: '#114643'}}>
-        <div className="container mx-auto px-2 sm:px-4 py-8">
-          <div className="bg-red-50 border border-red-200 rounded-lg p-4 animate-slide-in-left">
-            <p className="text-red-600">{error || 'Заказ не найден'}</p>
-          </div>
+      <div className={`min-h-screen p-4 ${isDark ? 'bg-[#1e2530]' : 'bg-white'}`}>
+        <div className={`rounded-xl p-4 ${isDark ? 'bg-red-900/30 border border-red-700' : 'bg-red-50 border border-red-200'}`}>
+          <p className={isDark ? 'text-red-400 text-sm' : 'text-red-600 text-sm'}>{error instanceof Error ? error.message : error || 'Заказ не найден'}</p>
         </div>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen" style={{backgroundColor: '#114643'}}>
-      <div className="container mx-auto px-2 sm:px-4 py-8">
-        <div className="max-w-none mx-auto">
-          <div className="backdrop-blur-lg shadow-2xl rounded-2xl p-6 md:p-16 border bg-white/95 hover:bg-white transition-all duration-500 hover:shadow-3xl transform hover:scale-[1.01] animate-fade-in" style={{borderColor: '#114643'}}>
-            
-            {/* Заголовок */}
-            <div className="mb-6">
-              <div className="flex items-center justify-between mb-2">
-                <div className="flex items-center gap-4">
-                  <h1 className="text-2xl font-bold text-gray-800 animate-slide-down">Заказ №{params.id}</h1>
-                  <div className={`px-4 py-2 rounded-lg text-white font-medium ${getStatusBadgeClass(order.statusOrder)}`}>
-                    {order.statusOrder}
+    <div className={`space-y-4 min-h-screen -m-4 sm:-m-6 p-4 sm:p-6 transition-colors duration-300 ${
+      isDark ? 'bg-[#1e2530]' : 'bg-white'
+    }`}>
+      {/* Шапка заказа */}
+      <div className={`rounded-b-xl shadow-sm ${isDark ? 'bg-[#2a3441]' : 'bg-gray-50'}`}>
+        <div className={`flex items-center justify-between px-4 py-3 border-b relative ${
+          isDark ? 'border-gray-700' : 'border-gray-200'
+        }`}>
+          <div className="flex items-center gap-3">
+            <button 
+              onClick={() => router.back()}
+              className={`p-1.5 rounded-lg transition-colors ${
+                isDark ? 'hover:bg-[#3a4451]' : 'hover:bg-gray-100'
+              }`}
+            >
+              <svg className={`w-4 h-4 ${isDark ? 'text-gray-400' : 'text-gray-500'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+              </svg>
+            </button>
+            <h1 className={`text-lg font-semibold ${isDark ? 'text-gray-100' : 'text-gray-800'}`}>Заказ #{orderId}</h1>
+            <StatusSelect
+              value={orderStatus}
+              onChange={setOrderStatus}
+              options={getAvailableStatuses().map(status => ({ value: status, label: status }))}
+              disabled={false}
+              selectId="orderStatus"
+              openSelect={openSelect}
+              setOpenSelect={setOpenSelect}
+            />
+          </div>
+          <button 
+            onClick={handleSave}
+            disabled={updating}
+            className="hidden md:flex items-center gap-2 px-4 py-2 bg-teal-600 hover:bg-teal-700 text-white rounded-lg text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {updating ? (
+              <>
+                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                <span>Сохранение...</span>
+              </>
+            ) : 'Сохранить'}
+          </button>
+        </div>
+
+        {/* Компактные табы */}
+        <div className={`flex border-b ${
+          isDark ? 'border-gray-700 bg-[#3a4451]/50' : 'border-gray-200 bg-gray-100/50'
+        }`}>
+          {tabs.map((tab) => (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              className={`px-4 py-2.5 text-sm font-medium transition-colors relative ${
+                activeTab === tab.id
+                  ? 'text-teal-500'
+                  : isDark 
+                    ? 'text-gray-400 hover:text-gray-200'
+                    : 'text-gray-500 hover:text-gray-700'
+              }`}
+            >
+              {tab.label}
+              {activeTab === tab.id && (
+                <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-teal-500"></div>
+              )}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Содержимое вкладок */}
+      {!loading && !error && order && (
+        <>
+          {activeTab === 'main' && (
+            <div className="space-y-4">
+              {/* Блок: Заказ */}
+              <div className={`rounded-xl shadow-sm ${isDark ? 'bg-[#2a3441]' : 'bg-white border border-gray-200'}`}>
+                <div className={`px-4 py-2 border-b ${isDark ? 'border-gray-700' : 'border-gray-100'}`}>
+                  <h3 className={`font-medium text-sm ${isDark ? 'text-gray-200' : 'text-gray-700'}`}>Заказ</h3>
+                </div>
+                <div className={`grid grid-cols-2 sm:grid-cols-4 divide-y sm:divide-y-0 sm:divide-x ${isDark ? 'divide-gray-700' : 'divide-gray-100'}`}>
+                  <div className="p-4">
+                    <div className={`text-xs mb-1 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>Тип</div>
+                    <div className={`text-sm font-medium ${isDark ? 'text-gray-100' : 'text-gray-800'}`}>{order.typeOrder || '-'}</div>
+                  </div>
+                  <div className="p-4">
+                    <div className={`text-xs mb-1 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>РК</div>
+                    <div className={`text-sm font-medium ${isDark ? 'text-gray-100' : 'text-gray-800'}`}>{order.rk || '-'}</div>
+                  </div>
+                  <div className="p-4">
+                    <div className={`text-xs mb-1 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>Источник</div>
+                    <div className={`text-sm font-medium ${isDark ? 'text-gray-100' : 'text-gray-800'}`}>{order.avitoName || '-'}</div>
+                  </div>
+                  <div className="p-4">
+                    <div className={`text-xs mb-1 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>Направление</div>
+                    <div className={`text-sm font-medium ${isDark ? 'text-gray-100' : 'text-gray-800'}`}>{order.typeEquipment || '-'}</div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Блок: Клиент */}
+              <div className={`rounded-xl shadow-sm ${isDark ? 'bg-[#2a3441]' : 'bg-white border border-gray-200'}`}>
+                <div className={`px-4 py-2 border-b ${isDark ? 'border-gray-700' : 'border-gray-100'}`}>
+                  <h3 className={`font-medium text-sm ${isDark ? 'text-gray-200' : 'text-gray-700'}`}>Клиент</h3>
+                </div>
+                <div className={`grid grid-cols-2 sm:grid-cols-4 divide-y sm:divide-y-0 sm:divide-x ${isDark ? 'divide-gray-700' : 'divide-gray-100'}`}>
+                  <div className="p-4">
+                    <div className={`text-xs mb-1 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>Город</div>
+                    <div className={`text-sm font-medium ${isDark ? 'text-gray-100' : 'text-gray-800'}`}>{order.city || '-'}</div>
+                  </div>
+                  <div className="p-4">
+                    <div className={`text-xs mb-1 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>Адрес</div>
+                    <div className={`text-sm font-medium truncate ${isDark ? 'text-gray-100' : 'text-gray-800'}`} title={order.address}>{order.address || '-'}</div>
+                  </div>
+                  <div className="p-4">
+                    <div className={`text-xs mb-1 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>Имя</div>
+                    <div className={`text-sm font-medium ${isDark ? 'text-gray-100' : 'text-gray-800'}`}>{order.clientName || '-'}</div>
+                  </div>
+                  <div className="p-4">
+                    <div className={`text-xs mb-1 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>Телефон</div>
+                    <div className={`text-sm font-medium ${isDark ? 'text-gray-100' : 'text-gray-800'}`}>{order.phone || '-'}</div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Блок: Детали */}
+              <div className={`rounded-xl shadow-sm ${isDark ? 'bg-[#2a3441]' : 'bg-white border border-gray-200'}`}>
+                <div className={`px-4 py-2 border-b ${isDark ? 'border-gray-700' : 'border-gray-100'}`}>
+                  <h3 className={`font-medium text-sm ${isDark ? 'text-gray-200' : 'text-gray-700'}`}>Детали</h3>
+                </div>
+                <div className={`grid grid-cols-1 sm:grid-cols-2 divide-y sm:divide-y-0 sm:divide-x ${isDark ? 'divide-gray-700' : 'divide-gray-100'}`}>
+                  <div className="p-4">
+                    <div className={`text-xs mb-1 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>Дата встречи</div>
+                    <div className={`text-sm font-medium ${isDark ? 'text-gray-100' : 'text-gray-800'}`}>
+                      {formatDate(order.dateMeeting)}
+                    </div>
+                  </div>
+                  <div className="p-4">
+                    <div className={`text-xs mb-1 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>Проблема</div>
+                    <div className={`text-sm ${isDark ? 'text-gray-100' : 'text-gray-800'}`}>{order.problem || '-'}</div>
                   </div>
                 </div>
               </div>
             </div>
+          )}
 
-            {/* Вкладки */}
-            <div className="border-b border-gray-200 mb-6 animate-fade-in">
-              <nav className="flex space-x-8">
-                {tabs.map((tab) => (
-                  <button
-                    key={tab.id}
-                    onClick={() => setActiveTab(tab.id)}
-                    className={`py-2 px-1 border-b-2 font-medium text-sm transition-all duration-200 ${
-                      activeTab === tab.id
-                        ? 'text-teal-600 border-teal-600'
-                        : 'border-transparent text-gray-600 hover:text-teal-600 hover:border-teal-300'
-                    }`}
-                  >
-                    {tab.label}
-                  </button>
-                ))}
-              </nav>
-            </div>
-
-            {/* Содержимое вкладок */}
-            <div className="min-h-[400px]">
-              {activeTab === 'main' && (
-                <div className="space-y-6">
-                  {/* Информация о клиенте */}
-                  <div>
-                    <h3 className="text-lg font-semibold text-gray-800 mb-4 pb-2 border-b border-gray-200">Информация о клиенте</h3>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div>
-                        <label className="block text-sm font-medium text-gray-600 mb-1">Имя клиента</label>
-                        <p className="text-gray-900 bg-gray-50 rounded-lg px-4 py-2 border border-gray-200">{order.clientName}</p>
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-600 mb-1">Телефон</label>
-                        <p className="text-gray-900 bg-gray-50 rounded-lg px-4 py-2 border border-gray-200">{order.phone}</p>
-                      </div>
-                      <div className="md:col-span-2">
-                        <label className="block text-sm font-medium text-gray-600 mb-1">Адрес</label>
-                        <p className="text-gray-900 bg-gray-50 rounded-lg px-4 py-2 border border-gray-200">{order.address}</p>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Информация о заказе */}
-                  <div>
-                    <h3 className="text-lg font-semibold text-gray-800 mb-4 pb-2 border-b border-gray-200">Детали заказа</h3>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div>
-                        <label className="block text-sm font-medium text-gray-600 mb-1">РК</label>
-                        <p className="text-gray-900 bg-gray-50 rounded-lg px-4 py-2 border border-gray-200">{order.rk}</p>
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-600 mb-1">Город</label>
-                        <p className="text-gray-900 bg-gray-50 rounded-lg px-4 py-2 border border-gray-200">{order.city}</p>
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-600 mb-1">Тип заказа</label>
-                        <p className="text-gray-900 bg-gray-50 rounded-lg px-4 py-2 border border-gray-200">{order.typeOrder}</p>
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-600 mb-1">Направление</label>
-                        <p className="text-gray-900 bg-gray-50 rounded-lg px-4 py-2 border border-gray-200">{order.typeEquipment}</p>
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-600 mb-1">Дата встречи</label>
-                        <p className="text-gray-900 bg-gray-50 rounded-lg px-4 py-2 border border-gray-200">{formatDate(order.dateMeeting)}</p>
-                      </div>
-                      {order.closingData && (
-                        <div>
-                          <label className="block text-sm font-medium text-gray-600 mb-1">Дата закрытия</label>
-                          <p className="text-gray-900 bg-gray-50 rounded-lg px-4 py-2 border border-gray-200">{formatDate(order.closingData)}</p>
-                        </div>
-                      )}
-                      {order.avitoName && (
-                        <div>
-                          <label className="block text-sm font-medium text-gray-600 mb-1">Avito аккаунт</label>
-                          <p className="text-gray-900 bg-gray-50 rounded-lg px-4 py-2 border border-gray-200">{order.avitoName}</p>
-                        </div>
-                      )}
-                      <div>
-                        <label className="block text-sm font-medium text-gray-600 mb-1">Оператор</label>
-                        <p className="text-gray-900 bg-gray-50 rounded-lg px-4 py-2 border border-gray-200">{order.operator?.name || order.operator?.login || '-'}</p>
-                      </div>
-                      {order.problem && (
-                        <div className="md:col-span-2">
-                          <label className="block text-sm font-medium text-gray-600 mb-1">Проблема</label>
-                          <p className="text-gray-900 bg-gray-50 rounded-lg px-4 py-2 border border-gray-200">{order.problem}</p>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {activeTab === 'result' && (
-                <div className="space-y-6">
-                  {/* Мастер */}
-                  <div>
-                    <h3 className="text-lg font-semibold text-gray-800 mb-4 pb-2 border-b border-gray-200">Мастер</h3>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div>
-                        <label className="block text-sm font-medium text-gray-600 mb-1">Мастер</label>
-                        <p className="text-gray-900 bg-gray-50 rounded-lg px-4 py-2 border border-gray-200">{order.master?.name || '-'}</p>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Финансовая информация */}
-                  <div>
-                    <h3 className="text-lg font-semibold text-gray-800 mb-4 pb-2 border-b border-gray-200">Финансы</h3>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div>
-                        <label className="block text-sm font-medium text-gray-600 mb-1">Итог</label>
-                        <p className="text-gray-900 bg-gray-50 rounded-lg px-4 py-2 border border-gray-200 font-semibold">
-                          {order.result ? formatCurrency(Number(order.result)) : '-'}
-                        </p>
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-600 mb-1">Расход</label>
-                        <p className="text-gray-900 bg-gray-50 rounded-lg px-4 py-2 border border-gray-200">
-                          {order.expenditure ? formatCurrency(Number(order.expenditure)) : '-'}
-                        </p>
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-600 mb-1">Чистыми</label>
-                        <p className="text-gray-900 bg-gray-50 rounded-lg px-4 py-2 border border-gray-200">
-                          {order.clean ? formatCurrency(Number(order.clean)) : '-'}
-                        </p>
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-600 mb-1">Сдача мастера</label>
-                        <p className="text-gray-900 bg-gray-50 rounded-lg px-4 py-2 border border-gray-200">
-                          {order.masterChange ? formatCurrency(Number(order.masterChange)) : '-'}
-                        </p>
-                      </div>
-                      {order.prepayment && (
-                        <div>
-                          <label className="block text-sm font-medium text-gray-600 mb-1">Предоплата</label>
-                          <p className="text-gray-900 bg-gray-50 rounded-lg px-4 py-2 border border-gray-200">
-                            {formatCurrency(Number(order.prepayment))}
-                          </p>
-                        </div>
-                      )}
-                      {order.dateClosmod && (
-                        <div>
-                          <label className="block text-sm font-medium text-gray-600 mb-1">Дата модерна</label>
-                          <p className="text-gray-900 bg-gray-50 rounded-lg px-4 py-2 border border-gray-200">
-                            {new Date(order.dateClosmod).toLocaleDateString('ru-RU')}
-                          </p>
-                        </div>
-                      )}
-                      {order.comment && (
-                        <div className="md:col-span-2">
-                          <label className="block text-sm font-medium text-gray-600 mb-1">Комментарий</label>
-                          <p className="text-gray-900 bg-gray-50 rounded-lg px-4 py-2 border border-gray-200">{order.comment}</p>
-                        </div>
-                      )}
-                      {order.partner && (
-                        <div className="md:col-span-2">
-                          <label className="block text-sm font-medium text-gray-600 mb-1">Партнер</label>
-                          <p className="text-gray-900 bg-gray-50 rounded-lg px-4 py-2 border border-gray-200">
-                            Да {order.partnerPercent ? `(${order.partnerPercent}%)` : ''}
-                          </p>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Документы */}
-                  {((order.bsoDoc && order.bsoDoc.length > 0) || (order.expenditureDoc && order.expenditureDoc.length > 0)) && (
-                    <div>
-                      <h3 className="text-lg font-semibold text-gray-800 mb-4 pb-2 border-b border-gray-200">Документы</h3>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        {order.bsoDoc && order.bsoDoc.length > 0 && (
-                          <div>
-                            <label className="block text-sm font-medium text-gray-600 mb-1">Документ (БСО) ({order.bsoDoc.length})</label>
-                            <div className="space-y-2">
-                              {order.bsoDoc.map((doc, index) => (
-                                <button
-                                  key={`bso-${doc}-${index}`}
-                                  onClick={() => window.open(doc, '_blank')}
-                                  className="w-full text-left text-teal-600 hover:text-teal-700 bg-gray-50 rounded-lg px-4 py-2 border border-gray-200 hover:border-teal-300 transition-all"
-                                >
-                                  Открыть документ {order.bsoDoc!.length > 1 ? `#${index + 1}` : ''}
-                                </button>
-                              ))}
-                            </div>
-                          </div>
-                        )}
-                        {order.expenditureDoc && order.expenditureDoc.length > 0 && (
-                          <div>
-                            <label className="block text-sm font-medium text-gray-600 mb-1">Чек расхода ({order.expenditureDoc.length})</label>
-                            <div className="space-y-2">
-                              {order.expenditureDoc.map((doc, index) => (
-                                <button
-                                  key={`exp-${doc}-${index}`}
-                                  onClick={() => window.open(doc, '_blank')}
-                                  className="w-full text-left text-teal-600 hover:text-teal-700 bg-gray-50 rounded-lg px-4 py-2 border border-gray-200 hover:border-teal-300 transition-all"
-                                >
-                                  Открыть чек {order.expenditureDoc!.length > 1 ? `#${index + 1}` : ''}
-                                </button>
-                              ))}
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {activeTab === 'chat' && (
-                <div className="space-y-6">
-                  {order.avitoChatId ? (
-                    <div>
-                      <h3 className="text-lg font-semibold text-gray-800 mb-4 pb-2 border-b border-gray-200">Чат Avito</h3>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-600 mb-1">ID чата</label>
-                        <p className="text-gray-900 bg-gray-50 rounded-lg px-4 py-2 border border-gray-200 font-mono">{order.avitoChatId}</p>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="text-center py-8 text-gray-500">
-                      <p>Нет данных о чате Avito</p>
-                    </div>
-                  )}
+          {activeTab === 'result' && (
+            <div className="space-y-4">
+              <OrderMasterTab
+                orderStatus={orderStatus}
+                selectedMaster={selectedMaster}
+                setSelectedMaster={setSelectedMaster}
+                masters={masters}
+                result={result}
+                setResult={setResult}
+                expenditure={expenditure}
+                setExpenditure={setExpenditure}
+                clean={clean}
+                setClean={setClean}
+                masterChange={masterChange}
+                setMasterChange={setMasterChange}
+                comment={comment}
+                setComment={setComment}
+                prepayment={prepayment}
+                setPrepayment={setPrepayment}
+                dateClosmod={dateClosmod}
+                setDateClosmod={setDateClosmod}
+                isFieldsDisabled={isFieldsDisabled}
+                shouldHideFinancialFields={shouldHideFinancialFields}
+                openSelect={openSelect}
+                setOpenSelect={setOpenSelect}
+              />
+              
+              {/* Поля "Документ" и "Чек" - множественная загрузка */}
+              {!shouldHideFinancialFields() && orderStatus !== 'Модерн' && (
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                  <OrderMultipleFileUpload
+                    label="Документ БСО"
+                    filesWithPreviews={bsoUpload.files}
+                    dragOver={bsoUpload.dragOver}
+                    setDragOver={bsoUpload.setDragOver}
+                    handleFiles={bsoUpload.handleFiles}
+                    removeFile={bsoUpload.removeFile}
+                    isFieldsDisabled={isFieldsDisabled}
+                    canAddMore={bsoUpload.canAddMore}
+                  />
+                  <OrderMultipleFileUpload
+                    label="Чеки расходов"
+                    filesWithPreviews={expenditureUpload.files}
+                    dragOver={expenditureUpload.dragOver}
+                    setDragOver={expenditureUpload.setDragOver}
+                    handleFiles={expenditureUpload.handleFiles}
+                    removeFile={expenditureUpload.removeFile}
+                    isFieldsDisabled={isFieldsDisabled}
+                    canAddMore={expenditureUpload.canAddMore}
+                  />
                 </div>
               )}
             </div>
-          </div>
-        </div>
+          )}
+
+          {activeTab === 'chat' && (
+            <div className="space-y-4">
+              {/* История заказа - упрощенная версия */}
+              <div className={`rounded-xl shadow-sm ${isDark ? 'bg-[#2a3441]' : 'bg-white border border-gray-200'}`}>
+                <div className={`px-4 py-3 border-b ${isDark ? 'border-gray-700' : 'border-gray-100'}`}>
+                  <h3 className={`font-medium text-sm ${isDark ? 'text-gray-200' : 'text-gray-700'}`}>Информация о заказе</h3>
+                </div>
+                <div className="p-4 space-y-3">
+                  <div className={`p-3 rounded-lg border ${isDark ? 'bg-[#3a4451] border-gray-600' : 'bg-gray-50 border-gray-100'}`}>
+                    <div className="flex items-center justify-between mb-2">
+                      <span className={`text-sm font-medium ${isDark ? 'text-gray-100' : 'text-gray-800'}`}>Заказ #{order.id}</span>
+                      <span className={`text-xs ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
+                        {formatDate(order.createDate)}
+                      </span>
+                    </div>
+                    <div className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
+                      <p>Статус: <span className={isDark ? 'text-gray-200' : 'text-gray-800'}>{order.statusOrder}</span></p>
+                      <p>Мастер: <span className={isDark ? 'text-gray-200' : 'text-gray-800'}>{order.master?.name || 'Не назначен'}</span></p>
+                      <p>Оператор: <span className={isDark ? 'text-gray-200' : 'text-gray-800'}>{order.operator?.login || '-'}</span></p>
+                      {order.result && <p>Итог: <span className={isDark ? 'text-teal-400' : 'text-teal-600'}>{order.result.toLocaleString('ru-RU')} ₽</span></p>}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+        </>
+      )}
+      
+      {/* Кнопка Сохранить для мобильных */}
+      <div className="md:hidden fixed bottom-4 left-4 right-4 z-50">
+        <button 
+          onClick={handleSave}
+          disabled={updating}
+          className="w-full py-3 bg-teal-600 hover:bg-teal-700 text-white rounded-xl text-sm font-medium transition-colors shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          {updating ? 'Сохранение...' : 'Сохранить'}
+        </button>
       </div>
     </div>
   )

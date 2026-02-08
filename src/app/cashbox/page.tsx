@@ -196,7 +196,8 @@ export default function CashboxPage() {
   }
 
   return (
-    <div>
+    <div className={`min-h-screen transition-colors duration-300 ${isDark ? 'bg-[#1e2530]' : 'bg-white'}`}>
+      <div className="px-6 py-6">
       {/* Статистика */}
       <div className="mb-6 grid grid-cols-1 md:grid-cols-3 gap-4 animate-slide-in-left">
         <div className={`rounded-lg p-4 border shadow-sm hover:shadow-md transition-all duration-200 ${isDark ? 'bg-[#2a3441] border-gray-700' : 'bg-white border-gray-200'}`}>
@@ -456,6 +457,7 @@ export default function CashboxPage() {
           animation: fadeIn 0.3s ease-out forwards;
         }
       `}</style>
+      </div>
     </div>
   )
 }

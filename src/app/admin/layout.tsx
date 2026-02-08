@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { useEffect, useState } from 'react'
+import { useDesignStore } from '@/store/design.store'
 
 const tabs = [
   { name: 'Активные сессии', href: '/admin/sessions' },
@@ -14,24 +14,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const pathname = usePathname()
   
   // Тема
-  const [theme, setTheme] = useState<'light' | 'dark'>('light')
-  
-  useEffect(() => {
-    const savedTheme = localStorage.getItem('admin-theme') as 'light' | 'dark' | null
-    if (savedTheme) {
-      setTheme(savedTheme)
-    }
-    
-    // Слушаем изменения темы
-    const handleStorageChange = (e: StorageEvent) => {
-      if (e.key === 'admin-theme' && e.newValue) {
-        setTheme(e.newValue as 'light' | 'dark')
-      }
-    }
-    window.addEventListener('storage', handleStorageChange)
-    return () => window.removeEventListener('storage', handleStorageChange)
-  }, [])
-  
+  const theme = useDesignStore((state) => state.theme)
   const isDark = theme === 'dark'
   
   // На главной странице /admin показываем page.tsx без layout-оборачивания

@@ -3,23 +3,8 @@
 import { useState, useEffect } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import { apiClient } from '@/lib/api'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
-import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
-import { 
-  ArrowLeft,
-  User,
-  Shield,
-  Clock,
-  MapPin,
-  Monitor,
-  Smartphone,
-  Tablet,
-  CheckCircle,
-  XCircle,
-  RefreshCw
-} from 'lucide-react'
+import { useDesignStore } from '@/store/design.store'
+import { toast } from '@/components/ui/toast'
 
 interface LoginAttempt {
   id: number
@@ -48,6 +33,9 @@ interface UserSession {
 export default function UserSessionDetailPage() {
   const router = useRouter()
   const params = useParams()
+  const { theme } = useDesignStore()
+  const isDark = theme === 'dark'
+  
   const [userSession, setUserSession] = useState<UserSession | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -81,14 +69,11 @@ export default function UserSessionDetailPage() {
       } else {
         const errorMsg = response.error || response.message || 'Не удалось загрузить данные пользователя'
         setError(errorMsg)
-        console.error('API response error:', response)
       }
     } catch (error: any) {
-      console.error('Error loading user session:', error)
-      // Извлекаем сообщение об ошибке из разных форматов ответа
       const errorMessage = error?.response?.data?.message || 
                           error?.message || 
-                          'Ошибка при загрузке данных пользователя. Возможно, пользователь не найден.'
+                          'Ошибка при загрузке данных пользователя'
       setError(errorMessage)
     } finally {
       setLoading(false)
@@ -106,26 +91,17 @@ export default function UserSessionDetailPage() {
       const response = await apiClient.deauthorizeUser(userSession.userId, userSession.role)
       
       if (response.success) {
-        alert('Пользователь успешно деавторизован')
+        toast.success('Пользователь успешно деавторизован')
         router.push('/admin/sessions')
       } else {
-        alert('Ошибка при деавторизации пользователя')
+        toast.error('Ошибка при деавторизации пользователя')
       }
     } catch (error) {
-      console.error('Ошибка деавторизации:', error)
-      alert('Ошибка при деавторизации пользователя')
+      toast.error('Ошибка при деавторизации пользователя')
     }
   }
 
   const getRoleBadge = (role: string) => {
-    const colors: Record<string, string> = {
-      admin: 'bg-purple-100 text-purple-700 border-purple-300',
-      director: 'bg-blue-100 text-blue-700 border-blue-300',
-      operator: 'bg-green-100 text-green-700 border-green-300',
-      callcenter: 'bg-green-100 text-green-700 border-green-300',
-      master: 'bg-orange-100 text-orange-700 border-orange-300',
-    }
-
     const labels: Record<string, string> = {
       admin: 'Администратор',
       director: 'Директор',
@@ -135,21 +111,10 @@ export default function UserSessionDetailPage() {
     }
 
     return (
-      <Badge className={`${colors[role] || 'bg-gray-100 text-gray-700'} border`}>
+      <span className={`px-2 py-1 rounded text-xs font-medium ${isDark ? 'bg-gray-700 text-gray-300' : 'bg-gray-100 text-gray-700'}`}>
         {labels[role] || role}
-      </Badge>
+      </span>
     )
-  }
-
-  const getDeviceIcon = (deviceType: string) => {
-    switch (deviceType) {
-      case 'mobile':
-        return <Smartphone className="h-4 w-4" />
-      case 'tablet':
-        return <Tablet className="h-4 w-4" />
-      default:
-        return <Monitor className="h-4 w-4" />
-    }
   }
 
   const formatDate = (dateString: string) => {
@@ -166,10 +131,10 @@ export default function UserSessionDetailPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center" style={{backgroundColor: '#114643'}}>
-        <div className="flex items-center gap-2 text-white">
-          <RefreshCw className="h-6 w-6 animate-spin" />
-          Загрузка...
+      <div className={`min-h-screen flex items-center justify-center ${isDark ? 'bg-[#1e2530]' : 'bg-white'}`}>
+        <div className="text-center">
+          <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-teal-600"></div>
+          <div className={`text-lg mt-4 ${isDark ? 'text-gray-200' : 'text-gray-700'}`}>Загрузка...</div>
         </div>
       </div>
     )
@@ -177,12 +142,12 @@ export default function UserSessionDetailPage() {
 
   if (error || !userSession) {
     return (
-      <div className="min-h-screen flex items-center justify-center" style={{backgroundColor: '#114643'}}>
+      <div className={`min-h-screen flex items-center justify-center ${isDark ? 'bg-[#1e2530]' : 'bg-white'}`}>
         <div className="text-center">
-          <div className="text-white text-xl mb-4">{error || 'Пользователь не найден'}</div>
+          <div className={`text-xl mb-4 ${isDark ? 'text-gray-200' : 'text-gray-800'}`}>{error || 'Пользователь не найден'}</div>
           <button
             onClick={() => router.push('/admin/sessions')}
-            className="px-4 py-2 text-white bg-white/10 hover:bg-white/20 rounded-lg transition-all duration-200"
+            className="px-4 py-2 bg-teal-600 hover:bg-teal-700 text-white rounded-lg transition-colors"
           >
             Вернуться к списку сессий
           </button>
@@ -192,133 +157,127 @@ export default function UserSessionDetailPage() {
   }
 
   return (
-    <div className="min-h-screen" style={{backgroundColor: '#114643'}}>
-      <div className="container mx-auto px-2 sm:px-4 py-8">
-        <div className="max-w-none mx-auto">
-          {/* Кнопка назад */}
-          <button
-            onClick={() => router.push('/admin/sessions')}
-            className="mb-6 flex items-center gap-2 px-4 py-2 text-white bg-white/10 hover:bg-white/20 rounded-lg transition-all duration-200 text-sm font-medium backdrop-blur-sm"
-          >
-            <ArrowLeft className="h-4 w-4" />
-            Назад к списку сессий
-          </button>
+    <div className={`min-h-screen transition-colors duration-300 ${isDark ? 'bg-[#1e2530]' : 'bg-white'}`}>
+      <div className="px-6 py-6">
+        {/* Кнопка назад */}
+        <button
+          onClick={() => router.push('/admin/sessions')}
+          className={`mb-6 flex items-center gap-2 px-4 py-2 rounded-lg transition-colors text-sm font-medium ${isDark ? 'bg-[#3a4451] hover:bg-[#4a5461] text-gray-300' : 'bg-gray-100 hover:bg-gray-200 text-gray-700'}`}
+        >
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+          </svg>
+          Назад к списку сессий
+        </button>
 
-          <div className="backdrop-blur-lg shadow-2xl rounded-2xl p-6 md:p-8 border bg-white/95 hover:bg-white transition-all duration-500 hover:shadow-3xl" style={{borderColor: '#114643'}}>
-            
-            {/* Шапка с информацией о пользователе */}
-            <div className="mb-6 pb-6 border-b-2" style={{borderColor: '#14b8a6'}}>
-              <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-                <div>
-                  <h1 className="text-2xl font-bold text-gray-800 mb-2">{userSession.fullName}</h1>
-                  <div className="flex items-center gap-3">
-                    <span className="text-sm text-gray-600">ID: {userSession.userId}</span>
-                    <span className="text-gray-300">•</span>
-                    {getRoleBadge(userSession.role)}
-                  </div>
-                </div>
-                <button
-                  onClick={handleDeauthorize}
-                  className="px-4 py-2 text-white bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 rounded-lg transition-all duration-200 text-sm font-medium shadow-md hover:shadow-lg"
-                >
-                  Деавторизовать пользователя
-                </button>
+        {/* Шапка */}
+        <div className={`rounded-lg p-6 border mb-6 ${isDark ? 'bg-[#2a3441] border-gray-700' : 'bg-white border-gray-200'}`}>
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+            <div>
+              <h1 className={`text-2xl font-bold mb-2 ${isDark ? 'text-gray-100' : 'text-gray-800'}`}>{userSession.fullName}</h1>
+              <div className="flex items-center gap-3">
+                <span className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>ID: {userSession.userId}</span>
+                <span className={isDark ? 'text-gray-600' : 'text-gray-300'}>•</span>
+                {getRoleBadge(userSession.role)}
               </div>
             </div>
+            <button
+              onClick={handleDeauthorize}
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${isDark ? 'bg-red-900/30 hover:bg-red-900/50 text-red-400 border border-red-700' : 'bg-red-50 hover:bg-red-100 text-red-600 border border-red-200'}`}
+            >
+              Деавторизовать пользователя
+            </button>
+          </div>
+        </div>
 
-            {/* Текущая сессия */}
-            {userSession.currentSession && (
-              <div className="mb-6">
-                <h2 className="text-lg font-semibold text-gray-700 mb-4 flex items-center gap-2">
-                  <Shield className="h-5 w-5 text-green-600" />
-                  Текущая активная сессия
-                </h2>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 bg-gray-50 p-4 rounded-lg border-2 border-gray-200">
-                  <div>
-                    <p className="text-xs font-medium text-gray-600 mb-1">Устройство</p>
-                    <p className="text-sm font-medium text-gray-800">{userSession.currentSession.device}</p>
-                  </div>
-                  <div>
-                    <p className="text-xs font-medium text-gray-600 mb-1">IP Адрес</p>
-                    <p className="font-mono text-sm font-medium text-gray-800">{userSession.currentSession.ip}</p>
-                  </div>
-                  <div>
-                    <p className="text-xs font-medium text-gray-600 mb-1">Дата авторизации</p>
-                    <p className="text-sm font-medium text-gray-800">{formatDate(userSession.currentSession.loginDate)}</p>
-                  </div>
-                  <div>
-                    <p className="text-xs font-medium text-gray-600 mb-1">Последняя активность</p>
-                    <p className="text-sm font-medium text-gray-800">{formatDate(userSession.currentSession.lastActivity)}</p>
-                  </div>
-                </div>
+        {/* Текущая сессия */}
+        {userSession.currentSession && (
+          <div className={`rounded-lg p-6 border mb-6 ${isDark ? 'bg-[#2a3441] border-gray-700' : 'bg-white border-gray-200'}`}>
+            <h2 className={`text-lg font-semibold mb-4 ${isDark ? 'text-gray-100' : 'text-gray-800'}`}>
+              Текущая активная сессия
+            </h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              <div className={`rounded-lg p-4 border ${isDark ? 'bg-[#3a4451] border-gray-600' : 'bg-gray-50 border-gray-200'}`}>
+                <div className={`text-xs font-medium mb-1 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>Устройство</div>
+                <div className={`text-sm font-medium ${isDark ? 'text-gray-100' : 'text-gray-800'}`}>{userSession.currentSession.device}</div>
               </div>
-            )}
-
-            {/* История авторизаций */}
-            <div>
-              <h2 className="text-lg font-semibold text-gray-700 mb-4 flex items-center gap-2">
-                <Clock className="h-5 w-5 text-teal-600" />
-                История авторизаций ({userSession.loginHistory.length})
-              </h2>
-              
-              <div className="overflow-x-auto">
-                <table className="w-full border-collapse text-xs bg-white rounded-lg shadow-lg">
-                  <thead>
-                    <tr className="border-b-2 bg-gray-50" style={{borderColor: '#14b8a6'}}>
-                      <th className="text-left py-3 px-3 font-semibold text-gray-700">Дата и время</th>
-                      <th className="text-left py-3 px-3 font-semibold text-gray-700">IP Адрес</th>
-                      <th className="text-left py-3 px-3 font-semibold text-gray-700">Устройство</th>
-                      <th className="text-left py-3 px-3 font-semibold text-gray-700">Статус</th>
-                      <th className="text-left py-3 px-3 font-semibold text-gray-700">Причина</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {userSession.loginHistory.length === 0 ? (
-                      <tr>
-                        <td colSpan={5} className="text-center py-12">
-                          <Clock className="h-16 w-16 text-gray-300 mx-auto mb-4" />
-                          <p className="text-gray-500 text-lg font-medium">История авторизаций отсутствует</p>
-                        </td>
-                      </tr>
-                    ) : (
-                      userSession.loginHistory.map((attempt) => (
-                        <tr key={attempt.id} className="border-b border-gray-100 hover:bg-teal-50/50 transition-all duration-200">
-                          <td className="py-3 px-3 text-gray-800">
-                            {formatDate(attempt.timestamp)}
-                          </td>
-                          <td className="py-3 px-3">
-                            <span className="font-mono text-gray-600">{attempt.ip}</span>
-                          </td>
-                          <td className="py-3 px-3 text-gray-600">
-                            {attempt.device}
-                          </td>
-                          <td className="py-3 px-3">
-                            {attempt.status === 'success' ? (
-                              <span className="inline-flex items-center gap-1 px-2 py-1 bg-green-100 text-green-700 rounded text-xs font-medium">
-                                <CheckCircle className="h-3 w-3" />
-                                Успешно
-                              </span>
-                            ) : (
-                              <span className="inline-flex items-center gap-1 px-2 py-1 bg-red-100 text-red-700 rounded text-xs font-medium">
-                                <XCircle className="h-3 w-3" />
-                                Ошибка
-                              </span>
-                            )}
-                          </td>
-                          <td className="py-3 px-3 text-gray-600">
-                            {attempt.reason || '-'}
-                          </td>
-                        </tr>
-                      ))
-                    )}
-                  </tbody>
-                </table>
+              <div className={`rounded-lg p-4 border ${isDark ? 'bg-[#3a4451] border-gray-600' : 'bg-gray-50 border-gray-200'}`}>
+                <div className={`text-xs font-medium mb-1 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>IP Адрес</div>
+                <div className={`text-sm font-medium font-mono ${isDark ? 'text-gray-100' : 'text-gray-800'}`}>{userSession.currentSession.ip}</div>
+              </div>
+              <div className={`rounded-lg p-4 border ${isDark ? 'bg-[#3a4451] border-gray-600' : 'bg-gray-50 border-gray-200'}`}>
+                <div className={`text-xs font-medium mb-1 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>Дата авторизации</div>
+                <div className={`text-sm font-medium ${isDark ? 'text-gray-100' : 'text-gray-800'}`}>{formatDate(userSession.currentSession.loginDate)}</div>
+              </div>
+              <div className={`rounded-lg p-4 border ${isDark ? 'bg-[#3a4451] border-gray-600' : 'bg-gray-50 border-gray-200'}`}>
+                <div className={`text-xs font-medium mb-1 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>Последняя активность</div>
+                <div className={`text-sm font-medium ${isDark ? 'text-gray-100' : 'text-gray-800'}`}>{formatDate(userSession.currentSession.lastActivity)}</div>
               </div>
             </div>
           </div>
+        )}
+
+        {/* История авторизаций */}
+        <div className={`rounded-lg p-6 border ${isDark ? 'bg-[#2a3441] border-gray-700' : 'bg-white border-gray-200'}`}>
+          <h2 className={`text-lg font-semibold mb-4 ${isDark ? 'text-gray-100' : 'text-gray-800'}`}>
+            История авторизаций ({userSession.loginHistory.length})
+          </h2>
+          
+          {userSession.loginHistory.length === 0 ? (
+            <div className={`text-center py-12 rounded-lg ${isDark ? 'bg-[#3a4451]' : 'bg-gray-50'}`}>
+              <p className={`text-lg mb-2 ${isDark ? 'text-gray-300' : 'text-gray-600'}`}>
+                История авторизаций отсутствует
+              </p>
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className={`w-full border-collapse text-[11px] min-w-[600px] rounded-lg ${isDark ? 'bg-[#2a3441]' : 'bg-white'}`}>
+                <thead>
+                  <tr className={`border-b-2 ${isDark ? 'bg-[#3a4451]' : 'bg-gray-50'}`} style={{borderColor: '#0d5c4b'}}>
+                    <th className={`text-left py-3 px-3 font-semibold ${isDark ? 'text-gray-200' : 'text-gray-700'}`}>Дата и время</th>
+                    <th className={`text-left py-3 px-3 font-semibold ${isDark ? 'text-gray-200' : 'text-gray-700'}`}>IP Адрес</th>
+                    <th className={`text-left py-3 px-3 font-semibold ${isDark ? 'text-gray-200' : 'text-gray-700'}`}>Устройство</th>
+                    <th className={`text-left py-3 px-3 font-semibold ${isDark ? 'text-gray-200' : 'text-gray-700'}`}>Статус</th>
+                    <th className={`text-left py-3 px-3 font-semibold ${isDark ? 'text-gray-200' : 'text-gray-700'}`}>Причина</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {userSession.loginHistory.map((attempt) => (
+                    <tr 
+                      key={attempt.id} 
+                      className={`border-b transition-colors ${isDark ? 'hover:bg-[#3a4451] border-gray-700' : 'hover:bg-teal-50 border-gray-200'}`}
+                    >
+                      <td className={`py-3 px-3 ${isDark ? 'text-gray-300' : 'text-gray-600'}`}>
+                        {formatDate(attempt.timestamp)}
+                      </td>
+                      <td className={`py-3 px-3 font-mono ${isDark ? 'text-gray-300' : 'text-gray-600'}`}>
+                        {attempt.ip}
+                      </td>
+                      <td className={`py-3 px-3 ${isDark ? 'text-gray-300' : 'text-gray-600'}`}>
+                        {attempt.device}
+                      </td>
+                      <td className="py-3 px-3">
+                        {attempt.status === 'success' ? (
+                          <span className={`inline-flex items-center gap-1 px-2 py-1 rounded text-xs font-medium ${isDark ? 'bg-green-900/30 text-green-400' : 'bg-green-100 text-green-700'}`}>
+                            Успешно
+                          </span>
+                        ) : (
+                          <span className={`inline-flex items-center gap-1 px-2 py-1 rounded text-xs font-medium ${isDark ? 'bg-red-900/30 text-red-400' : 'bg-red-100 text-red-700'}`}>
+                            Ошибка
+                          </span>
+                        )}
+                      </td>
+                      <td className={`py-3 px-3 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
+                        {attempt.reason || '-'}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
       </div>
     </div>
   )
 }
-

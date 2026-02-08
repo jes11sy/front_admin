@@ -182,7 +182,8 @@ export default function CampaignsReportPage() {
   }
 
   return (
-    <div>
+    <div className={`min-h-screen transition-colors duration-300 ${isDark ? 'bg-[#1e2530]' : 'bg-white'}`}>
+      <div className="px-6 py-6">
       {/* Состояние загрузки */}
       {isLoading && (
         <div className="text-center py-8">
@@ -387,18 +388,17 @@ export default function CampaignsReportPage() {
           ) : (
             <div className="space-y-8">
               {citiesData.map((cityData) => (
-                <div key={cityData.city} className={`rounded-xl border overflow-hidden ${isDark ? 'bg-[#2a3441] border-gray-700' : 'bg-white border-gray-200'}`}>
+                <div key={cityData.city} className="mb-8">
                   {/* Заголовок города */}
-                  <div className="bg-gradient-to-r from-teal-600 to-emerald-600 px-6 py-4">
-                    <h2 className="text-xl font-bold text-white flex items-center gap-2">
-                      {cityData.city}
-                      <span className="text-sm font-normal text-white/80">
-                        ({cityData.campaigns.length} {cityData.campaigns.length === 1 ? 'кампания' : cityData.campaigns.length < 5 ? 'кампании' : 'кампаний'})
-                      </span>
-                    </h2>
-                  </div>
+                  <h3 className={`text-xl font-semibold mb-4 flex items-center gap-2 ${isDark ? 'text-gray-200' : 'text-gray-700'}`}>
+                    {cityData.city}
+                    <span className={`text-sm font-normal ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
+                      ({cityData.campaigns.length} {cityData.campaigns.length === 1 ? 'кампания' : cityData.campaigns.length < 5 ? 'кампании' : 'кампаний'})
+                    </span>
+                  </h3>
 
                   {/* Таблица кампаний города */}
+                  <div className={`rounded-xl border overflow-hidden ${isDark ? 'bg-[#2a3441] border-gray-700' : 'bg-white border-gray-200'}`}>
                   <div className="overflow-x-auto">
                     <table className={`w-full text-sm ${isDark ? 'bg-[#2a3441]' : 'bg-white'}`}>
                       <thead>
@@ -439,6 +439,7 @@ export default function CampaignsReportPage() {
                         )}
                       </tbody>
                     </table>
+                    </div>
                   </div>
                 </div>
               ))}
@@ -446,6 +447,7 @@ export default function CampaignsReportPage() {
           )}
         </>
       )}
+      </div>
     </div>
   )
 }

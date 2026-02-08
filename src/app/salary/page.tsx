@@ -3,6 +3,7 @@
 import { Download } from 'lucide-react'
 import { useState, useEffect } from 'react'
 import { apiClient } from '@/lib/api'
+import { useDesignStore } from '@/store/design.store'
 import { toast } from 'sonner'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 
@@ -25,15 +26,7 @@ type DatePeriod = 'day' | 'week' | 'month' | 'custom'
 
 export default function SalaryPage() {
   // Тема
-  const [theme, setTheme] = useState<'light' | 'dark'>('light')
-  
-  useEffect(() => {
-    const savedTheme = localStorage.getItem('admin-theme') as 'light' | 'dark' | null
-    if (savedTheme) {
-      setTheme(savedTheme)
-    }
-  }, [])
-  
+  const theme = useDesignStore((state) => state.theme)
   const isDark = theme === 'dark'
   
   // Состояния

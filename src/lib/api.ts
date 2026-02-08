@@ -32,9 +32,19 @@ class ApiClient {
   // Если несколько запросов одновременно получают 401, только один делает refresh,
   // остальные ждут его результат
   private refreshPromise: Promise<boolean> | null = null
+  
+  // Callback для обработки ошибок авторизации
+  private authErrorCallback: (() => void) | null = null
 
   constructor(baseURL: string) {
     this.baseURL = baseURL
+  }
+
+  /**
+   * Устанавливает callback для обработки ошибок авторизации
+   */
+  setAuthErrorCallback(callback: () => void) {
+    this.authErrorCallback = callback
   }
 
   /**
@@ -255,6 +265,7 @@ class ApiClient {
         name?: string
         role: 'admin'
       }
+      refreshToken?: string
     }>('/auth/login', {
       method: 'POST',
       body: JSON.stringify({ 
@@ -268,15 +279,16 @@ class ApiClient {
     if (response.success && response.data?.user && typeof window !== 'undefined') {
       const storage = rememberMe ? localStorage : sessionStorage
       storage.setItem('user', JSON.stringify(response.data.user))
-
-      // Если включен "Запомнить меня" - сохраняем учетные данные в IndexedDB
-      if (rememberMe) {
+      
+      // Сохраняем refresh token в IndexedDB (backup для iOS PWA)
+      if (response.data.refreshToken) {
         try {
-          const { saveCredentials } = await import('./remember-me')
-          await saveCredentials(login, password)
+          const { saveRefreshToken } = await import('./remember-me')
+          await saveRefreshToken(response.data.refreshToken)
+          logger.debug('[Login] Refresh token saved to IndexedDB')
         } catch (error) {
-          logger.error('[Login] Failed to save credentials', { error: String(error) })
-          // Не прерываем процесс логина, если не удалось сохранить
+          logger.error('[Login] Failed to save refresh token', { error: String(error) })
+          // Не прерываем процесс логина
         }
       }
     }
@@ -289,12 +301,13 @@ class ApiClient {
    * Очищает cookies на сервере и пользовательские данные локально
    */
   async logout(): Promise<void> {
-    // Очищаем сохраненные учетные данные из IndexedDB
+    // Очищаем refresh token из IndexedDB
     try {
-      const { clearSavedCredentials } = await import('./remember-me')
-      await clearSavedCredentials()
+      const { clearRefreshToken } = await import('./remember-me')
+      await clearRefreshToken()
+      logger.debug('[Logout] Refresh token cleared from IndexedDB')
     } catch (error) {
-      logger.error('[Logout] Failed to clear saved credentials', { error: String(error) })
+      logger.error('[Logout] Failed to clear refresh token', { error: String(error) })
     }
 
     // Отправляем запрос logout на сервер для очистки cookies
@@ -696,6 +709,12 @@ class ApiClient {
     return this.request<any>(`/cash/${id}/approve`, {
       method: 'PATCH',
       body: JSON.stringify({ approve }),
+    })
+  }
+
+  async deleteCashTransaction(id: number) {
+    return this.request<{ message: string }>(`/cash/${id}`, {
+      method: 'DELETE',
     })
   }
 
@@ -1109,6 +1128,119 @@ class ApiClient {
         totalPages: number
       }
     }>(`/auth/admin/errors${queryString}`, { method: 'GET' })
+  }
+
+  /**
+   * 🔄 Восстановление сессии через refresh token из IndexedDB
+   * Используется когда cookies удалены (iOS ITP, PWA)
+   * @returns true если сессия восстановлена
+   */
+  async restoreSessionFromIndexedDB(): Promise<boolean> {
+    try {
+      const { getRefreshToken } = await import('./remember-me')
+      const refreshToken = await getRefreshToken()
+      
+      if (!refreshToken) {
+        logger.debug('No refresh token in IndexedDB')
+        return false
+      }
+      
+      logger.debug('Found refresh token in IndexedDB, attempting to restore session')
+      
+      // Отправляем refresh token на сервер для получения новых cookies
+      const response = await fetch(`${this.baseURL}/auth/refresh`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Use-Cookies': 'true',
+        },
+        credentials: 'include',
+        body: JSON.stringify({ refreshToken }), // Передаём токен в body
+      })
+      
+      if (response.ok) {
+        const result = await response.json()
+        
+        // Обновляем токен в IndexedDB если пришёл новый
+        if (result.data?.refreshToken) {
+          const { saveRefreshToken } = await import('./remember-me')
+          await saveRefreshToken(result.data.refreshToken)
+        }
+        
+        logger.debug('Session restored from IndexedDB token')
+        return true
+      }
+      
+      // Токен невалиден — очищаем IndexedDB
+      if (response.status === 401 || response.status === 403) {
+        logger.debug('Refresh token from IndexedDB is invalid, clearing')
+        const { clearRefreshToken } = await import('./remember-me')
+        await clearRefreshToken()
+      }
+      
+      return false
+    } catch (error) {
+      logger.error('Failed to restore session from IndexedDB', { error: String(error) })
+      return false
+    }
+  }
+
+  // ==================== FILE UPLOADS ====================
+
+  /**
+   * Загрузка документа БСО для заказа
+   */
+  async uploadOrderBso(file: File | null): Promise<{ filePath: string }> {
+    if (!file) {
+      throw new Error('No file provided')
+    }
+
+    const formData = new FormData()
+    formData.append('file', file)
+
+    const response = await fetch(`${this.baseURL}/orders/upload/bso`, {
+      method: 'POST',
+      headers: {
+        'X-Use-Cookies': 'true',
+      },
+      credentials: 'include',
+      body: formData,
+    })
+
+    if (!response.ok) {
+      throw new Error('Failed to upload BSO document')
+    }
+
+    const data = await response.json()
+    return { filePath: data.data?.filePath || data.filePath }
+  }
+
+  /**
+   * Загрузка чека расхода для заказа
+   */
+  async uploadOrderExpenditure(file: File | null): Promise<{ filePath: string }> {
+    if (!file) {
+      throw new Error('No file provided')
+    }
+
+    const formData = new FormData()
+    formData.append('file', file)
+
+    const response = await fetch(`${this.baseURL}/orders/upload/expenditure`, {
+      method: 'POST',
+      headers: {
+        'X-Use-Cookies': 'true',
+      },
+      credentials: 'include',
+      body: formData,
+    })
+
+    if (!response.ok) {
+      throw new Error('Failed to upload expenditure document')
+    }
+
+    const data = await response.json()
+    return { filePath: data.data?.filePath || data.filePath }
   }
 }
 

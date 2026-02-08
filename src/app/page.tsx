@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { apiClient } from '@/lib/api'
+import { useDesignStore } from '@/store/design.store'
 import { toast } from 'sonner'
 import { logger } from '@/lib/logger'
 
@@ -49,16 +50,7 @@ interface ReportData {
 
 export default function ReportsPage() {
   // Тема
-  const [theme, setTheme] = useState<'light' | 'dark'>('light')
-  
-  // Загружаем тему из localStorage
-  useEffect(() => {
-    const savedTheme = localStorage.getItem('admin-theme') as 'light' | 'dark' | null
-    if (savedTheme) {
-      setTheme(savedTheme)
-    }
-  }, [])
-  
+  const theme = useDesignStore((state) => state.theme)
   const isDark = theme === 'dark'
   
   // Состояние выбора

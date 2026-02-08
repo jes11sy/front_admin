@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { useEffect, useState } from 'react'
+import { useDesignStore } from '@/store/design.store'
 
 const tabs = [
   { name: 'Активные сессии', href: '/admin/sessions' },
@@ -14,15 +14,7 @@ export default function AdminPage() {
   const pathname = usePathname()
   
   // Тема
-  const [theme, setTheme] = useState<'light' | 'dark'>('light')
-  
-  useEffect(() => {
-    const savedTheme = localStorage.getItem('admin-theme') as 'light' | 'dark' | null
-    if (savedTheme) {
-      setTheme(savedTheme)
-    }
-  }, [])
-  
+  const theme = useDesignStore((state) => state.theme)
   const isDark = theme === 'dark'
 
   return (

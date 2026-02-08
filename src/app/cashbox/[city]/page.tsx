@@ -261,6 +261,42 @@ export default function CityTransactionsPage() {
     }
   }
 
+  // Удаление транзакции
+  const handleDeleteTransaction = async (id: number) => {
+    if (!confirm('Вы уверены, что хотите удалить эту транзакцию?')) {
+      return
+    }
+
+    try {
+      const response = await apiClient.deleteCashTransaction(id)
+      if (response.success) {
+        toast.success('Транзакция удалена')
+        // Перезагружаем данные
+        setTransactions(prev => prev.filter(t => t.id !== id))
+        // Обновляем статистику
+        const dateRange = getDateRange()
+        const statsResp = await apiClient.getCashStats({ 
+          city: cityName,
+          type: typeFilter !== 'all' ? typeFilter as 'приход' | 'расход' : undefined,
+          startDate: dateRange.startDate || undefined,
+          endDate: dateRange.endDate || undefined
+        })
+        if (statsResp.success && statsResp.data) {
+          setCityStats({
+            totalIncome: statsResp.data.totalIncome,
+            totalExpenses: statsResp.data.totalExpense,
+            balance: statsResp.data.balance
+          })
+        }
+      } else {
+        toast.error(response.error || 'Не удалось удалить транзакцию')
+      }
+    } catch (error) {
+      console.error('Error deleting transaction:', error)
+      toast.error('Ошибка при удалении транзакции')
+    }
+  }
+
   return (
     <div className={`min-h-screen transition-colors duration-300 ${isDark ? 'bg-[#1e2530]' : 'bg-white'}`}>
       <div className="px-6 py-6">
@@ -508,12 +544,13 @@ export default function CityTransactionsPage() {
                   <th className={`text-left py-3 px-3 font-semibold ${isDark ? 'text-gray-200' : 'text-gray-700'}`}>Назначение</th>
                   <th className={`text-left py-3 px-3 font-semibold ${isDark ? 'text-gray-200' : 'text-gray-700'}`}>Город</th>
                   <th className={`text-right py-3 px-3 font-semibold ${isDark ? 'text-gray-200' : 'text-gray-700'}`}>Сумма</th>
+                  <th className={`text-center py-3 px-3 font-semibold ${isDark ? 'text-gray-200' : 'text-gray-700'}`}>Действия</th>
                 </tr>
               </thead>
               <tbody>
                 {transactions.length === 0 ? (
                   <tr>
-                    <td colSpan={6} className={`text-center py-8 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
+                    <td colSpan={7} className={`text-center py-8 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
                       Нет транзакций для этого города
                     </td>
                   </tr>
@@ -543,6 +580,21 @@ export default function CityTransactionsPage() {
                           : (isDark ? 'text-gray-200' : 'text-red-600')
                       }`}>
                         {transaction.name === 'приход' ? '+' : '-'}{formatCurrency(Number(transaction.amount))}
+                      </td>
+                      <td className="py-3 px-3 text-center">
+                        <button
+                          onClick={() => handleDeleteTransaction(transaction.id)}
+                          className={`p-1.5 rounded-lg transition-all duration-200 ${
+                            isDark 
+                              ? 'text-gray-400 hover:text-red-400 hover:bg-red-900/30' 
+                              : 'text-gray-500 hover:text-red-600 hover:bg-red-50'
+                          }`}
+                          title="Удалить транзакцию"
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                          </svg>
+                        </button>
                       </td>
                     </tr>
                   ))

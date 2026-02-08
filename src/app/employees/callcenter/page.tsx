@@ -2,9 +2,8 @@
 
 import { useState, useEffect, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
-import { Edit, Trash2 } from 'lucide-react'
-import { Button } from '@/components/ui/button'
 import { apiClient } from '@/lib/api'
+import { useDesignStore } from '@/store/design.store'
 import { toast } from 'sonner'
 import { logger } from '@/lib/logger'
 
@@ -24,23 +23,7 @@ export default function CallCenterPage() {
   const [isLoading, setIsLoading] = useState(true)
   
   // Тема
-  const [theme, setTheme] = useState<'light' | 'dark'>('light')
-  
-  useEffect(() => {
-    const savedTheme = localStorage.getItem('admin-theme') as 'light' | 'dark' | null
-    if (savedTheme) {
-      setTheme(savedTheme)
-    }
-    
-    const handleStorageChange = (e: StorageEvent) => {
-      if (e.key === 'admin-theme' && e.newValue) {
-        setTheme(e.newValue as 'light' | 'dark')
-      }
-    }
-    window.addEventListener('storage', handleStorageChange)
-    return () => window.removeEventListener('storage', handleStorageChange)
-  }, [])
-  
+  const theme = useDesignStore((state) => state.theme)
   const isDark = theme === 'dark'
 
   // Фильтры
@@ -209,12 +192,12 @@ export default function CallCenterPage() {
           </button>
         </div>
 
-        <Button 
+        <button 
           onClick={() => router.push('/employees/callcenter/add')}
           className="px-4 py-2 bg-[#0d5c4b] hover:bg-[#0a4a3c] text-white rounded-lg transition-colors text-sm font-medium"
         >
           + Добавить оператора
-        </Button>
+        </button>
       </div>
 
       {/* Панель фильтров */}
@@ -325,26 +308,36 @@ export default function CallCenterPage() {
                   </td>
                   <td className={`py-3 px-4 ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>{formatDate(operator.dateCreate)}</td>
                   <td className="py-3 px-4">
-                    <div className="flex items-center gap-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className={`${isDark ? 'text-[#0d5c4b] border-[#0d5c4b]/30 hover:bg-[#0d5c4b]/10' : 'text-teal-600 hover:text-teal-700 hover:bg-teal-50'}`}
+                    <div className="flex items-center gap-1">
+                      <button
+                        className={`p-2 rounded-lg transition-all duration-200 ${
+                          isDark 
+                            ? 'text-gray-400 hover:text-teal-400 hover:bg-teal-900/30' 
+                            : 'text-gray-500 hover:text-teal-600 hover:bg-teal-50'
+                        }`}
                         onClick={(e) => {
                           e.stopPropagation()
                           router.push(`/employees/callcenter/edit/${operator.id}`)
                         }}
+                        title="Редактировать"
                       >
-                        <Edit className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className={`${isDark ? 'text-red-400 border-red-400/30 hover:bg-red-400/10' : 'text-red-600 hover:text-red-700 hover:bg-red-50'}`}
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                        </svg>
+                      </button>
+                      <button
+                        className={`p-2 rounded-lg transition-all duration-200 ${
+                          isDark 
+                            ? 'text-gray-400 hover:text-red-400 hover:bg-red-900/30' 
+                            : 'text-gray-500 hover:text-red-600 hover:bg-red-50'
+                        }`}
                         onClick={(e) => handleDelete(operator.id, e)}
+                        title="Удалить"
                       >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                        </svg>
+                      </button>
                     </div>
                   </td>
                 </tr>

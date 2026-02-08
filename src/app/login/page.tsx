@@ -13,6 +13,7 @@ import { toast } from "@/components/ui/toast"
 import { getErrorMessage } from "@/lib/utils"
 import { validators, validateField } from "@/lib/validation"
 import { useAuthStore } from "@/store/auth.store"
+import { useDesignStore } from "@/store/design.store"
 import { Sun, Moon, Eye, EyeOff } from 'lucide-react'
 
 // Компонент формы логина (использует useSearchParams)
@@ -28,27 +29,14 @@ function LoginForm() {
   const [isCheckingAutoLogin, setIsCheckingAutoLogin] = useState(true)
   
   // Тема
-  const [theme, setTheme] = useState<'light' | 'dark'>('light')
+  const theme = useDesignStore((state) => state.theme)
+  const toggleTheme = useDesignStore((state) => state.toggleTheme)
   
   // Rate Limiting: защита от брутфорс атак
   const [attemptCount, setAttemptCount] = useState(0)
   const [blockedUntil, setBlockedUntil] = useState<number | null>(null)
   const MAX_ATTEMPTS = 10 // Максимум попыток
   const BLOCK_DURATION = 5 * 60 * 1000 // 5 минут в миллисекундах
-  
-  // Загружаем тему из localStorage
-  useEffect(() => {
-    const savedTheme = localStorage.getItem('admin-theme') as 'light' | 'dark' | null
-    if (savedTheme) {
-      setTheme(savedTheme)
-    }
-  }, [])
-  
-  const toggleTheme = () => {
-    const newTheme = theme === 'dark' ? 'light' : 'dark'
-    setTheme(newTheme)
-    localStorage.setItem('admin-theme', newTheme)
-  }
   
   /**
    * Безопасная валидация redirect URL
@@ -106,49 +94,63 @@ function LoginForm() {
       }, 5000) // 5 секунд таймаут
       
       try {
-        const { getSavedCredentials } = await import('@/lib/remember-me')
-        const credentials = await getSavedCredentials()
+        // Сначала проверяем cookies через getProfile
+        try {
+          const profileResponse = await apiClient.getProfile()
+          if (!isMounted) return
+          
+          if (profileResponse.success && profileResponse.data) {
+            if (timeoutId) clearTimeout(timeoutId)
+            setUser({
+              id: profileResponse.data.id,
+              login: profileResponse.data.login,
+              name: profileResponse.data.name || profileResponse.data.login,
+              role: profileResponse.data.role || 'admin',
+            })
+            logger.info('[Login] Session valid, redirecting')
+            router.replace(getSafeRedirectUrl())
+            return
+          }
+        } catch {
+          // Cookies невалидны, пробуем IndexedDB
+        }
         
         if (!isMounted) return
         
-        if (credentials) {
-          logger.info('[Login] Found saved credentials, attempting auto-login...')
-          
-          setIsLoading(true)
-          
+        // Пробуем восстановить сессию из IndexedDB
+        logger.info('[Login] Trying to restore session from IndexedDB...')
+        const restored = await apiClient.restoreSessionFromIndexedDB()
+        
+        if (!isMounted) return
+        
+        if (restored) {
+          // Сессия восстановлена, получаем профиль
           try {
-            const loginResponse = await apiClient.login(
-              credentials.login,
-              credentials.password,
-              true
-            )
-            
+            const profileResponse = await apiClient.getProfile()
             if (!isMounted) return
             
-            if (loginResponse.success && loginResponse.data?.user) {
+            if (profileResponse.success && profileResponse.data) {
               if (timeoutId) clearTimeout(timeoutId)
-              setUser(loginResponse.data.user)
+              setUser({
+                id: profileResponse.data.id,
+                login: profileResponse.data.login,
+                name: profileResponse.data.name || profileResponse.data.login,
+                role: profileResponse.data.role || 'admin',
+              })
+              logger.info('[Login] Session restored from IndexedDB, redirecting')
               router.replace(getSafeRedirectUrl())
               return
             }
-          } catch (loginError) {
-            logger.error('[Login] Login request failed', { error: String(loginError) })
+          } catch {
+            logger.warn('[Login] Failed to get profile after session restore')
           }
-          
-          // Логин не удался
-          if (isMounted) {
-            logger.warn('[Login] Auto-login failed')
-            if (timeoutId) clearTimeout(timeoutId)
-            setIsLoading(false)
-            setIsCheckingAutoLogin(false)
-          }
-        } else {
-          // Нет сохраненных данных - показываем форму
-          if (isMounted) {
-            logger.info('[Login] No saved credentials found')
-            if (timeoutId) clearTimeout(timeoutId)
-            setIsCheckingAutoLogin(false)
-          }
+        }
+        
+        // Нет сохраненных данных или восстановление не удалось - показываем форму
+        if (isMounted) {
+          logger.info('[Login] No valid session found, showing login form')
+          if (timeoutId) clearTimeout(timeoutId)
+          setIsCheckingAutoLogin(false)
         }
       } catch (error) {
         if (isMounted) {

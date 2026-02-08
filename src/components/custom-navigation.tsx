@@ -5,6 +5,7 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { useAuthStore } from '@/store/auth.store'
+import { useDesignStore } from '@/store/design.store'
 import { Sun, Moon, Bell, User, Menu, X } from 'lucide-react'
 
 const navigationItems = [
@@ -174,21 +175,8 @@ export function CustomNavigation() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
   
   // Тема
-  const [theme, setTheme] = useState<'light' | 'dark'>('light')
-  
-  // Загружаем тему из localStorage
-  useEffect(() => {
-    const savedTheme = localStorage.getItem('admin-theme') as 'light' | 'dark' | null
-    if (savedTheme) {
-      setTheme(savedTheme)
-    }
-  }, [])
-  
-  const toggleTheme = useCallback(() => {
-    const newTheme = theme === 'dark' ? 'light' : 'dark'
-    setTheme(newTheme)
-    localStorage.setItem('admin-theme', newTheme)
-  }, [theme])
+  const theme = useDesignStore((state) => state.theme)
+  const toggleTheme = useDesignStore((state) => state.toggleTheme)
   
   // Синхронизируем тему с документом
   useEffect(() => {

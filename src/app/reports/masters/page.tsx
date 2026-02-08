@@ -222,7 +222,8 @@ export default function MastersReportPage() {
   const avgCheck = totals.ordersCompleted > 0 ? Math.round(totals.revenue / totals.ordersCompleted) : 0
 
   return (
-    <div>
+    <div className={`min-h-screen transition-colors duration-300 ${isDark ? 'bg-[#1e2530]' : 'bg-white'}`}>
+      <div className="px-6 py-6">
       {/* Состояние загрузки */}
       {isLoading && (
         <div className="text-center py-8">
@@ -508,6 +509,7 @@ export default function MastersReportPage() {
           )}
         </>
       )}
+      </div>
     </div>
   )
 }

@@ -203,7 +203,8 @@ export default function CitiesReportPage() {
   const sortedData = [...citiesData].sort((a, b) => b.revenue - a.revenue)
 
   return (
-    <div>
+    <div className={`min-h-screen transition-colors duration-300 ${isDark ? 'bg-[#1e2530]' : 'bg-white'}`}>
+      <div className="px-6 py-6">
       {/* Состояние загрузки */}
       {isLoading && (
         <div className="text-center py-8">
@@ -473,6 +474,7 @@ export default function CitiesReportPage() {
           )}
         </>
       )}
+      </div>
     </div>
   )
 }

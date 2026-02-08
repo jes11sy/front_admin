@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuthStore } from '@/store/auth.store'
+import { useDesignStore } from '@/store/design.store'
 import { apiClient } from '@/lib/api'
 import { User, Edit2, LogOut, Eye, EyeOff, Save, X, Loader2 } from 'lucide-react'
 
@@ -15,15 +16,7 @@ export default function ProfilePage() {
   const [isSaving, setIsSaving] = useState(false)
   
   // Тема
-  const [theme, setTheme] = useState<'light' | 'dark'>('light')
-  
-  useEffect(() => {
-    const savedTheme = localStorage.getItem('admin-theme') as 'light' | 'dark' | null
-    if (savedTheme) {
-      setTheme(savedTheme)
-    }
-  }, [])
-  
+  const theme = useDesignStore((state) => state.theme)
   const isDark = theme === 'dark'
   
   // Форма редактирования
