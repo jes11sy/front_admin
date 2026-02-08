@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuthStore } from '@/store/auth.store'
 import { apiClient } from '@/lib/api'
@@ -8,8 +8,12 @@ import { apiClient } from '@/lib/api'
 export default function LogoutPage() {
   const router = useRouter()
   const clearAuth = useAuthStore((state) => state.clearAuth)
+  const logoutStartedRef = useRef(false)
 
   useEffect(() => {
+    if (logoutStartedRef.current) return
+    logoutStartedRef.current = true
+    
     const performLogout = async () => {
       // Выполняем выход и ждём очистки cookies на сервере
       await apiClient.logout()
@@ -30,4 +34,3 @@ export default function LogoutPage() {
     </div>
   )
 }
-

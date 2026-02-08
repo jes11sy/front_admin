@@ -52,8 +52,7 @@ export default function AuthGuard({ children }: AuthGuardProps) {
       initRef.current = true
       
       // ✅ FIX: Если пользователь уже есть в store (из persist) - проверяем в фоне без loading
-      const currentUser = useAuthStore.getState().user
-      const hasStoredUser = !!currentUser
+      const hasStoredUser = !!user
       
       if (!hasStoredUser) {
         setLoading(true)
@@ -127,7 +126,7 @@ export default function AuthGuard({ children }: AuthGuardProps) {
     }
 
     checkAuth()
-  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [router, setUser, setLoading, user])
 
   // ✅ FIX: Показываем loading ТОЛЬКО если нет сохранённого пользователя
   // Если пользователь есть из persist — показываем контент сразу

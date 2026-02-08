@@ -1131,6 +1131,47 @@ class ApiClient {
   }
 
   /**
+   * 🍪 Проверка аутентификации через API
+   * Нельзя проверить httpOnly cookies на клиенте - нужен запрос к серверу
+   * 
+   * 🔧 FIX: Используем простой fetch БЕЗ safeFetch чтобы избежать бесконечного цикла
+   * при 401 ошибке (safeFetch пытается refresh → logout → снова проверка → цикл)
+   */
+  async isAuthenticated(): Promise<boolean> {
+    try {
+      // Простой запрос БЕЗ retry и refresh логики
+      const controller = new AbortController()
+      const timeoutId = setTimeout(() => controller.abort(), 10000) // 10 сек таймаут
+      
+      const response = await fetch(`${this.baseURL}/auth/profile`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Use-Cookies': 'true',
+        },
+        credentials: 'include',
+        signal: controller.signal,
+      })
+      
+      clearTimeout(timeoutId)
+      
+      // 🔒 429 Too Many Requests - пробрасываем ошибку чтобы НЕ вызвать бесконечный цикл
+      if (response.status === 429) {
+        throw new Error('RATE_LIMIT_EXCEEDED')
+      }
+      
+      return response.ok
+    } catch (error) {
+      // Rate limit - пробрасываем наверх
+      if (error instanceof Error && error.message === 'RATE_LIMIT_EXCEEDED') {
+        throw error
+      }
+      // Любая другая ошибка (сеть, таймаут, 401) - просто не авторизован
+      return false
+    }
+  }
+
+  /**
    * 🔄 Восстановление сессии через refresh token из IndexedDB
    * Используется когда cookies удалены (iOS ITP, PWA)
    * @returns true если сессия восстановлена

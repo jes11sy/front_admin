@@ -14,6 +14,7 @@ import { getErrorMessage } from "@/lib/utils"
 import { validators, validateField } from "@/lib/validation"
 import { useAuthStore } from "@/store/auth.store"
 import { useDesignStore } from "@/store/design.store"
+import { LoadingScreen } from "@/components/ui/loading-screen"
 import { Sun, Moon, Eye, EyeOff } from 'lucide-react'
 
 // Компонент формы логина (использует useSearchParams)
@@ -26,7 +27,8 @@ function LoginForm() {
   const [showPassword, setShowPassword] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [errors, setErrors] = useState<{ login?: string; password?: string }>({})
-  const [isCheckingAutoLogin, setIsCheckingAutoLogin] = useState(true)
+  const [isCheckingAuth, setIsCheckingAuth] = useState(true)
+  const hasCheckedAuth = useRef(false)
   
   // Тема
   const theme = useDesignStore((state) => state.theme)
@@ -78,107 +80,41 @@ function LoginForm() {
     return redirect
   }, [searchParams])
 
-  // Проверяем автовход при загрузке страницы логина
-  // Используем useRef чтобы предотвратить повторные проверки
-  const autoLoginCheckedRef = useRef(false)
-  
+  // Проверяем авторизацию при загрузке страницы логина
   useEffect(() => {
-    // Предотвращаем повторные проверки
-    if (autoLoginCheckedRef.current) {
-      return
-    }
+    // Предотвращаем повторную проверку
+    if (hasCheckedAuth.current) return
+    hasCheckedAuth.current = true
     
-    let isMounted = true
-    let timeoutId: NodeJS.Timeout | null = null
-    
-    const tryAutoLogin = async () => {
-      autoLoginCheckedRef.current = true
-      
-      // Таймаут безопасности - если проверка зависла, показываем форму
-      timeoutId = setTimeout(() => {
-        if (isMounted) {
-          logger.warn('[Login] Auto-login timeout')
-          setIsLoading(false)
-          setIsCheckingAutoLogin(false)
-        }
-      }, 5000) // 5 секунд таймаут
-      
+    const checkAuth = async () => {
       try {
-        // Сначала проверяем cookies через getProfile
-        try {
-          const profileResponse = await apiClient.getProfile()
-          if (!isMounted) return
-          
-          if (profileResponse.success && profileResponse.data) {
-            if (timeoutId) clearTimeout(timeoutId)
-            setUser({
-              id: profileResponse.data.id,
-              login: profileResponse.data.login,
-              name: profileResponse.data.name || profileResponse.data.login,
-              role: profileResponse.data.role || 'admin',
-            })
-            logger.info('[Login] Session valid, redirecting')
-            router.replace(getSafeRedirectUrl())
-            return
-          }
-        } catch {
-          // Cookies невалидны, пробуем IndexedDB
+        // 1. Проверяем активную сессию через cookies
+        const isAlreadyAuthenticated = await apiClient.isAuthenticated()
+        if (isAlreadyAuthenticated) {
+          logger.debug('User already authenticated via cookies, redirecting')
+          router.replace(getSafeRedirectUrl())
+          return
         }
         
-        if (!isMounted) return
-        
-        // Пробуем восстановить сессию из IndexedDB
-        logger.info('[Login] Trying to restore session from IndexedDB...')
+        // 2. Cookies не работают — пробуем восстановить через IndexedDB
+        logger.debug('Cookies invalid, trying to restore from IndexedDB')
         const restored = await apiClient.restoreSessionFromIndexedDB()
         
-        if (!isMounted) return
-        
         if (restored) {
-          // Сессия восстановлена, получаем профиль
-          try {
-            const profileResponse = await apiClient.getProfile()
-            if (!isMounted) return
-            
-            if (profileResponse.success && profileResponse.data) {
-              if (timeoutId) clearTimeout(timeoutId)
-              setUser({
-                id: profileResponse.data.id,
-                login: profileResponse.data.login,
-                name: profileResponse.data.name || profileResponse.data.login,
-                role: profileResponse.data.role || 'admin',
-              })
-              logger.info('[Login] Session restored from IndexedDB, redirecting')
-              router.replace(getSafeRedirectUrl())
-              return
-            }
-          } catch {
-            logger.warn('[Login] Failed to get profile after session restore')
-          }
-        }
-        
-        // Нет сохраненных данных или восстановление не удалось - показываем форму
-        if (isMounted) {
-          logger.info('[Login] No valid session found, showing login form')
-          if (timeoutId) clearTimeout(timeoutId)
-          setIsCheckingAutoLogin(false)
+          logger.debug('Session restored from IndexedDB, redirecting')
+          router.replace(getSafeRedirectUrl())
+          return
         }
       } catch (error) {
-        if (isMounted) {
-          logger.error('[Login] Auto-login error', { error: String(error) })
-          if (timeoutId) clearTimeout(timeoutId)
-          setIsLoading(false)
-          setIsCheckingAutoLogin(false)
-        }
+        logger.debug('Auth check failed, showing login form')
       }
+      
+      // Показываем форму логина
+      setIsCheckingAuth(false)
     }
     
-    tryAutoLogin()
-    
-    return () => {
-      isMounted = false
-      if (timeoutId) clearTimeout(timeoutId)
-    }
-  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+    checkAuth()
+  }, [router, getSafeRedirectUrl])
   
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -248,7 +184,7 @@ function LoginForm() {
       
       // Безопасный редирект (защита от Open Redirect атаки)
       const safeRedirectUrl = getSafeRedirectUrl()
-      router.push(safeRedirectUrl)
+      router.replace(safeRedirectUrl)
     } catch (error) {
       // ❌ НЕУДАЧНАЯ ПОПЫТКА - увеличиваем счетчик
       const newAttemptCount = attemptCount + 1
@@ -278,25 +214,9 @@ function LoginForm() {
     }
   }
 
-  // Показываем загрузку во время проверки автовхода
-  if (isCheckingAutoLogin) {
-    return (
-      <div className={`min-h-screen flex items-center justify-center transition-colors duration-300 ${
-        theme === 'dark' ? 'bg-[#1e2530]' : 'bg-[#daece2]'
-      }`}>
-        <div className="text-center">
-          <svg className={`animate-spin h-12 w-12 mx-auto mb-4 ${
-            theme === 'dark' ? 'text-white' : 'text-[#0d5c4b]'
-          }`} xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-          </svg>
-          <p className={`text-lg ${theme === 'dark' ? 'text-white' : 'text-[#0d5c4b]'}`}>
-            Проверка авторизации...
-          </p>
-        </div>
-      </div>
-    )
+  // Показываем экран загрузки во время проверки авторизации
+  if (isCheckingAuth) {
+    return <LoadingScreen />
   }
 
   return (
@@ -454,17 +374,7 @@ function LoginForm() {
 // Главный компонент страницы с Suspense (требование Next.js 15 для useSearchParams)
 export default function LoginPage() {
   return (
-    <Suspense fallback={
-      <div className="min-h-screen flex items-center justify-center bg-[#daece2]">
-        <div className="text-center">
-          <svg className="animate-spin h-12 w-12 text-[#0d5c4b] mx-auto mb-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-          </svg>
-          <p className="text-[#0d5c4b] text-lg">Загрузка...</p>
-        </div>
-      </div>
-    }>
+    <Suspense fallback={<LoadingScreen />}>
       <LoginForm />
     </Suspense>
   )
