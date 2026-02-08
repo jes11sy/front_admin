@@ -1,8 +1,6 @@
 'use client'
 
 import Image from 'next/image'
-import { useDesignStore } from '@/store/design.store'
-import { useState, useEffect } from 'react'
 
 interface LoadingScreenProps {
   /** Текст под спиннером (не используется в новом дизайне) */
@@ -11,52 +9,6 @@ interface LoadingScreenProps {
   fullScreen?: boolean
   /** Дополнительные классы */
   className?: string
-}
-
-// Функция для синхронного получения темы из DOM/localStorage
-function getThemeFromDOM(): 'light' | 'dark' {
-  if (typeof window === 'undefined') return 'light' // SSR
-  
-  // Проверяем класс dark на html (установлен синхронным скриптом в layout.tsx)
-  if (document.documentElement.classList.contains('dark')) {
-    return 'dark'
-  }
-  
-  // Fallback на localStorage
-  try {
-    const stored = localStorage.getItem('admin-design-storage')
-    if (stored) {
-      const parsed = JSON.parse(stored)
-      return parsed.state?.theme || 'light'
-    }
-  } catch {}
-  return 'light'
-}
-
-/**
- * Хук для определения темы без мелькания
- * ✅ FIX: Используем useEffect для получения темы после монтирования
- */
-function useThemeWithoutFlash() {
-  const storeTheme = useDesignStore((state) => state.theme)
-  const hasHydrated = useDesignStore((state) => state._hasHydrated)
-  
-  const [clientTheme, setClientTheme] = useState<'light' | 'dark'>('light')
-  const [isMounted, setIsMounted] = useState(false)
-  
-  useEffect(() => {
-    setClientTheme(getThemeFromDOM())
-    setIsMounted(true)
-  }, [])
-
-  // После гидратации store - используем store
-  if (hasHydrated) {
-    return storeTheme === 'dark'
-  }
-  
-  // До монтирования - используем light (SSR)
-  // После монтирования но до гидратации - используем значение из DOM
-  return isMounted ? clientTheme === 'dark' : false
 }
 
 /**
@@ -71,26 +23,33 @@ export function LoadingScreen({
   fullScreen = true,
   className = ''
 }: LoadingScreenProps) {
-  const isDark = useThemeWithoutFlash()
-
+  // ✅ FIX: Используем CSS dark: классы для логотипа чтобы избежать мерцания
   const content = (
     <div className="flex flex-col items-center justify-center px-4">
-      {/* Логотип */}
+      {/* Логотип - показываем оба, скрываем неактивный через CSS */}
       <div className="mb-8">
         <Image 
-          src={isDark ? "/logo/logo_dark_v2.png" : "/logo/logo_light_v2.png"} 
+          src="/logo/logo_light_v2.png" 
           alt="Новые Схемы" 
           width={200} 
           height={50} 
-          className="h-12 w-auto" 
+          className="h-12 w-auto dark:hidden" 
+          priority
+        />
+        <Image 
+          src="/logo/logo_dark_v2.png" 
+          alt="Новые Схемы" 
+          width={200} 
+          height={50} 
+          className="h-12 w-auto hidden dark:block" 
           priority
         />
       </div>
 
       {/* Спиннер */}
       <div className="relative w-12 h-12">
-        <div className={`w-full h-full rounded-full border-4 ${isDark ? 'border-[#0d5c4b]/30' : 'border-[#0d5c4b]/20'}`} />
-        <div className={`absolute inset-0 rounded-full border-4 border-transparent border-t-[#0d5c4b] animate-spin`} />
+        <div className="w-full h-full rounded-full border-4 border-[#0d5c4b]/20 dark:border-[#0d5c4b]/30" />
+        <div className="absolute inset-0 rounded-full border-4 border-transparent border-t-[#0d5c4b] animate-spin" />
       </div>
     </div>
   )
