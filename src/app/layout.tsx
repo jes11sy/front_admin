@@ -32,6 +32,26 @@ export default function RootLayout({
   return (
     <html lang="ru" className={inter.variable}>
       <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              (function() {
+                try {
+                  var stored = localStorage.getItem('admin-design-storage');
+                  if (stored) {
+                    var parsed = JSON.parse(stored);
+                    var theme = parsed.state && parsed.state.theme;
+                    if (theme === 'dark') {
+                      document.documentElement.classList.add('dark');
+                      document.documentElement.style.backgroundColor = '#1e2530';
+                      document.documentElement.style.colorScheme = 'dark';
+                    }
+                  }
+                } catch (e) {}
+              })();
+            `,
+          }}
+        />
         <Script id="error-handler" strategy="beforeInteractive">
           {`
             // Глобальная обработка необработанных ошибок

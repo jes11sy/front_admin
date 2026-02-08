@@ -790,16 +790,16 @@ export default function ReportsPage() {
                       {reportData.data.cities.map((city: any) => (
                         <tr key={city.city} className={`border-b transition-colors ${isDark ? 'border-gray-700 hover:bg-[#3a4451]' : 'border-gray-200 hover:bg-gray-50'}`}>
                           <td className={`py-3 px-4 font-medium ${isDark ? 'text-gray-100' : 'text-gray-800'}`}>{city.city}</td>
-                          <td className="py-3 px-4 text-right font-medium text-green-600">{formatCurrency(city.income)}</td>
-                          <td className="py-3 px-4 text-right font-medium text-red-600">{formatCurrency(city.expense)}</td>
-                          <td className={`py-3 px-4 text-right font-bold ${isDark ? 'text-teal-400' : 'text-teal-700'}`}>{formatCurrency(city.balance)}</td>
+                          <td className={`py-3 px-4 text-right font-medium ${isDark ? 'text-gray-100' : 'text-gray-800'}`}>{formatCurrency(city.income)}</td>
+                          <td className={`py-3 px-4 text-right font-medium ${isDark ? 'text-gray-100' : 'text-gray-800'}`}>{formatCurrency(city.expense)}</td>
+                          <td className={`py-3 px-4 text-right font-bold ${isDark ? 'text-gray-100' : 'text-gray-800'}`}>{formatCurrency(city.balance)}</td>
                         </tr>
                       ))}
                       <tr className={`font-bold border-t-2 ${isDark ? 'bg-[#3a4451] border-[#0d5c4b]' : 'bg-teal-50 border-[#0d5c4b]'}`}>
-                        <td className={`py-3 px-4 ${isDark ? 'text-gray-100' : 'text-teal-900'}`}>ИТОГО</td>
-                        <td className="py-3 px-4 text-right text-green-700">{formatCurrency(reportData.data.totals.income)}</td>
-                        <td className="py-3 px-4 text-right text-red-700">{formatCurrency(reportData.data.totals.expense)}</td>
-                        <td className={`py-3 px-4 text-right ${isDark ? 'text-teal-400' : 'text-teal-800'}`}>{formatCurrency(reportData.data.totals.balance)}</td>
+                        <td className={`py-3 px-4 ${isDark ? 'text-gray-100' : 'text-gray-800'}`}>ИТОГО</td>
+                        <td className={`py-3 px-4 text-right ${isDark ? 'text-gray-100' : 'text-gray-800'}`}>{formatCurrency(reportData.data.totals.income)}</td>
+                        <td className={`py-3 px-4 text-right ${isDark ? 'text-gray-100' : 'text-gray-800'}`}>{formatCurrency(reportData.data.totals.expense)}</td>
+                        <td className={`py-3 px-4 text-right ${isDark ? 'text-gray-100' : 'text-gray-800'}`}>{formatCurrency(reportData.data.totals.balance)}</td>
                       </tr>
                     </tbody>
                   </table>
@@ -823,25 +823,25 @@ export default function ReportsPage() {
                         <React.Fragment key={city.city}>
                           <tr className={isDark ? 'bg-[#3a4451]' : 'bg-gray-50'}>
                             <td className={`py-3 px-4 font-bold ${isDark ? 'text-gray-100' : 'text-gray-800'}`}>{city.city}</td>
-                            <td className="py-3 px-4 text-right font-bold text-green-600">{formatCurrency(city.totalIncome)}</td>
-                            <td className="py-3 px-4 text-right font-bold text-red-600">{formatCurrency(city.totalExpense)}</td>
-                            <td className={`py-3 px-4 text-right font-bold ${isDark ? 'text-teal-400' : 'text-teal-700'}`}>{formatCurrency(city.balance)}</td>
+                            <td className={`py-3 px-4 text-right font-bold ${isDark ? 'text-gray-100' : 'text-gray-800'}`}>{formatCurrency(city.totalIncome)}</td>
+                            <td className={`py-3 px-4 text-right font-bold ${isDark ? 'text-gray-100' : 'text-gray-800'}`}>{formatCurrency(city.totalExpense)}</td>
+                            <td className={`py-3 px-4 text-right font-bold ${isDark ? 'text-gray-100' : 'text-gray-800'}`}>{formatCurrency(city.balance)}</td>
                           </tr>
                           {city.purposes?.map((purpose: any) => (
                             <tr key={`${city.city}-${purpose.purpose}`} className={`border-b transition-colors ${isDark ? 'border-gray-700 hover:bg-[#3a4451]' : 'border-gray-100 hover:bg-gray-50'}`}>
                               <td className={`py-2 px-4 pl-8 ${isDark ? 'text-gray-300' : 'text-gray-600'}`}>{purpose.purpose}</td>
-                              <td className="py-2 px-4 text-right text-green-600">{purpose.income > 0 ? formatCurrency(purpose.income) : '-'}</td>
-                              <td className="py-2 px-4 text-right text-red-600">{purpose.expense > 0 ? formatCurrency(purpose.expense) : '-'}</td>
-                              <td className={`py-2 px-4 text-right ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>{formatCurrency(purpose.balance)}</td>
+                              <td className={`py-2 px-4 text-right ${isDark ? 'text-gray-100' : 'text-gray-800'}`}>{purpose.income > 0 ? formatCurrency(purpose.income) : '-'}</td>
+                              <td className={`py-2 px-4 text-right ${isDark ? 'text-gray-100' : 'text-gray-800'}`}>{purpose.expense > 0 ? formatCurrency(purpose.expense) : '-'}</td>
+                              <td className={`py-2 px-4 text-right ${isDark ? 'text-gray-100' : 'text-gray-800'}`}>{formatCurrency(purpose.balance)}</td>
                             </tr>
                           ))}
                         </React.Fragment>
                       ))}
                       <tr className={`font-bold border-t-2 ${isDark ? 'bg-[#3a4451] border-[#0d5c4b]' : 'bg-teal-50 border-[#0d5c4b]'}`}>
-                        <td className={`py-3 px-4 ${isDark ? 'text-gray-100' : 'text-teal-900'}`}>ИТОГО</td>
-                        <td className="py-3 px-4 text-right text-green-700">{formatCurrency(reportData.data.totals.income)}</td>
-                        <td className="py-3 px-4 text-right text-red-700">{formatCurrency(reportData.data.totals.expense)}</td>
-                        <td className={`py-3 px-4 text-right ${isDark ? 'text-teal-400' : 'text-teal-800'}`}>{formatCurrency(reportData.data.totals.balance)}</td>
+                        <td className={`py-3 px-4 ${isDark ? 'text-gray-100' : 'text-gray-800'}`}>ИТОГО</td>
+                        <td className={`py-3 px-4 text-right ${isDark ? 'text-gray-100' : 'text-gray-800'}`}>{formatCurrency(reportData.data.totals.income)}</td>
+                        <td className={`py-3 px-4 text-right ${isDark ? 'text-gray-100' : 'text-gray-800'}`}>{formatCurrency(reportData.data.totals.expense)}</td>
+                        <td className={`py-3 px-4 text-right ${isDark ? 'text-gray-100' : 'text-gray-800'}`}>{formatCurrency(reportData.data.totals.balance)}</td>
                       </tr>
                     </tbody>
                   </table>
@@ -914,27 +914,27 @@ export default function ReportsPage() {
                           <tr className={isDark ? 'bg-[#3a4451]' : 'bg-gray-50'}>
                             <td className={`py-3 px-4 font-bold ${isDark ? 'text-gray-100' : 'text-gray-800'}`}>{cityData.city}</td>
                             <td></td>
-                            <td className={`py-3 px-4 text-right font-bold ${isDark ? 'text-gray-200' : 'text-gray-700'}`}>{cityData.totals.ordersCount}</td>
-                            <td className="py-3 px-4 text-right font-bold text-green-600">{formatCurrency(cityData.totals.revenue)}</td>
-                            <td className={`py-3 px-4 text-right font-bold ${isDark ? 'text-teal-400' : 'text-teal-600'}`}>{formatCurrency(cityData.totals.profit)}</td>
+                            <td className={`py-3 px-4 text-right font-bold ${isDark ? 'text-gray-100' : 'text-gray-800'}`}>{cityData.totals.ordersCount}</td>
+                            <td className={`py-3 px-4 text-right font-bold ${isDark ? 'text-gray-100' : 'text-gray-800'}`}>{formatCurrency(cityData.totals.revenue)}</td>
+                            <td className={`py-3 px-4 text-right font-bold ${isDark ? 'text-gray-100' : 'text-gray-800'}`}>{formatCurrency(cityData.totals.profit)}</td>
                           </tr>
                           {cityData.campaigns?.map((campaign: any, idx: number) => (
                             <tr key={`${cityData.city}-${campaign.typeName}-${idx}`} className={`border-b transition-colors ${isDark ? 'border-gray-700 hover:bg-[#3a4451]' : 'border-gray-100 hover:bg-gray-50'}`}>
                               <td className={`py-2 px-4 pl-8 ${isDark ? 'text-gray-300' : 'text-gray-600'}`}>{campaign.typeName}</td>
                               <td className={`py-2 px-4 text-sm ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>{campaign.rk}</td>
-                              <td className={`py-2 px-4 text-right ${isDark ? 'text-gray-300' : 'text-gray-600'}`}>{campaign.ordersCount}</td>
-                              <td className="py-2 px-4 text-right font-medium text-green-600">{formatCurrency(campaign.revenue)}</td>
-                              <td className={`py-2 px-4 text-right font-medium ${isDark ? 'text-teal-400' : 'text-teal-600'}`}>{formatCurrency(campaign.profit)}</td>
+                              <td className={`py-2 px-4 text-right ${isDark ? 'text-gray-100' : 'text-gray-800'}`}>{campaign.ordersCount}</td>
+                              <td className={`py-2 px-4 text-right font-medium ${isDark ? 'text-gray-100' : 'text-gray-800'}`}>{formatCurrency(campaign.revenue)}</td>
+                              <td className={`py-2 px-4 text-right font-medium ${isDark ? 'text-gray-100' : 'text-gray-800'}`}>{formatCurrency(campaign.profit)}</td>
                             </tr>
                           ))}
                         </React.Fragment>
                       ))}
                       <tr className={`font-bold border-t-2 ${isDark ? 'bg-[#3a4451] border-[#0d5c4b]' : 'bg-teal-50 border-[#0d5c4b]'}`}>
-                        <td className={`py-3 px-4 ${isDark ? 'text-gray-100' : 'text-teal-900'}`}>ИТОГО</td>
+                        <td className={`py-3 px-4 ${isDark ? 'text-gray-100' : 'text-gray-800'}`}>ИТОГО</td>
                         <td></td>
-                        <td className={`py-3 px-4 text-right ${isDark ? 'text-gray-200' : 'text-gray-700'}`}>{reportData.data.totals.ordersCount}</td>
-                        <td className="py-3 px-4 text-right text-green-700">{formatCurrency(reportData.data.totals.revenue)}</td>
-                        <td className={`py-3 px-4 text-right ${isDark ? 'text-teal-400' : 'text-teal-700'}`}>{formatCurrency(reportData.data.totals.profit)}</td>
+                        <td className={`py-3 px-4 text-right ${isDark ? 'text-gray-100' : 'text-gray-800'}`}>{reportData.data.totals.ordersCount}</td>
+                        <td className={`py-3 px-4 text-right ${isDark ? 'text-gray-100' : 'text-gray-800'}`}>{formatCurrency(reportData.data.totals.revenue)}</td>
+                        <td className={`py-3 px-4 text-right ${isDark ? 'text-gray-100' : 'text-gray-800'}`}>{formatCurrency(reportData.data.totals.profit)}</td>
                       </tr>
                     </tbody>
                   </table>

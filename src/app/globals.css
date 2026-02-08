@@ -12,6 +12,12 @@ html, body {
   scroll-padding-top: 0;
 }
 
+/* Предотвращение мерцания при загрузке темной темы */
+html.dark,
+html.dark body {
+  background-color: #1e2530 !important;
+}
+
 @layer base {
   :root {
     --background: 0 0% 100%;

@@ -1,17 +1,19 @@
 'use client'
 
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import { RefreshCw, Upload, X } from 'lucide-react'
+import { RefreshCw, Upload, X, ArrowLeft } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { useState } from 'react'
 import { apiClient } from '@/lib/api'
 import { toast } from 'sonner'
+import { useDesignStore } from '@/store/design.store'
 
 export default function AddDirectorPage() {
   const router = useRouter()
+  
+  // Тема
+  const theme = useDesignStore((state) => state.theme)
+  const isDark = theme === 'dark'
+
   const [formData, setFormData] = useState({
     cities: [] as string[],
     name: '',
@@ -35,11 +37,8 @@ export default function AddDirectorPage() {
   )
 
   const generateLogin = () => {
-    if (!formData.name) {
-      return
-    }
+    if (!formData.name) return
 
-    // Транслитерация русских букв в латинские
     const translitMap: { [key: string]: string } = {
       'а': 'a', 'б': 'b', 'в': 'v', 'г': 'g', 'д': 'd', 'е': 'e', 'ё': 'e',
       'ж': 'zh', 'з': 'z', 'и': 'i', 'й': 'y', 'к': 'k', 'л': 'l', 'м': 'm',
@@ -48,21 +47,15 @@ export default function AddDirectorPage() {
       'ъ': '', 'ы': 'y', 'ь': '', 'э': 'e', 'ю': 'yu', 'я': 'ya'
     }
 
-    // Берем первое слово из имени (обычно фамилия)
     const firstName = formData.name.split(' ')[0].toLowerCase()
-    
-    // Транслитерируем
     let translitName = ''
     for (let i = 0; i < firstName.length; i++) {
       const char = firstName[i]
       translitName += translitMap[char] || char
     }
 
-    // Генерируем случайные цифры
-    const randomNumbers = Math.floor(1000 + Math.random() * 9000) // 4 цифры от 1000 до 9999
-    
-    const login = `${translitName}_${randomNumbers}`
-    setFormData({ ...formData, login })
+    const randomNumbers = Math.floor(1000 + Math.random() * 9000)
+    setFormData({ ...formData, login: `${translitName}_${randomNumbers}` })
   }
 
   const generatePassword = () => {
@@ -74,6 +67,21 @@ export default function AddDirectorPage() {
     setFormData({ ...formData, password })
   }
 
+  const addCity = (city: string) => {
+    if (!formData.cities.includes(city)) {
+      setFormData({ ...formData, cities: [...formData.cities, city] })
+      setErrors({ ...errors, cities: undefined })
+    }
+    setCitySearch('')
+    setShowCityDropdown(false)
+  }
+
+  const removeCity = (cityToRemove: string) => {
+    setFormData({
+      ...formData,
+      cities: formData.cities.filter(city => city !== cityToRemove)
+    })
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -90,7 +98,6 @@ export default function AddDirectorPage() {
       let passportDocUrl: string | undefined
       let contractDocUrl: string | undefined
 
-      // Загрузка паспорта
       if (passportFile) {
         const passportFormData = new FormData()
         passportFormData.append('file', passportFile)
@@ -109,7 +116,6 @@ export default function AddDirectorPage() {
         }
       }
 
-      // Загрузка договора
       if (contractFile) {
         const contractFormData = new FormData()
         contractFormData.append('file', contractFile)
@@ -128,7 +134,6 @@ export default function AddDirectorPage() {
         }
       }
 
-      // Создание директора
       const response = await apiClient.createDirector({
         name: formData.name,
         login: formData.login,
@@ -155,265 +160,321 @@ export default function AddDirectorPage() {
   }
 
   return (
-    <div className="min-h-screen" style={{backgroundColor: '#114643'}} onClick={() => setShowCityDropdown(false)}>
-      <div className="container mx-auto px-4 py-8 max-w-4xl">
-        <Card className="border-0 shadow-lg">
-          <CardHeader>
-            <CardTitle className="text-2xl text-gray-800">Добавить директора</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handleSubmit} className="space-y-6">
-              {/* Город */}
-              <div>
-                <Label htmlFor="cityInput" className="text-gray-700">Город *</Label>
-                <div className="relative mt-1">
-                  <Input
-                    id="cityInput"
-                    type="text"
-                    value={citySearch}
-                    onChange={(e) => {
-                      setCitySearch(e.target.value)
-                      setShowCityDropdown(true)
-                    }}
-                    onFocus={() => setShowCityDropdown(true)}
-                    onClick={(e) => e.stopPropagation()}
-                    placeholder="Начните вводить название города..."
-                    className={`${errors.cities ? 'border-red-500' : ''}`}
-                  />
-                  
-                  {showCityDropdown && citySearch && filteredCities.length > 0 && (
-                    <div 
-                      className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-48 overflow-auto"
-                      onClick={(e) => e.stopPropagation()}
-                    >
-                      {filteredCities.map((city) => (
-                        <div
-                          key={city}
-                          onClick={() => {
-                            setFormData({ ...formData, cities: [...formData.cities, city] })
-                            setCitySearch('')
-                            setShowCityDropdown(false)
-                            if (errors.cities) {
-                              setErrors({ ...errors, cities: undefined })
-                            }
-                          }}
-                          className="px-4 py-2 hover:bg-gray-100 cursor-pointer"
-                        >
-                          {city}
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                  
-                  {citySearch && filteredCities.length === 0 && formData.cities.length < availableCities.length && (
-                    <div 
-                      className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg"
-                      onClick={(e) => e.stopPropagation()}
-                    >
-                      <div className="px-4 py-2 text-gray-500 text-sm">
-                        Город не найден
-                      </div>
-                    </div>
-                  )}
-                </div>
-                
-                {errors.cities && (
-                  <p className="text-xs text-red-500 mt-1">{errors.cities}</p>
-                )}
-                
-                {formData.cities.length > 0 && (
-                  <div className="mt-2 flex flex-wrap gap-2">
-                    {formData.cities.map((city) => (
-                      <span
-                        key={city}
-                        className="px-3 py-1 bg-teal-100 text-teal-800 rounded-full text-sm font-medium flex items-center gap-2"
-                      >
-                        {city}
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setFormData({ ...formData, cities: formData.cities.filter(c => c !== city) })
-                          }}
-                          className="hover:text-teal-900"
-                        >
-                          <X className="h-3 w-3" />
-                        </button>
-                      </span>
-                    ))}
-                  </div>
-                )}
-              </div>
+    <div className={`min-h-screen transition-colors duration-300 ${isDark ? 'bg-[#1e2530]' : 'bg-white'}`}>
+      <div className="max-w-2xl mx-auto px-4 py-6">
+        {/* Шапка */}
+        <div className="mb-6">
+          <button 
+            onClick={() => router.back()}
+            className={`flex items-center gap-2 mb-4 text-sm transition-colors ${
+              isDark ? 'text-gray-400 hover:text-gray-200' : 'text-gray-500 hover:text-gray-700'
+            }`}
+          >
+            <ArrowLeft className="w-4 h-4" />
+            Назад
+          </button>
+          <h1 className={`text-xl font-semibold ${isDark ? 'text-gray-100' : 'text-gray-800'}`}>
+            Добавить директора
+          </h1>
+        </div>
 
+        {/* Форма */}
+        <form onSubmit={handleSubmit} className="space-y-5">
+          {/* Города */}
+          <div className={`rounded-xl p-5 ${isDark ? 'bg-[#2a3441]' : 'bg-gray-50 border border-gray-200'}`}>
+            <h2 className={`text-sm font-medium mb-4 ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
+              Города <span className="text-red-500">*</span>
+            </h2>
+            
+            {/* Выбранные города */}
+            {formData.cities.length > 0 && (
+              <div className="flex flex-wrap gap-2 mb-3">
+                {formData.cities.map((city) => (
+                  <div
+                    key={city}
+                    className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-sm ${
+                      isDark ? 'bg-gray-600 text-gray-100' : 'bg-gray-200 text-gray-700'
+                    }`}
+                  >
+                    <span>{city}</span>
+                    <button
+                      type="button"
+                      onClick={() => removeCity(city)}
+                      className={`p-0.5 rounded transition-colors ${
+                        isDark ? 'hover:bg-gray-500' : 'hover:bg-gray-300'
+                      }`}
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Поиск городов */}
+            <div className="relative">
+              <input
+                type="text"
+                value={citySearch}
+                onChange={(e) => {
+                  setCitySearch(e.target.value)
+                  setShowCityDropdown(true)
+                }}
+                onFocus={() => setShowCityDropdown(true)}
+                placeholder="Начните вводить название города..."
+                className={`w-full px-3 py-2.5 rounded-lg text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-teal-500 ${
+                  isDark 
+                    ? 'bg-[#1e2530] border border-gray-600 text-gray-100 placeholder-gray-500'
+                    : 'bg-white border border-gray-200 text-gray-800 placeholder-gray-400'
+                }`}
+              />
+              
+              {showCityDropdown && filteredCities.length > 0 && (
+                <div className={`absolute z-10 w-full mt-1 rounded-lg shadow-lg max-h-48 overflow-auto ${
+                  isDark ? 'bg-[#2a3441] border border-gray-600' : 'bg-white border border-gray-200'
+                }`}>
+                  {filteredCities.map((city) => (
+                    <button
+                      key={city}
+                      type="button"
+                      onClick={() => addCity(city)}
+                      className={`w-full text-left px-3 py-2 text-sm transition-colors ${
+                        isDark 
+                          ? 'text-gray-200 hover:bg-[#3a4451]'
+                          : 'text-gray-700 hover:bg-gray-100'
+                      }`}
+                    >
+                      {city}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+            {errors.cities && (
+              <p className="text-sm text-red-500 mt-2">{errors.cities}</p>
+            )}
+          </div>
+
+          {/* Основная информация */}
+          <div className={`rounded-xl p-5 ${isDark ? 'bg-[#2a3441]' : 'bg-gray-50 border border-gray-200'}`}>
+            <h2 className={`text-sm font-medium mb-4 ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
+              Основная информация
+            </h2>
+            
+            <div className="space-y-4">
               {/* Имя */}
               <div>
-                <Label htmlFor="name" className="text-gray-700">Имя *</Label>
-                <Input
-                  id="name"
+                <label className={`block text-sm mb-1.5 ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
+                  Имя <span className="text-red-500">*</span>
+                </label>
+                <input
                   type="text"
                   required
                   value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                   placeholder="Введите полное имя"
-                  className="mt-1"
+                  className={`w-full px-3 py-2.5 rounded-lg text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-teal-500 ${
+                    isDark 
+                      ? 'bg-[#1e2530] border border-gray-600 text-gray-100 placeholder-gray-500'
+                      : 'bg-white border border-gray-200 text-gray-800 placeholder-gray-400'
+                  }`}
                 />
               </div>
 
               {/* Логин */}
               <div>
-                <Label htmlFor="login" className="text-gray-700">Логин *</Label>
-                <div className="flex gap-2 mt-1">
-                  <Input
-                    id="login"
+                <label className={`block text-sm mb-1.5 ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
+                  Логин <span className="text-red-500">*</span>
+                </label>
+                <div className="flex gap-2">
+                  <input
                     type="text"
                     required
                     value={formData.login}
                     onChange={(e) => setFormData({ ...formData, login: e.target.value })}
-                    placeholder="Введите логин или сгенерируйте"
-                    className="flex-1"
+                    placeholder="Введите логин"
+                    className={`flex-1 px-3 py-2.5 rounded-lg text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-teal-500 ${
+                      isDark 
+                        ? 'bg-[#1e2530] border border-gray-600 text-gray-100 placeholder-gray-500'
+                        : 'bg-white border border-gray-200 text-gray-800 placeholder-gray-400'
+                    }`}
                   />
-                  <Button 
+                  <button 
                     type="button" 
-                    variant="outline"
                     onClick={generateLogin}
-                    className="bg-white"
+                    className={`px-3 py-2.5 rounded-lg text-sm transition-colors flex items-center gap-1.5 ${
+                      isDark 
+                        ? 'bg-[#1e2530] border border-gray-600 text-gray-300 hover:bg-[#3a4451]'
+                        : 'bg-white border border-gray-200 text-gray-600 hover:bg-gray-100'
+                    }`}
                   >
-                    <RefreshCw className="h-4 w-4 mr-2" />
-                    Генерировать
-                  </Button>
+                    <RefreshCw className="h-4 w-4" />
+                  </button>
                 </div>
               </div>
 
-              {/* Пароль с генерацией */}
+              {/* Пароль */}
               <div>
-                <Label htmlFor="password" className="text-gray-700">Пароль *</Label>
-                <div className="flex gap-2 mt-1">
-                  <Input
-                    id="password"
+                <label className={`block text-sm mb-1.5 ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
+                  Пароль <span className="text-red-500">*</span>
+                </label>
+                <div className="flex gap-2">
+                  <input
                     type="text"
                     required
                     value={formData.password}
                     onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                    placeholder="Введите пароль или сгенерируйте"
-                    className="flex-1"
+                    placeholder="Введите пароль"
+                    className={`flex-1 px-3 py-2.5 rounded-lg text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-teal-500 ${
+                      isDark 
+                        ? 'bg-[#1e2530] border border-gray-600 text-gray-100 placeholder-gray-500'
+                        : 'bg-white border border-gray-200 text-gray-800 placeholder-gray-400'
+                    }`}
                   />
-                  <Button 
+                  <button 
                     type="button" 
-                    variant="outline"
                     onClick={generatePassword}
-                    className="bg-white"
+                    className={`px-3 py-2.5 rounded-lg text-sm transition-colors flex items-center gap-1.5 ${
+                      isDark 
+                        ? 'bg-[#1e2530] border border-gray-600 text-gray-300 hover:bg-[#3a4451]'
+                        : 'bg-white border border-gray-200 text-gray-600 hover:bg-gray-100'
+                    }`}
                   >
-                    <RefreshCw className="h-4 w-4 mr-2" />
-                    Генерировать
-                  </Button>
+                    <RefreshCw className="h-4 w-4" />
+                  </button>
                 </div>
               </div>
 
-              {/* TG_ID */}
+              {/* Telegram ID */}
               <div>
-                <Label htmlFor="tgId" className="text-gray-700">TG_ID *</Label>
-                <Input
-                  id="tgId"
+                <label className={`block text-sm mb-1.5 ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
+                  Telegram ID <span className="text-red-500">*</span>
+                </label>
+                <input
                   type="text"
                   required
                   value={formData.tgId}
                   onChange={(e) => setFormData({ ...formData, tgId: e.target.value })}
-                  placeholder="Например: @username или 123456789"
-                  className="mt-1"
+                  placeholder="@username или ID"
+                  className={`w-full px-3 py-2.5 rounded-lg text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-teal-500 ${
+                    isDark 
+                      ? 'bg-[#1e2530] border border-gray-600 text-gray-100 placeholder-gray-500'
+                      : 'bg-white border border-gray-200 text-gray-800 placeholder-gray-400'
+                  }`}
                 />
               </div>
+            </div>
+          </div>
 
-              {/* Фото паспорта */}
+          {/* Документы */}
+          <div className={`rounded-xl p-5 ${isDark ? 'bg-[#2a3441]' : 'bg-gray-50 border border-gray-200'}`}>
+            <h2 className={`text-sm font-medium mb-4 ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
+              Документы
+            </h2>
+            
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {/* Паспорт */}
               <div>
-                <Label htmlFor="passport" className="text-gray-700">Паспорт</Label>
-                <div className="mt-1">
-                  <div className="flex items-center gap-4">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      className="bg-white"
-                      onClick={() => document.getElementById('passport')?.click()}
-                    >
-                      <Upload className="h-4 w-4 mr-2" />
-                      Загрузить файл
-                    </Button>
-                    {passportFile && (
-                      <span className="text-sm text-gray-600">{passportFile.name}</span>
-                    )}
-                  </div>
-                  <input
-                    id="passport"
-                    type="file"
-                    accept="image/*"
-                    className="hidden"
-                    onChange={(e) => setPassportFile(e.target.files?.[0] || null)}
-                  />
-                </div>
-              </div>
-
-              {/* Фото договора */}
-              <div>
-                <Label htmlFor="contract" className="text-gray-700">Договор</Label>
-                <div className="mt-1">
-                  <div className="flex items-center gap-4">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      className="bg-white"
-                      onClick={() => document.getElementById('contract')?.click()}
-                    >
-                      <Upload className="h-4 w-4 mr-2" />
-                      Загрузить файл
-                    </Button>
-                    {contractFile && (
-                      <span className="text-sm text-gray-600">{contractFile.name}</span>
-                    )}
-                  </div>
-                  <input
-                    id="contract"
-                    type="file"
-                    accept="image/*"
-                    className="hidden"
-                    onChange={(e) => setContractFile(e.target.files?.[0] || null)}
-                  />
-                </div>
-              </div>
-
-              {/* Заметка */}
-              <div>
-                <Label htmlFor="note" className="text-gray-700">Заметка</Label>
-                <textarea
-                  id="note"
-                  rows={4}
-                  value={formData.note}
-                  onChange={(e) => setFormData({ ...formData, note: e.target.value })}
-                  placeholder="Дополнительная информация о директоре"
-                  className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent"
-                />
-              </div>
-
-              {/* Кнопки */}
-              <div className="flex gap-4 pt-4">
-                <Button 
-                  type="submit"
-                  disabled={isSubmitting}
-                  className="bg-gradient-to-r from-teal-600 to-emerald-600 hover:from-teal-700 hover:to-emerald-700 text-white disabled:opacity-50"
-                >
-                  {isSubmitting ? 'Добавление...' : 'Добавить директора'}
-                </Button>
-                <Button 
+                <label className={`block text-sm mb-1.5 ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
+                  Фото паспорта
+                </label>
+                <button
                   type="button"
-                  variant="outline"
-                  onClick={() => router.push('/employees/directors')}
-                  className="bg-white"
+                  onClick={() => document.getElementById('passport')?.click()}
+                  className={`w-full px-3 py-2.5 rounded-lg text-sm transition-colors flex items-center justify-center gap-2 ${
+                    isDark 
+                      ? 'bg-[#1e2530] border border-gray-600 text-gray-300 hover:bg-[#3a4451]'
+                      : 'bg-white border border-gray-200 text-gray-600 hover:bg-gray-100'
+                  }`}
                 >
-                  Отмена
-                </Button>
+                  <Upload className="h-4 w-4" />
+                  {passportFile ? passportFile.name : 'Загрузить'}
+                </button>
+                <input
+                  id="passport"
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={(e) => setPassportFile(e.target.files?.[0] || null)}
+                />
               </div>
-            </form>
-          </CardContent>
-        </Card>
+
+              {/* Договор */}
+              <div>
+                <label className={`block text-sm mb-1.5 ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
+                  Фото договора
+                </label>
+                <button
+                  type="button"
+                  onClick={() => document.getElementById('contract')?.click()}
+                  className={`w-full px-3 py-2.5 rounded-lg text-sm transition-colors flex items-center justify-center gap-2 ${
+                    isDark 
+                      ? 'bg-[#1e2530] border border-gray-600 text-gray-300 hover:bg-[#3a4451]'
+                      : 'bg-white border border-gray-200 text-gray-600 hover:bg-gray-100'
+                  }`}
+                >
+                  <Upload className="h-4 w-4" />
+                  {contractFile ? contractFile.name : 'Загрузить'}
+                </button>
+                <input
+                  id="contract"
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={(e) => setContractFile(e.target.files?.[0] || null)}
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Заметка */}
+          <div className={`rounded-xl p-5 ${isDark ? 'bg-[#2a3441]' : 'bg-gray-50 border border-gray-200'}`}>
+            <h2 className={`text-sm font-medium mb-4 ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
+              Дополнительно
+            </h2>
+            
+            <div>
+              <label className={`block text-sm mb-1.5 ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
+                Заметка
+              </label>
+              <textarea
+                rows={3}
+                value={formData.note}
+                onChange={(e) => setFormData({ ...formData, note: e.target.value })}
+                placeholder="Дополнительная информация"
+                className={`w-full px-3 py-2.5 rounded-lg text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-teal-500 resize-none ${
+                  isDark 
+                    ? 'bg-[#1e2530] border border-gray-600 text-gray-100 placeholder-gray-500'
+                    : 'bg-white border border-gray-200 text-gray-800 placeholder-gray-400'
+                }`}
+              />
+            </div>
+          </div>
+
+          {/* Кнопки */}
+          <div className="flex gap-3 pt-2">
+            <button 
+              type="submit"
+              disabled={isSubmitting}
+              className="flex-1 px-4 py-2.5 bg-teal-600 hover:bg-teal-700 disabled:bg-gray-400 text-white rounded-lg text-sm font-medium transition-colors"
+            >
+              {isSubmitting ? 'Добавление...' : 'Добавить'}
+            </button>
+            <button 
+              type="button"
+              onClick={() => router.push('/employees/directors')}
+              disabled={isSubmitting}
+              className={`px-4 py-2.5 rounded-lg text-sm font-medium transition-colors ${
+                isDark 
+                  ? 'bg-[#2a3441] text-gray-300 hover:bg-[#3a4451]'
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              }`}
+            >
+              Отмена
+            </button>
+          </div>
+        </form>
       </div>
     </div>
   )
 }
-
