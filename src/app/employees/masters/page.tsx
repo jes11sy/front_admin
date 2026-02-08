@@ -410,12 +410,9 @@ export default function MastersPage() {
       
       {/* Пагинация */}
       {totalPages > 1 && (
-        <div className={`flex flex-col sm:flex-row items-center justify-between mt-6 gap-4 border-t pt-4 ${
+        <div className={`flex items-center justify-center mt-6 pt-4 border-t ${
           isDark ? 'border-gray-700' : 'border-gray-200'
         }`}>
-          <div className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
-            Показано {((currentPage - 1) * itemsPerPage) + 1} - {Math.min(currentPage * itemsPerPage, filteredAndSortedData.length)} из {filteredAndSortedData.length}
-          </div>
           <OptimizedPagination
             currentPage={currentPage}
             totalPages={totalPages}

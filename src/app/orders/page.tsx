@@ -935,48 +935,17 @@ function OrdersContent() {
             )}
 
             {/* Пагинация */}
-            {!loading && !error && safeOrders.length > 0 && (
-              <div className={`flex flex-col sm:flex-row items-center justify-between mt-6 gap-4 border-t pt-4 ${
+            {!loading && !error && safeOrders.length > 0 && pagination.totalPages > 1 && (
+              <div className={`flex items-center justify-center mt-6 pt-4 border-t ${
                 isDark ? 'border-gray-700' : 'border-gray-200'
               }`}>
-                <div className="flex items-center gap-4">
-                  <div className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
-                    Показано {((pagination.page - 1) * pagination.limit) + 1} - {Math.min(pagination.page * pagination.limit, pagination.total)} из {pagination.total} заказов
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Label htmlFor="page-size" className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
-                      На странице:
-                    </Label>
-                    <Select
-                      value={itemsPerPage.toString()}
-                      onValueChange={(value) => {
-                        setItemsPerPage(parseInt(value))
-                        setCurrentPage(1)
-                      }}
-                      disabled={loading}
-                    >
-                      <SelectTrigger className={`w-20 ${isDark ? 'bg-[#3a4451] border-gray-600 text-gray-100' : ''}`} id="page-size">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent className={isDark ? 'bg-[#2a3441] border-gray-600' : ''}>
-                        {PAGE_SIZES.map((size) => (
-                          <SelectItem key={size.value} value={size.value} className={isDark ? 'text-gray-100 focus:bg-[#3a4451]' : ''}>
-                            {size.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-                {pagination.totalPages > 1 && (
-                  <OptimizedPagination
-                    currentPage={pagination.page}
-                    totalPages={pagination.totalPages}
-                    onPageChange={handlePageChange}
-                    isDark={isDark}
-                    disabled={loading}
-                  />
-                )}
+                <OptimizedPagination
+                  currentPage={pagination.page}
+                  totalPages={pagination.totalPages}
+                  onPageChange={handlePageChange}
+                  isDark={isDark}
+                  disabled={loading}
+                />
               </div>
             )}
           </div>

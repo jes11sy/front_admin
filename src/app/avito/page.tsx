@@ -466,10 +466,7 @@ export default function AvitoPage() {
             
             {/* Пагинация */}
             {!isLoading && totalPages > 1 && (
-              <div className="flex flex-col sm:flex-row items-center justify-between mt-6 gap-4 border-t pt-4 border-gray-200">
-                <div className="text-sm text-gray-600">
-                  Показано {((currentPage - 1) * itemsPerPage) + 1} - {Math.min(currentPage * itemsPerPage, accounts.length)} из {accounts.length}
-                </div>
+              <div className="flex items-center justify-center mt-6 pt-4 border-t border-gray-200">
                 <OptimizedPagination
                   currentPage={currentPage}
                   totalPages={totalPages}

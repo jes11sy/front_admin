@@ -502,19 +502,18 @@ export default function UserLogsPage() {
             </div>
 
             {/* Пагинация */}
-            <div className="mt-6 flex items-center justify-between">
-              <div className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
-                Показано {logs.length} из {total} записей
-              </div>
-              {totalPages > 1 && (
+            {totalPages > 1 && (
+              <div className={`flex items-center justify-center mt-6 pt-4 border-t ${
+                isDark ? 'border-gray-700' : 'border-gray-200'
+              }`}>
                 <OptimizedPagination
                   currentPage={page}
                   totalPages={totalPages}
                   onPageChange={setPage}
                   isDark={isDark}
                 />
-              )}
-            </div>
+              </div>
+            )}
           </>
         )}
 
