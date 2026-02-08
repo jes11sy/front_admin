@@ -205,26 +205,39 @@ export async function saveRefreshToken(token: string): Promise<void> {
  */
 export async function getRefreshToken(): Promise<string | null> {
   try {
-    const db = await openDB()
-
-    return new Promise((resolve, reject) => {
-      const transaction = db.transaction(STORE_NAME, 'readonly')
-      const store = transaction.objectStore(STORE_NAME)
-      const request = store.get(TOKEN_KEY)
-
-      request.onsuccess = async () => {
-        const saved = request.result as SavedToken | undefined
-        if (!saved) {
-          resolve(null)
-          return
-        }
-
-        const token = await decryptToken(saved)
-        resolve(token)
-      }
-      request.onerror = () => reject(request.error)
-      transaction.oncomplete = () => db.close()
+    // Таймаут на всю операцию - 3 секунды
+    const timeoutPromise = new Promise<null>((resolve) => {
+      setTimeout(() => resolve(null), 3000)
     })
+    
+    const tokenPromise = (async () => {
+      const db = await openDB()
+
+      return new Promise<string | null>((resolve, reject) => {
+        const transaction = db.transaction(STORE_NAME, 'readonly')
+        const store = transaction.objectStore(STORE_NAME)
+        const request = store.get(TOKEN_KEY)
+
+        request.onsuccess = async () => {
+          try {
+            const saved = request.result as SavedToken | undefined
+            if (!saved) {
+              resolve(null)
+              return
+            }
+
+            const token = await decryptToken(saved)
+            resolve(token)
+          } catch {
+            resolve(null)
+          }
+        }
+        request.onerror = () => resolve(null)
+        transaction.oncomplete = () => db.close()
+      })
+    })()
+    
+    return Promise.race([tokenPromise, timeoutPromise])
   } catch {
     return null
   }

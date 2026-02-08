@@ -87,10 +87,16 @@ function LoginForm() {
     hasCheckedAuth.current = true
     
     const checkAuth = async () => {
+      // Таймаут на всю проверку - 5 секунд максимум
+      const timeoutId = setTimeout(() => {
+        setIsCheckingAuth(false)
+      }, 5000)
+      
       try {
         // 1. Проверяем активную сессию через cookies
         const isAlreadyAuthenticated = await apiClient.isAuthenticated()
         if (isAlreadyAuthenticated) {
+          clearTimeout(timeoutId)
           logger.debug('User already authenticated via cookies, redirecting')
           router.replace(getSafeRedirectUrl())
           return
@@ -101,6 +107,7 @@ function LoginForm() {
         const restored = await apiClient.restoreSessionFromIndexedDB()
         
         if (restored) {
+          clearTimeout(timeoutId)
           logger.debug('Session restored from IndexedDB, redirecting')
           router.replace(getSafeRedirectUrl())
           return
@@ -110,11 +117,12 @@ function LoginForm() {
       }
       
       // Показываем форму логина
+      clearTimeout(timeoutId)
       setIsCheckingAuth(false)
     }
     
     checkAuth()
-  }, [router, getSafeRedirectUrl])
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
   
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()

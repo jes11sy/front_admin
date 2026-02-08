@@ -1178,10 +1178,15 @@ class ApiClient {
    */
   async restoreSessionFromIndexedDB(): Promise<boolean> {
     try {
+      // Таймаут на всю операцию - 5 секунд
+      const controller = new AbortController()
+      const timeoutId = setTimeout(() => controller.abort(), 5000)
+      
       const { getRefreshToken } = await import('./remember-me')
       const refreshToken = await getRefreshToken()
       
       if (!refreshToken) {
+        clearTimeout(timeoutId)
         logger.debug('No refresh token in IndexedDB')
         return false
       }
@@ -1196,8 +1201,11 @@ class ApiClient {
           'X-Use-Cookies': 'true',
         },
         credentials: 'include',
-        body: JSON.stringify({ refreshToken }), // Передаём токен в body
+        body: JSON.stringify({ refreshToken }),
+        signal: controller.signal,
       })
+      
+      clearTimeout(timeoutId)
       
       if (response.ok) {
         const result = await response.json()
