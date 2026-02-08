@@ -35,9 +35,72 @@ class ApiClient {
   
   // Callback для обработки ошибок авторизации
   private authErrorCallback: (() => void) | null = null
+  
+  // ✅ FIX #152: Silent Refresh - фоновое обновление токена (как у директора)
+  private silentRefreshInterval: ReturnType<typeof setInterval> | null = null
+  private lastActivityTime: number = Date.now()
 
   constructor(baseURL: string) {
     this.baseURL = baseURL
+    
+    // Запускаем Silent Refresh при создании клиента
+    if (typeof window !== 'undefined') {
+      this.startSilentRefresh()
+      this.trackActivity()
+    }
+  }
+
+  /**
+   * 🔄 Silent Refresh - фоновое обновление токена
+   * Проверяет каждые 4 минуты и обновляет токен если пользователь активен
+   * Это предотвращает вылет из профиля каждые 15 минут
+   */
+  private startSilentRefresh() {
+    // Очищаем предыдущий интервал если был
+    if (this.silentRefreshInterval) {
+      clearInterval(this.silentRefreshInterval)
+    }
+
+    // Проверяем каждые 4 минуты (токен живёт 15 минут, обновляем заранее)
+    this.silentRefreshInterval = setInterval(async () => {
+      // Обновляем только если пользователь был активен в последние 10 минут
+      const inactiveTime = Date.now() - this.lastActivityTime
+      const isActive = inactiveTime < 10 * 60 * 1000 // 10 минут
+
+      if (isActive) {
+        try {
+          await this.refreshAccessToken()
+          logger.debug('Silent refresh successful')
+        } catch (error) {
+          logger.debug('Silent refresh failed, user may need to re-login')
+        }
+      }
+    }, 4 * 60 * 1000) // Каждые 4 минуты
+  }
+
+  /**
+   * Остановить Silent Refresh (при logout)
+   */
+  private stopSilentRefresh() {
+    if (this.silentRefreshInterval) {
+      clearInterval(this.silentRefreshInterval)
+      this.silentRefreshInterval = null
+    }
+  }
+
+  /**
+   * Отслеживание активности пользователя
+   */
+  private trackActivity() {
+    const updateActivity = () => {
+      this.lastActivityTime = Date.now()
+    }
+
+    // Отслеживаем клики, нажатия клавиш и скролл
+    document.addEventListener('click', updateActivity, { passive: true })
+    document.addEventListener('keypress', updateActivity, { passive: true })
+    document.addEventListener('scroll', updateActivity, { passive: true })
+    document.addEventListener('touchstart', updateActivity, { passive: true })
   }
 
   /**
@@ -303,6 +366,9 @@ class ApiClient {
    * Очищает cookies на сервере и пользовательские данные локально
    */
   async logout(): Promise<void> {
+    // ✅ FIX #152: Останавливаем Silent Refresh при logout
+    this.stopSilentRefresh()
+    
     // Очищаем refresh token из IndexedDB
     try {
       const { clearRefreshToken } = await import('./remember-me')
