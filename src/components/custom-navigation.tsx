@@ -8,12 +8,11 @@ import { useAuthStore } from '@/store/auth.store'
 import { useDesignStore } from '@/store/design.store'
 import { Sun, Moon, Bell, User, Menu, X } from 'lucide-react'
 
-// Функция для синхронного получения темы из localStorage (для SSR)
-// ✅ FIX: Проверяем класс dark на html (установлен синхронным скриптом в layout.tsx)
-function getInitialTheme(): 'light' | 'dark' {
+// Функция для синхронного получения темы из DOM/localStorage
+function getThemeFromDOM(): 'light' | 'dark' {
   if (typeof window === 'undefined') return 'light' // SSR
   
-  // Сначала проверяем класс dark на html (установлен до React)
+  // Проверяем класс dark на html (установлен синхронным скриптом в layout.tsx)
   if (document.documentElement.classList.contains('dark')) {
     return 'dark'
   }
@@ -34,10 +33,23 @@ function useThemeWithoutFlash() {
   const storeTheme = useDesignStore((state) => state.theme)
   const hasHydrated = useDesignStore((state) => state._hasHydrated)
   
-  // До гидратации используем значение из localStorage напрямую
-  const [initialTheme] = useState(getInitialTheme)
+  // ✅ FIX: Используем useEffect для получения темы на клиенте после монтирования
+  const [clientTheme, setClientTheme] = useState<'light' | 'dark'>('light')
+  const [isMounted, setIsMounted] = useState(false)
   
-  return hasHydrated ? storeTheme : initialTheme
+  useEffect(() => {
+    setClientTheme(getThemeFromDOM())
+    setIsMounted(true)
+  }, [])
+  
+  // После гидратации store - используем store
+  if (hasHydrated) {
+    return storeTheme
+  }
+  
+  // До монтирования - используем light (SSR)
+  // После монтирования но до гидратации - используем значение из DOM
+  return isMounted ? clientTheme : 'light'
 }
 
 const navigationItems = [
@@ -80,7 +92,7 @@ const MenuContent = memo(function MenuContent({
 
   return (
     <>
-      {/* Navigation */}
+      {/* Navigation - используем dark: классы для текста */}
       <nav className={`flex-1 px-5 ${isMobile ? 'space-y-2' : 'space-y-1'} overflow-y-auto`}>
         {navigationItems.map((item) => {
           const active = isActive(item.href)
@@ -117,7 +129,7 @@ const MenuContent = memo(function MenuContent({
                 height={isMobile ? 24 : 20} 
                 className={`nav-icon ${active ? 'nav-icon-active' : ''} ${isMobile ? 'w-6 h-6' : 'w-5 h-5'}`}
               />
-              <span className={`${isDark ? 'text-gray-200' : 'text-gray-800'} group-hover:text-[#0d5c4b]`}>
+              <span className="text-gray-800 dark:text-gray-200 group-hover:text-[#0d5c4b]">
                 {item.name}
               </span>
             </Link>
@@ -127,22 +139,22 @@ const MenuContent = memo(function MenuContent({
 
       {/* Bottom Section */}
       <div className={`px-5 pb-6 ${isMobile ? 'space-y-3' : 'space-y-2'}`}>
-        {/* Theme Toggle */}
+        {/* Theme Toggle - переключатель должен отражать реальное состояние из theme prop */}
         <div className={`flex items-center gap-3 px-3 ${isMobile ? 'py-3' : 'py-2'}`}>
-          <Sun className={`transition-colors ${isMobile ? 'h-6 w-6' : 'h-5 w-5'} ${theme === 'light' ? 'text-[#0d5c4b]' : 'text-gray-400'}`} />
+          <Sun className={`transition-colors ${isMobile ? 'h-6 w-6' : 'h-5 w-5'} ${isDark ? 'text-gray-400' : 'text-[#0d5c4b]'}`} />
           <button
             onClick={toggleTheme}
             className={`relative w-12 h-6 rounded-full transition-colors duration-300 ${
-              theme === 'dark' ? 'bg-[#0d5c4b]' : 'bg-gray-300'
+              isDark ? 'bg-[#0d5c4b]' : 'bg-gray-300'
             }`}
           >
             <span
               className={`absolute top-1 left-1 w-4 h-4 bg-white rounded-full shadow transition-transform duration-300 ${
-                theme === 'dark' ? 'translate-x-6' : 'translate-x-0'
+                isDark ? 'translate-x-6' : 'translate-x-0'
               }`}
             />
           </button>
-          <Moon className={`transition-colors ${isMobile ? 'h-6 w-6' : 'h-5 w-5'} ${theme === 'dark' ? 'text-[#0d5c4b]' : 'text-gray-400'}`} />
+          <Moon className={`transition-colors ${isMobile ? 'h-6 w-6' : 'h-5 w-5'} ${isDark ? 'text-[#0d5c4b]' : 'text-gray-400'}`} />
         </div>
 
         {/* Notifications */}
@@ -152,12 +164,12 @@ const MenuContent = memo(function MenuContent({
           }`}
         >
           <div className="relative">
-            <Bell className={`${isMobile ? 'h-6 w-6' : 'h-5 w-5'} ${isDark ? 'text-gray-400' : 'text-gray-600'} group-hover:text-[#0d5c4b] transition-colors`} />
+            <Bell className={`${isMobile ? 'h-6 w-6' : 'h-5 w-5'} text-gray-600 dark:text-gray-400 group-hover:text-[#0d5c4b] transition-colors`} />
             <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center">
               3
             </span>
           </div>
-          <span className={`${isDark ? 'text-gray-200' : 'text-gray-800'} group-hover:text-[#0d5c4b]`}>
+          <span className="text-gray-800 dark:text-gray-200 group-hover:text-[#0d5c4b]">
             Уведомления
           </span>
         </button>
@@ -188,9 +200,9 @@ const MenuContent = memo(function MenuContent({
           <User className={`${isMobile ? 'h-6 w-6' : 'h-5 w-5'} ${
             pathname === '/profile' || pathname.startsWith('/profile/') 
               ? 'text-[#0d5c4b]' 
-              : isDark ? 'text-gray-400' : 'text-gray-600'
+              : 'text-gray-600 dark:text-gray-400'
           } group-hover:text-[#0d5c4b] transition-colors`} />
-          <span className={`${isDark ? 'text-gray-200' : 'text-gray-800'} group-hover:text-[#0d5c4b]`}>
+          <span className="text-gray-800 dark:text-gray-200 group-hover:text-[#0d5c4b]">
             {userName || 'Профиль'}
           </span>
         </Link>
@@ -255,28 +267,33 @@ export function CustomNavigation() {
 
   return (
     <>
-      {/* Mobile Header */}
-      <header className={`md:hidden fixed top-0 left-0 w-screen z-[9999] h-16 flex items-center justify-between px-6 transition-all ${
-        isDark ? 'bg-[#1e2530]' : 'bg-white'
-      } ${
-        isMobileMenuOpen ? '' : isDark ? 'border-b border-gray-700' : 'border-b border-gray-200'
+      {/* Mobile Header - используем dark: классы для предотвращения мерцания */}
+      <header className={`md:hidden fixed top-0 left-0 w-screen z-[9999] h-16 flex items-center justify-between px-6 transition-all bg-white dark:bg-[#1e2530] ${
+        isMobileMenuOpen ? '' : 'border-b border-gray-200 dark:border-gray-700'
       }`}>
         <button onClick={handleLogoClick} className="bg-transparent border-none cursor-pointer p-0">
+          {/* Показываем оба лого, скрываем неактивное через CSS */}
           <Image 
-            src={isDark ? "/logo/logo_dark_v2.png" : "/logo/logo_light_v2.png"} 
+            src="/logo/logo_light_v2.png" 
             alt="Новые Схемы" 
             width={130} 
             height={36} 
-            className="h-9 w-auto" 
+            className="h-9 w-auto dark:hidden" 
+            priority
+          />
+          <Image 
+            src="/logo/logo_dark_v2.png" 
+            alt="Новые Схемы" 
+            width={130} 
+            height={36} 
+            className="h-9 w-auto hidden dark:block" 
             priority
           />
         </button>
         <div className="flex items-center gap-2">
           {/* Mobile Notifications Bell */}
           <button
-            className={`p-2 transition-colors relative ${
-              isDark ? 'text-gray-300 hover:text-[#0d5c4b]' : 'text-gray-600 hover:text-[#0d5c4b]'
-            }`}
+            className="p-2 transition-colors relative text-gray-600 dark:text-gray-300 hover:text-[#0d5c4b]"
             aria-label="Уведомления"
           >
             <Bell className="h-6 w-6" />
@@ -288,9 +305,7 @@ export function CustomNavigation() {
           {/* Mobile Menu Button */}
           <button
             onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-            className={`p-2 transition-colors ${
-              isDark ? 'text-gray-300 hover:text-[#0d5c4b]' : 'text-gray-600 hover:text-[#0d5c4b]'
-            }`}
+            className="p-2 transition-colors text-gray-600 dark:text-gray-300 hover:text-[#0d5c4b]"
             aria-label="Открыть меню"
           >
             {isMobileMenuOpen ? (
@@ -304,9 +319,7 @@ export function CustomNavigation() {
 
       {/* Mobile Full-screen Menu */}
       <aside 
-        className={`md:hidden fixed top-16 left-0 w-screen h-[calc(100vh-4rem)] z-[9998] transform transition-transform duration-300 ease-in-out flex flex-col ${
-          isDark ? 'bg-[#1e2530]' : 'bg-white'
-        } ${
+        className={`md:hidden fixed top-16 left-0 w-screen h-[calc(100vh-4rem)] z-[9998] transform transition-transform duration-300 ease-in-out flex flex-col bg-white dark:bg-[#1e2530] ${
           isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'
         }`}
       >
@@ -322,21 +335,26 @@ export function CustomNavigation() {
         </div>
       </aside>
 
-      {/* Desktop Sidebar */}
-      <aside className={`hidden md:flex w-56 h-screen flex-col fixed left-0 top-0 transition-colors duration-300 ${
-        isDark 
-          ? 'bg-[#1e2530] border-r border-gray-700' 
-          : 'bg-white border-r border-gray-200'
-      }`}>
+      {/* Desktop Sidebar - используем dark: классы */}
+      <aside className="hidden md:flex w-56 h-screen flex-col fixed left-0 top-0 transition-colors duration-300 bg-white dark:bg-[#1e2530] border-r border-gray-200 dark:border-gray-700">
         {/* Logo */}
         <div className="p-6 pb-10">
           <button onClick={handleLogoClick} className="bg-transparent border-none cursor-pointer p-0">
+            {/* Показываем оба лого, скрываем неактивное через CSS */}
             <Image 
-              src={isDark ? "/logo/logo_dark_v2.png" : "/logo/logo_light_v2.png"} 
+              src="/logo/logo_light_v2.png" 
               alt="Новые Схемы" 
               width={160} 
               height={45} 
-              className="h-10 w-auto cursor-pointer" 
+              className="h-10 w-auto cursor-pointer dark:hidden" 
+              priority
+            />
+            <Image 
+              src="/logo/logo_dark_v2.png" 
+              alt="Новые Схемы" 
+              width={160} 
+              height={45} 
+              className="h-10 w-auto cursor-pointer hidden dark:block" 
               priority
             />
           </button>

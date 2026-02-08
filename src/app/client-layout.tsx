@@ -7,12 +7,11 @@ import AuthGuard from '@/components/auth-guard'
 import { useDesignStore } from '@/store/design.store'
 import React, { useLayoutEffect, useEffect, useMemo, useRef, useState } from 'react'
 
-// Функция для синхронного получения темы из localStorage
-// ✅ FIX: Проверяем класс dark на html (установлен синхронным скриптом в layout.tsx)
-function getInitialTheme(): 'light' | 'dark' {
+// Функция для синхронного получения темы из DOM/localStorage
+function getThemeFromDOM(): 'light' | 'dark' {
   if (typeof window === 'undefined') return 'light' // SSR
   
-  // Сначала проверяем класс dark на html (установлен до React)
+  // Проверяем класс dark на html (установлен синхронным скриптом в layout.tsx)
   if (document.documentElement.classList.contains('dark')) {
     return 'dark'
   }
@@ -38,10 +37,20 @@ const ClientLayout = ({ children }: ClientLayoutProps) => {
   
   const storeTheme = useDesignStore((state) => state.theme)
   const hasHydrated = useDesignStore((state) => state._hasHydrated)
-  const [initialTheme] = useState(getInitialTheme)
   
-  // До гидратации используем значение из localStorage
-  const theme = hasHydrated ? storeTheme : initialTheme
+  // ✅ FIX: Используем useEffect для получения темы на клиенте после монтирования
+  const [clientTheme, setClientTheme] = useState<'light' | 'dark'>('light')
+  const [isMounted, setIsMounted] = useState(false)
+  
+  useEffect(() => {
+    setClientTheme(getThemeFromDOM())
+    setIsMounted(true)
+  }, [])
+  
+  // После гидратации store - используем store
+  // До монтирования - используем light (SSR)
+  // После монтирования но до гидратации - используем значение из DOM
+  const theme = hasHydrated ? storeTheme : (isMounted ? clientTheme : 'light')
   const isDark = theme === 'dark'
   
   const isPublicPage = useMemo(() => {

@@ -2,7 +2,7 @@
 
 import Image from 'next/image'
 import { useDesignStore } from '@/store/design.store'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 
 interface LoadingScreenProps {
   /** Текст под спиннером (не используется в новом дизайне) */
@@ -13,38 +13,50 @@ interface LoadingScreenProps {
   className?: string
 }
 
+// Функция для синхронного получения темы из DOM/localStorage
+function getThemeFromDOM(): 'light' | 'dark' {
+  if (typeof window === 'undefined') return 'light' // SSR
+  
+  // Проверяем класс dark на html (установлен синхронным скриптом в layout.tsx)
+  if (document.documentElement.classList.contains('dark')) {
+    return 'dark'
+  }
+  
+  // Fallback на localStorage
+  try {
+    const stored = localStorage.getItem('admin-design-storage')
+    if (stored) {
+      const parsed = JSON.parse(stored)
+      return parsed.state?.theme || 'light'
+    }
+  } catch {}
+  return 'light'
+}
+
 /**
  * Хук для определения темы без мелькания
- * Сначала проверяет класс dark на html, потом синхронизируется со store
- * ✅ FIX: Проверяем класс dark на html (установлен синхронным скриптом в layout.tsx)
+ * ✅ FIX: Используем useEffect для получения темы после монтирования
  */
 function useThemeWithoutFlash() {
   const storeTheme = useDesignStore((state) => state.theme)
   const hasHydrated = useDesignStore((state) => state._hasHydrated)
   
-  const [initialTheme] = useState(() => {
-    // На сервере возвращаем light по умолчанию
-    if (typeof window === 'undefined') return 'light'
-    
-    // Сначала проверяем класс dark на html (установлен до React)
-    if (document.documentElement.classList.contains('dark')) {
-      return 'dark'
-    }
-    
-    // Fallback на localStorage
-    try {
-      const stored = localStorage.getItem('admin-design-storage')
-      if (stored) {
-        const parsed = JSON.parse(stored)
-        return parsed.state?.theme || 'light'
-      }
-    } catch {}
-    return 'light'
-  })
+  const [clientTheme, setClientTheme] = useState<'light' | 'dark'>('light')
+  const [isMounted, setIsMounted] = useState(false)
+  
+  useEffect(() => {
+    setClientTheme(getThemeFromDOM())
+    setIsMounted(true)
+  }, [])
 
-  // До гидратации используем значение из localStorage, после - из store
-  const theme = hasHydrated ? storeTheme : initialTheme
-  return theme === 'dark'
+  // После гидратации store - используем store
+  if (hasHydrated) {
+    return storeTheme === 'dark'
+  }
+  
+  // До монтирования - используем light (SSR)
+  // После монтирования но до гидратации - используем значение из DOM
+  return isMounted ? clientTheme === 'dark' : false
 }
 
 /**
