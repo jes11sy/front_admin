@@ -11,68 +11,43 @@ interface AuthGuardProps {
   children: React.ReactNode
 }
 
-/**
- * AuthGuard - компонент защиты маршрутов
- */
 export default function AuthGuard({ children }: AuthGuardProps) {
   const router = useRouter()
   const initRef = useRef(false)
-  const [isChecking, setIsChecking] = useState(true)
+  const [ready, setReady] = useState(false)
   
   const user = useAuthStore((state) => state.user)
-  const isAuthenticated = useAuthStore((state) => state.isAuthenticated)
 
-  // Устанавливаем колбэк для обработки ошибок авторизации
+  // Колбэк для ошибок авторизации
   useEffect(() => {
     apiClient.setAuthErrorCallback(() => {
-      logger.debug('Auth error callback triggered')
       useAuthStore.setState({ user: null, isAuthenticated: false })
       router.push('/login')
     })
-    
-    return () => {
-      apiClient.setAuthErrorCallback(() => {})
-    }
+    return () => apiClient.setAuthErrorCallback(() => {})
   }, [router])
 
-  // Проверка авторизации при монтировании
+  // Проверка при монтировании
   useEffect(() => {
     if (initRef.current) return
     initRef.current = true
     
-    const checkAuth = async () => {
-      // Даём время для hydration persist store
-      await new Promise(resolve => setTimeout(resolve, 100))
-      
+    const check = async () => {
+      // Если user уже есть — готово
       const store = useAuthStore.getState()
-      
-      // Если пользователь уже есть в store — всё ок
       if (store.user) {
-        logger.debug('User found in store')
-        setIsChecking(false)
+        setReady(true)
         return
       }
       
-      // Нет пользователя — проверяем сессию
+      // Нет user — быстрая проверка сессии (2 сек таймаут)
       try {
-        const isValid = await apiClient.isAuthenticated()
-        
-        if (!isValid) {
-          logger.debug('Session invalid, redirecting to login')
-          router.push('/login')
-          return
-        }
-        
-        // Сессия валидна — получаем профиль
         const controller = new AbortController()
-        const timeoutId = setTimeout(() => controller.abort(), 5000)
+        const timeoutId = setTimeout(() => controller.abort(), 2000)
         
         const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || ''}/api/v1/auth/profile`, {
           method: 'GET',
-          headers: {
-            'Content-Type': 'application/json',
-            'X-Use-Cookies': 'true',
-          },
+          headers: { 'X-Use-Cookies': 'true' },
           credentials: 'include',
           signal: controller.signal,
         })
@@ -91,33 +66,32 @@ export default function AuthGuard({ children }: AuthGuardProps) {
               },
               isAuthenticated: true,
             })
-            setIsChecking(false)
+            setReady(true)
             return
           }
         }
         
-        // Не удалось получить профиль
+        // 401 или ошибка — на логин
         router.push('/login')
-        
-      } catch (error) {
-        logger.error('Auth check error:', { error: String(error) })
+      } catch {
+        // Таймаут или ошибка сети — на логин
         router.push('/login')
       }
     }
     
-    checkAuth()
+    check()
   }, [router])
 
-  // Показываем loading пока проверяем и нет пользователя
-  if (isChecking && !user) {
-    return <LoadingScreen />
-  }
-
-  // Есть пользователь — показываем контент
+  // Есть user — показываем контент
   if (user) {
     return <>{children}</>
   }
+  
+  // Готово но нет user — ничего (идёт редирект)
+  if (ready) {
+    return null
+  }
 
-  // Нет пользователя — ничего (идёт редирект)
-  return null
+  // Проверяем — показываем loading
+  return <LoadingScreen />
 }
