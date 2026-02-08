@@ -2,7 +2,7 @@
 
 import Image from 'next/image'
 import { useDesignStore } from '@/store/design.store'
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 
 interface LoadingScreenProps {
   /** Текст под спиннером (не используется в новом дизайне) */
@@ -15,24 +15,30 @@ interface LoadingScreenProps {
 
 /**
  * Хук для определения темы без мелькания
- * Сначала проверяет CSS класс dark на html, потом синхронизируется со store
+ * Сначала проверяет localStorage напрямую, потом синхронизируется со store
  */
 function useThemeWithoutFlash() {
-  const { theme } = useDesignStore()
-  const [isDark, setIsDark] = useState(() => {
-    // На сервере или при первом рендере проверяем CSS класс
-    if (typeof window !== 'undefined') {
-      return document.documentElement.classList.contains('dark')
-    }
-    return false
+  const storeTheme = useDesignStore((state) => state.theme)
+  const hasHydrated = useDesignStore((state) => state._hasHydrated)
+  
+  const [initialTheme] = useState(() => {
+    // На сервере возвращаем dark по умолчанию
+    if (typeof window === 'undefined') return 'dark'
+    
+    // На клиенте читаем из localStorage напрямую
+    try {
+      const stored = localStorage.getItem('admin-design-storage')
+      if (stored) {
+        const parsed = JSON.parse(stored)
+        return parsed.state?.theme || 'dark'
+      }
+    } catch {}
+    return 'dark'
   })
 
-  useEffect(() => {
-    // После гидратации синхронизируемся со store
-    setIsDark(theme === 'dark')
-  }, [theme])
-
-  return isDark
+  // До гидратации используем значение из localStorage, после - из store
+  const theme = hasHydrated ? storeTheme : initialTheme
+  return theme === 'dark'
 }
 
 /**
