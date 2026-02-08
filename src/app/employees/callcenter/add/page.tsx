@@ -64,39 +64,23 @@ export default function AddCallCenterEmployeePage() {
       let passportDocUrl: string | undefined
       let contractDocUrl: string | undefined
 
+      // ✅ FIX: Используем apiClient.uploadFile() вместо getAccessToken()
+      // uploadFile() использует httpOnly cookies для авторизации и поддерживает 401 retry
       if (passportFile) {
-        const passportFormData = new FormData()
-        passportFormData.append('file', passportFile)
-        
-        const passportResponse = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/files/upload?folder=callcenter/passports`, {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${await apiClient.getAccessToken()}`
-          },
-          body: passportFormData
-        })
-        
-        if (passportResponse.ok) {
-          const passportData = await passportResponse.json()
-          passportDocUrl = passportData.data?.key
+        try {
+          const result = await apiClient.uploadFile(passportFile, 'callcenter/passports')
+          passportDocUrl = result.key
+        } catch (e) {
+          console.error('Failed to upload passport:', e)
         }
       }
 
       if (contractFile) {
-        const contractFormData = new FormData()
-        contractFormData.append('file', contractFile)
-        
-        const contractResponse = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/files/upload?folder=callcenter/contracts`, {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${await apiClient.getAccessToken()}`
-          },
-          body: contractFormData
-        })
-        
-        if (contractResponse.ok) {
-          const contractData = await contractResponse.json()
-          contractDocUrl = contractData.data?.key
+        try {
+          const result = await apiClient.uploadFile(contractFile, 'callcenter/contracts')
+          contractDocUrl = result.key
+        } catch (e) {
+          console.error('Failed to upload contract:', e)
         }
       }
 

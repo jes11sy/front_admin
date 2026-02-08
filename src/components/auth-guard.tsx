@@ -40,13 +40,13 @@ export default function AuthGuard({ children }: AuthGuardProps) {
         return
       }
       
-      // Нет user — быстрая проверка сессии (2 сек таймаут)
+      // Нет user — быстрая проверка сессии (5 сек таймаут)
+      const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'https://api.lead-schem.ru/api/v1'
+      
       try {
         const controller = new AbortController()
-        const timeoutId = setTimeout(() => controller.abort(), 2000)
+        const timeoutId = setTimeout(() => controller.abort(), 5000)
         
-        // ✅ FIX: NEXT_PUBLIC_API_URL уже содержит /api/v1, не дублируем
-        const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'https://api.lead-schem.ru/api/v1'
         const response = await fetch(`${baseUrl}/auth/profile`, {
           method: 'GET',
           headers: { 'X-Use-Cookies': 'true' },
@@ -73,7 +73,87 @@ export default function AuthGuard({ children }: AuthGuardProps) {
           }
         }
         
-        // 401 или ошибка — на логин
+        // ✅ FIX: При 401 пробуем refresh перед редиректом на логин
+        if (response.status === 401) {
+          logger.debug('[AuthGuard] Got 401, attempting token refresh...')
+          
+          try {
+            const refreshResult = await apiClient.refreshAuthToken()
+            
+            if (refreshResult.success) {
+              // Refresh успешен — повторяем проверку профиля
+              const retryController = new AbortController()
+              const retryTimeoutId = setTimeout(() => retryController.abort(), 5000)
+              
+              const retryResponse = await fetch(`${baseUrl}/auth/profile`, {
+                method: 'GET',
+                headers: { 'X-Use-Cookies': 'true' },
+                credentials: 'include',
+                signal: retryController.signal,
+              })
+              
+              clearTimeout(retryTimeoutId)
+              
+              if (retryResponse.ok) {
+                const retryData = await retryResponse.json()
+                if (retryData.success && retryData.data) {
+                  useAuthStore.setState({
+                    user: {
+                      id: retryData.data.id,
+                      login: retryData.data.login,
+                      name: retryData.data.name || retryData.data.login,
+                      role: retryData.data.role || 'admin',
+                    },
+                    isAuthenticated: true,
+                  })
+                  setReady(true)
+                  return
+                }
+              }
+            }
+          } catch (refreshError) {
+            logger.debug('[AuthGuard] Refresh attempt failed', { error: String(refreshError) })
+          }
+          
+          // ✅ FIX: Последняя попытка — восстановление через IndexedDB
+          try {
+            const restored = await apiClient.restoreSessionFromIndexedDB()
+            if (restored) {
+              const retryController = new AbortController()
+              const retryTimeoutId = setTimeout(() => retryController.abort(), 5000)
+              
+              const retryResponse = await fetch(`${baseUrl}/auth/profile`, {
+                method: 'GET',
+                headers: { 'X-Use-Cookies': 'true' },
+                credentials: 'include',
+                signal: retryController.signal,
+              })
+              
+              clearTimeout(retryTimeoutId)
+              
+              if (retryResponse.ok) {
+                const retryData = await retryResponse.json()
+                if (retryData.success && retryData.data) {
+                  useAuthStore.setState({
+                    user: {
+                      id: retryData.data.id,
+                      login: retryData.data.login,
+                      name: retryData.data.name || retryData.data.login,
+                      role: retryData.data.role || 'admin',
+                    },
+                    isAuthenticated: true,
+                  })
+                  setReady(true)
+                  return
+                }
+              }
+            }
+          } catch (e) {
+            logger.debug('[AuthGuard] IndexedDB restore failed', { error: String(e) })
+          }
+        }
+        
+        // Все попытки исчерпаны — на логин
         router.push('/login')
       } catch {
         // Таймаут или ошибка сети — на логин

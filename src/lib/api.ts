@@ -146,10 +146,12 @@ class ApiClient {
 
   /**
    * Реальная логика обновления токена (вызывается только один раз при параллельных запросах)
+   * ✅ FIX: Добавлен fallback через IndexedDB и сохранение нового refresh token
    */
   private async doRefreshToken(): Promise<boolean> {
+    // 1️⃣ Попытка refresh через httpOnly cookies (основной способ)
     try {
-      logger.debug('[Auth] Starting token refresh')
+      logger.debug('[Auth] Starting token refresh via cookies')
       
       const response = await fetch(`${this.baseURL}/auth/refresh`, {
         method: 'POST',
@@ -157,23 +159,49 @@ class ApiClient {
           'X-Use-Cookies': 'true',
           'Content-Type': 'application/json',
         },
-        credentials: 'include',  // Отправляем cookies с refresh token
-        body: JSON.stringify({}),  // Пустой body (refresh token в cookie)
+        credentials: 'include',
+        body: JSON.stringify({}),
       })
 
-      if (!response.ok) {
-        logger.warn('[Auth] Token refresh failed', { status: response.status })
-        return false
+      if (response.ok) {
+        const data = await response.json()
+        
+        // ✅ FIX: Сохраняем новый refresh token в IndexedDB (backup)
+        // Бэкенд делает token rotation — старый токен инвалидируется
+        if (data.data?.refreshToken) {
+          try {
+            const { saveRefreshToken } = await import('./remember-me')
+            await saveRefreshToken(data.data.refreshToken)
+            logger.debug('[Auth] New refresh token saved to IndexedDB')
+          } catch (e) {
+            logger.warn('[Auth] Failed to save refresh token to IndexedDB', { error: String(e) })
+          }
+        }
+        
+        logger.debug('[Auth] Token refresh via cookies successful')
+        return true
       }
 
-      const data = await response.json()
-      // Новые токены установлены в httpOnly cookies автоматически сервером
-      logger.debug('[Auth] Token refresh successful')
-      return data.success
+      logger.warn('[Auth] Cookie refresh failed', { status: response.status })
     } catch (error) {
-      logger.error('[Auth] Token refresh error', { error: String(error) })
-      return false
+      logger.warn('[Auth] Cookie refresh error', { error: String(error) })
     }
+
+    // 2️⃣ Fallback: попытка восстановить сессию через refresh token из IndexedDB
+    // Используется когда cookies удалены (iOS ITP, PWA, очистка браузером)
+    try {
+      logger.debug('[Auth] Trying IndexedDB fallback for token refresh')
+      const restored = await this.restoreSessionFromIndexedDB()
+      if (restored) {
+        logger.debug('[Auth] Session restored via IndexedDB fallback')
+        return true
+      }
+    } catch (error) {
+      logger.warn('[Auth] IndexedDB fallback failed', { error: String(error) })
+    }
+
+    logger.error('[Auth] All refresh methods failed — session expired')
+    return false
   }
 
   private async request<T>(
@@ -1303,6 +1331,62 @@ class ApiClient {
   }
 
   // ==================== FILE UPLOADS ====================
+
+  /**
+   * ✅ FIX: Универсальный метод загрузки файлов через cookies (вместо getAccessToken)
+   * Использует httpOnly cookies для авторизации, поддерживает 401 retry
+   */
+  async uploadFile(file: File, folder: string): Promise<{ key: string }> {
+    const formData = new FormData()
+    formData.append('file', file)
+
+    const url = `${this.baseURL}/files/upload?folder=${encodeURIComponent(folder)}`
+    
+    const doUpload = async (): Promise<Response> => {
+      return fetch(url, {
+        method: 'POST',
+        headers: {
+          'X-Use-Cookies': 'true',
+        },
+        credentials: 'include',
+        body: formData,
+      })
+    }
+
+    let response = await doUpload()
+
+    // Если 401 — пробуем refresh и повторяем
+    if (response.status === 401) {
+      const refreshed = await this.refreshAccessToken()
+      if (refreshed) {
+        // Пересоздаём FormData для повторной отправки
+        const retryFormData = new FormData()
+        retryFormData.append('file', file)
+        response = await fetch(url, {
+          method: 'POST',
+          headers: {
+            'X-Use-Cookies': 'true',
+          },
+          credentials: 'include',
+          body: retryFormData,
+        })
+      }
+    }
+
+    if (!response.ok) {
+      if (response.status === 401) {
+        this.clearToken()
+        if (this.authErrorCallback) {
+          this.authErrorCallback()
+        }
+        throw new ApiError('SESSION_EXPIRED', 401, url)
+      }
+      throw new ApiError(`Failed to upload file to ${folder}`, response.status, url)
+    }
+
+    const data = await response.json()
+    return { key: data.data?.key || data.key || data.data?.filePath || data.filePath }
+  }
 
   /**
    * Загрузка документа БСО для заказа
