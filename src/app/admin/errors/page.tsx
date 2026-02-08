@@ -381,6 +381,7 @@ export default function ErrorLogsPage() {
                   currentPage={page}
                   totalPages={totalPages}
                   onPageChange={setPage}
+                  isDark={isDark}
                 />
               )}
             </div>

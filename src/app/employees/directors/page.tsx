@@ -6,6 +6,7 @@ import { apiClient } from '@/lib/api'
 import { useDesignStore } from '@/store/design.store'
 import { toast } from 'sonner'
 import { logger } from '@/lib/logger'
+import { OptimizedPagination } from '@/components/ui/optimized-pagination'
 
 interface Director {
   id: number
@@ -31,6 +32,10 @@ export default function DirectorsPage() {
   const [showFilters, setShowFilters] = useState(false)
   const [searchName, setSearchName] = useState('')
   const [cityFilter, setCityFilter] = useState('')
+  
+  // Пагинация
+  const [currentPage, setCurrentPage] = useState(1)
+  const itemsPerPage = 20
   
   // Загрузка директоров при монтировании компонента
   useEffect(() => {
@@ -62,7 +67,7 @@ export default function DirectorsPage() {
   }, [directors])
 
   // Фильтрация и сортировка данных
-  const filteredAndSortedData = useMemo(() => {
+  const { filteredAndSortedData, totalPages, paginatedData } = useMemo(() => {
     const safeDirectors = Array.isArray(directors) ? directors : []
     
     let filtered = safeDirectors
@@ -84,12 +89,24 @@ export default function DirectorsPage() {
     }
     
     // Сортируем по дате создания (новые первыми)
-    return filtered.sort((a, b) => {
+    const sorted = filtered.sort((a, b) => {
       const aDate = new Date(a.dateCreate || 0).getTime()
       const bDate = new Date(b.dateCreate || 0).getTime()
       return bDate - aDate
     })
-  }, [directors, searchName, cityFilter])
+    
+    // Пагинация
+    const pages = Math.ceil(sorted.length / itemsPerPage)
+    const startIndex = (currentPage - 1) * itemsPerPage
+    const paginated = sorted.slice(startIndex, startIndex + itemsPerPage)
+    
+    return { filteredAndSortedData: sorted, totalPages: pages, paginatedData: paginated }
+  }, [directors, searchName, cityFilter, currentPage, itemsPerPage])
+  
+  // Сброс страницы при изменении фильтров
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [searchName, cityFilter])
 
   // Проверка есть ли активные фильтры
   const hasActiveFilters = searchName.trim() !== '' || cityFilter !== ''
@@ -232,7 +249,7 @@ export default function DirectorsPage() {
             </tr>
           </thead>
           <tbody>
-            {filteredAndSortedData.length === 0 ? (
+            {paginatedData.length === 0 ? (
               <tr>
                 <td colSpan={6} className={`py-8 text-center ${isDark ? 'text-gray-500' : 'text-gray-500'}`}>
                   {hasActiveFilters 
@@ -242,7 +259,7 @@ export default function DirectorsPage() {
                 </td>
               </tr>
             ) : (
-              filteredAndSortedData.map((director) => (
+              paginatedData.map((director) => (
                 <tr 
                   key={director.id} 
                   className={`border-b transition-colors cursor-pointer ${
@@ -315,6 +332,23 @@ export default function DirectorsPage() {
           </tbody>
         </table>
       </div>
+      
+      {/* Пагинация */}
+      {totalPages > 1 && (
+        <div className={`flex flex-col sm:flex-row items-center justify-between mt-6 gap-4 border-t pt-4 ${
+          isDark ? 'border-gray-700' : 'border-gray-200'
+        }`}>
+          <div className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
+            Показано {((currentPage - 1) * itemsPerPage) + 1} - {Math.min(currentPage * itemsPerPage, filteredAndSortedData.length)} из {filteredAndSortedData.length}
+          </div>
+          <OptimizedPagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            onPageChange={setCurrentPage}
+            isDark={isDark}
+          />
+        </div>
+      )}
     </div>
   )
 }

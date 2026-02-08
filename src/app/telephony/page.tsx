@@ -1,12 +1,13 @@
 'use client'
 
 import { PhoneCall, PhoneIncoming, PhoneOutgoing, Plus, Edit, Trash2 } from 'lucide-react'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { apiClient } from '@/lib/api'
 import { useDesignStore } from '@/store/design.store'
 import { toast } from 'sonner'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { OptimizedPagination } from '@/components/ui/optimized-pagination'
 
 interface PhoneNumber {
   id: number
@@ -39,6 +40,10 @@ export default function TelephonyPage() {
   const [draftSearchQuery, setDraftSearchQuery] = useState('')
   const [draftCityFilter, setDraftCityFilter] = useState('')
   const [draftCampaignFilter, setDraftCampaignFilter] = useState('')
+  
+  // Пагинация
+  const [currentPage, setCurrentPage] = useState(1)
+  const itemsPerPage = 20
 
   // Мок-данные для статистики
   const stats = {
@@ -91,15 +96,29 @@ export default function TelephonyPage() {
   const uniqueCities = [...new Set(phoneNumbers.map(p => p.city).filter(Boolean))]
   const uniqueCampaigns = [...new Set(phoneNumbers.map(p => p.campaign).filter(Boolean))]
 
-  // Фильтрация
-  const filteredPhoneNumbers = phoneNumbers.filter(phone => {
-    const matchesSearch = !searchQuery || 
-      phone.phoneNumber.includes(searchQuery) || 
-      phone.accountName?.toLowerCase().includes(searchQuery.toLowerCase())
-    const matchesCity = !cityFilter || phone.city === cityFilter
-    const matchesCampaign = !campaignFilter || phone.campaign === campaignFilter
-    return matchesSearch && matchesCity && matchesCampaign
-  })
+  // Фильтрация и пагинация
+  const { filteredPhoneNumbers, totalPages, paginatedPhoneNumbers } = useMemo(() => {
+    const filtered = phoneNumbers.filter(phone => {
+      const matchesSearch = !searchQuery || 
+        phone.phoneNumber.includes(searchQuery) || 
+        phone.accountName?.toLowerCase().includes(searchQuery.toLowerCase())
+      const matchesCity = !cityFilter || phone.city === cityFilter
+      const matchesCampaign = !campaignFilter || phone.campaign === campaignFilter
+      return matchesSearch && matchesCity && matchesCampaign
+    })
+    
+    // Пагинация
+    const pages = Math.ceil(filtered.length / itemsPerPage)
+    const startIndex = (currentPage - 1) * itemsPerPage
+    const paginated = filtered.slice(startIndex, startIndex + itemsPerPage)
+    
+    return { filteredPhoneNumbers: filtered, totalPages: pages, paginatedPhoneNumbers: paginated }
+  }, [phoneNumbers, searchQuery, cityFilter, campaignFilter, currentPage, itemsPerPage])
+  
+  // Сброс страницы при изменении фильтров
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [searchQuery, cityFilter, campaignFilter])
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('ru-RU', {
@@ -354,7 +373,7 @@ export default function TelephonyPage() {
         )}
 
         {/* Десктопная таблица */}
-        {!isLoading && filteredPhoneNumbers.length > 0 && (
+        {!isLoading && paginatedPhoneNumbers.length > 0 && (
           <div className="hidden md:block animate-fade-in">
             <div className={`rounded-lg shadow-lg overflow-hidden ${isDark ? 'bg-[#2a3441]' : 'bg-white'}`}>
               <table className="w-full text-sm">
@@ -370,7 +389,7 @@ export default function TelephonyPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {filteredPhoneNumbers.map((phone) => (
+                  {paginatedPhoneNumbers.map((phone) => (
                     <tr 
                       key={phone.id} 
                       className={`border-b transition-colors ${isDark ? 'border-gray-700 hover:bg-[#3a4451]' : 'border-gray-200 hover:bg-gray-50'}`}
@@ -410,9 +429,9 @@ export default function TelephonyPage() {
         )}
 
         {/* Мобильные карточки */}
-        {!isLoading && filteredPhoneNumbers.length > 0 && (
+        {!isLoading && paginatedPhoneNumbers.length > 0 && (
           <div className="md:hidden space-y-3 animate-fade-in">
-            {filteredPhoneNumbers.map((phone) => (
+            {paginatedPhoneNumbers.map((phone) => (
               <div 
                 key={phone.id}
                 className={`rounded-xl overflow-hidden border ${isDark ? 'bg-[#2a3441] border-gray-700' : 'bg-white border-gray-200'}`}
@@ -463,6 +482,23 @@ export default function TelephonyPage() {
                 </div>
               </div>
             ))}
+          </div>
+        )}
+        
+        {/* Пагинация */}
+        {!isLoading && totalPages > 1 && (
+          <div className={`flex flex-col sm:flex-row items-center justify-between mt-6 gap-4 border-t pt-4 ${
+            isDark ? 'border-gray-700' : 'border-gray-200'
+          }`}>
+            <div className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
+              Показано {((currentPage - 1) * itemsPerPage) + 1} - {Math.min(currentPage * itemsPerPage, filteredPhoneNumbers.length)} из {filteredPhoneNumbers.length}
+            </div>
+            <OptimizedPagination
+              currentPage={currentPage}
+              totalPages={totalPages}
+              onPageChange={setCurrentPage}
+              isDark={isDark}
+            />
           </div>
         )}
       </div>

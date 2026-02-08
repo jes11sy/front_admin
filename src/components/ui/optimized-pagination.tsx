@@ -1,31 +1,37 @@
 'use client'
 
-import { Button } from '@/components/ui/button'
-import { ChevronLeft, ChevronRight, MoreHorizontal } from 'lucide-react'
-import { useCallback, useMemo } from 'react'
-import { cn } from '@/lib/utils'
+import { useCallback, useMemo, useState, useEffect } from 'react'
 
 interface PaginationProps {
   currentPage: number
   totalPages: number
   onPageChange: (page: number) => void
-  showFirstLast?: boolean
-  showPrevNext?: boolean
-  maxVisiblePages?: number
   className?: string
   disabled?: boolean
+  isDark?: boolean
 }
 
 export function OptimizedPagination({
   currentPage,
   totalPages,
   onPageChange,
-  showFirstLast = true,
-  showPrevNext = true,
-  maxVisiblePages = 5,
-  className,
-  disabled = false
+  className = '',
+  disabled = false,
+  isDark = false
 }: PaginationProps) {
+  
+  // Определяем мобильный или десктоп
+  const [isMobile, setIsMobile] = useState(false)
+  
+  useEffect(() => {
+    const checkMobile = () => setIsMobile(window.innerWidth < 768)
+    checkMobile()
+    window.addEventListener('resize', checkMobile)
+    return () => window.removeEventListener('resize', checkMobile)
+  }, [])
+  
+  // 3 страницы на мобильных, 5 на десктопе
+  const maxVisiblePages = isMobile ? 3 : 5
   
   const visiblePages = useMemo(() => {
     if (totalPages <= maxVisiblePages) {
@@ -68,93 +74,87 @@ export function OptimizedPagination({
     return null
   }
 
+  const buttonBaseClass = isDark
+    ? 'text-gray-400 hover:text-white hover:bg-[#0d5c4b] disabled:text-gray-600 disabled:hover:bg-transparent'
+    : 'text-gray-500 hover:text-white hover:bg-[#0d5c4b] disabled:text-gray-300 disabled:hover:bg-transparent'
+  
+  const pageButtonClass = isDark
+    ? 'text-gray-300 hover:text-white hover:bg-[#0d5c4b]'
+    : 'text-gray-600 hover:text-white hover:bg-[#0d5c4b]'
+
   return (
-    <div className={cn('flex items-center justify-center space-x-1', className)}>
-      {/* First page button */}
-      {showFirstLast && currentPage > 1 && (
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => handlePageClick(1)}
-          disabled={disabled}
-          className="h-8 w-8 p-0"
-        >
-          1
-        </Button>
-      )}
-
-      {/* Start ellipsis */}
-      {showStartEllipsis && (
-        <div className="flex items-center justify-center h-8 w-8">
-          <MoreHorizontal className="h-4 w-4 text-gray-400" />
-        </div>
-      )}
-
+    <div className={`flex items-center justify-center gap-1 ${className}`}>
       {/* Previous button */}
-      {showPrevNext && (
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={handlePrevClick}
-          disabled={disabled || currentPage === 1}
-          className="h-8 w-8 p-0 disabled:opacity-50"
-        >
-          <ChevronLeft className="h-4 w-4" />
-        </Button>
+      <button
+        onClick={handlePrevClick}
+        disabled={disabled || currentPage === 1}
+        className={`p-1.5 rounded-md transition-colors ${buttonBaseClass}`}
+        aria-label="Предыдущая страница"
+      >
+        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+        </svg>
+      </button>
+
+      {/* First page */}
+      {visiblePages[0] > 1 && (
+        <>
+          <button
+            onClick={() => handlePageClick(1)}
+            disabled={disabled}
+            className={`min-w-[32px] h-8 px-2 rounded-md text-sm font-medium transition-colors ${pageButtonClass}`}
+          >
+            1
+          </button>
+          {showStartEllipsis && (
+            <span className={`px-1 text-sm ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>...</span>
+          )}
+        </>
       )}
 
       {/* Page numbers */}
       {visiblePages.map((page) => (
-        <Button
+        <button
           key={page}
-          variant={page === currentPage ? "default" : "outline"}
-          size="sm"
           onClick={() => handlePageClick(page)}
           disabled={disabled}
-          className={cn(
-            "h-8 w-8 p-0",
-            page === currentPage 
-              ? "bg-gradient-to-r from-teal-600 to-emerald-600 text-white hover:from-teal-700 hover:to-emerald-700" 
-              : "bg-white"
-          )}
+          className={`min-w-[32px] h-8 px-2 rounded-md text-sm font-medium transition-colors ${
+            currentPage === page
+              ? 'bg-[#0d5c4b] text-white'
+              : pageButtonClass
+          }`}
         >
           {page}
-        </Button>
+        </button>
       ))}
 
+      {/* Last page */}
+      {visiblePages[visiblePages.length - 1] < totalPages && (
+        <>
+          {showEndEllipsis && (
+            <span className={`px-1 text-sm ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>...</span>
+          )}
+          <button
+            onClick={() => handlePageClick(totalPages)}
+            disabled={disabled}
+            className={`min-w-[32px] h-8 px-2 rounded-md text-sm font-medium transition-colors ${pageButtonClass}`}
+          >
+            {totalPages}
+          </button>
+        </>
+      )}
+
       {/* Next button */}
-      {showPrevNext && (
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={handleNextClick}
-          disabled={disabled || currentPage === totalPages}
-          className="h-8 w-8 p-0 disabled:opacity-50"
-        >
-          <ChevronRight className="h-4 w-4" />
-        </Button>
-      )}
-
-      {/* End ellipsis */}
-      {showEndEllipsis && (
-        <div className="flex items-center justify-center h-8 w-8">
-          <MoreHorizontal className="h-4 w-4 text-gray-400" />
-        </div>
-      )}
-
-      {/* Last page button */}
-      {showFirstLast && currentPage < totalPages && (
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => handlePageClick(totalPages)}
-          disabled={disabled}
-          className="h-8 w-8 p-0"
-        >
-          {totalPages}
-        </Button>
-      )}
+      <button
+        onClick={handleNextClick}
+        disabled={disabled || currentPage === totalPages}
+        className={`p-1.5 rounded-md transition-colors ${buttonBaseClass}`}
+        aria-label="Следующая страница"
+      >
+        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+        </svg>
+      </button>
     </div>
   )
 }
-

@@ -6,6 +6,7 @@ import { apiClient } from '@/lib/api'
 import { useDesignStore } from '@/store/design.store'
 import { toast } from 'sonner'
 import { logger } from '@/lib/logger'
+import { OptimizedPagination } from '@/components/ui/optimized-pagination'
 
 interface Operator {
   id: number
@@ -30,6 +31,10 @@ export default function CallCenterPage() {
   const [showFilters, setShowFilters] = useState(false)
   const [searchName, setSearchName] = useState('')
   const [statusFilter, setStatusFilter] = useState<'working' | 'fired' | 'all'>('working')
+  
+  // Пагинация
+  const [currentPage, setCurrentPage] = useState(1)
+  const itemsPerPage = 20
   
   // Загрузка сотрудников при монтировании компонента
   useEffect(() => {
@@ -67,7 +72,7 @@ export default function CallCenterPage() {
   }
 
   // Фильтрация и сортировка данных
-  const filteredAndSortedData = useMemo(() => {
+  const { filteredAndSortedData, totalPages, paginatedData } = useMemo(() => {
     const safeOperators = Array.isArray(operators) ? operators : []
     
     // Фильтруем по статусу
@@ -87,7 +92,7 @@ export default function CallCenterPage() {
     }
     
     // Сортируем: работающие первыми, затем по дате создания
-    return filtered.sort((a, b) => {
+    const sorted = filtered.sort((a, b) => {
       const aIsWorking = isWorking(a.statusWork)
       const bIsWorking = isWorking(b.statusWork)
       
@@ -98,7 +103,19 @@ export default function CallCenterPage() {
       const bDate = new Date(b.dateCreate || 0).getTime()
       return bDate - aDate
     })
-  }, [operators, statusFilter, searchName])
+    
+    // Пагинация
+    const pages = Math.ceil(sorted.length / itemsPerPage)
+    const startIndex = (currentPage - 1) * itemsPerPage
+    const paginated = sorted.slice(startIndex, startIndex + itemsPerPage)
+    
+    return { filteredAndSortedData: sorted, totalPages: pages, paginatedData: paginated }
+  }, [operators, statusFilter, searchName, currentPage, itemsPerPage])
+  
+  // Сброс страницы при изменении фильтров
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [searchName, statusFilter])
 
   // Проверка есть ли активные фильтры (кроме дефолтного)
   const hasActiveFilters = searchName.trim() !== '' || statusFilter !== 'working'
@@ -277,7 +294,7 @@ export default function CallCenterPage() {
             </tr>
           </thead>
           <tbody>
-            {filteredAndSortedData.length === 0 ? (
+            {paginatedData.length === 0 ? (
               <tr>
                 <td colSpan={7} className={`py-8 text-center ${isDark ? 'text-gray-500' : 'text-gray-500'}`}>
                   {hasActiveFilters 
@@ -287,7 +304,7 @@ export default function CallCenterPage() {
                 </td>
               </tr>
             ) : (
-              filteredAndSortedData.map((operator) => (
+              paginatedData.map((operator) => (
                 <tr 
                   key={operator.id} 
                   className={`border-b transition-colors cursor-pointer ${
@@ -346,6 +363,23 @@ export default function CallCenterPage() {
           </tbody>
         </table>
       </div>
+      
+      {/* Пагинация */}
+      {totalPages > 1 && (
+        <div className={`flex flex-col sm:flex-row items-center justify-between mt-6 gap-4 border-t pt-4 ${
+          isDark ? 'border-gray-700' : 'border-gray-200'
+        }`}>
+          <div className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
+            Показано {((currentPage - 1) * itemsPerPage) + 1} - {Math.min(currentPage * itemsPerPage, filteredAndSortedData.length)} из {filteredAndSortedData.length}
+          </div>
+          <OptimizedPagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            onPageChange={setCurrentPage}
+            isDark={isDark}
+          />
+        </div>
+      )}
     </div>
   )
 }

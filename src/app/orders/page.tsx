@@ -973,9 +973,7 @@ function OrdersContent() {
                     currentPage={pagination.page}
                     totalPages={pagination.totalPages}
                     onPageChange={handlePageChange}
-                    showFirstLast={true}
-                    showPrevNext={true}
-                    maxVisiblePages={5}
+                    isDark={isDark}
                     disabled={loading}
                   />
                 )}

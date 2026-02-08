@@ -4,11 +4,12 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Star, Wifi, Shield, Zap, Plus, Clock, Download } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { apiClient } from '@/lib/api'
 import { toast } from 'sonner'
 import { logger } from '@/lib/logger'
+import { OptimizedPagination } from '@/components/ui/optimized-pagination'
 
 interface AvitoAccount {
   id: number
@@ -51,6 +52,10 @@ export default function AvitoPage() {
   const [isLoading, setIsLoading] = useState(true)
   const [isCheckingConnections, setIsCheckingConnections] = useState(false)
   const [lastCheckTime, setLastCheckTime] = useState(Date.now())
+  
+  // Пагинация
+  const [currentPage, setCurrentPage] = useState(1)
+  const itemsPerPage = 20
 
   // Константа для интервала проверки1 (12 часов в миллисекундах)
   const CHECK_INTERVAL = 12 * 60 * 60 * 1000
@@ -205,6 +210,15 @@ export default function AvitoPage() {
 
     loadData()
   }, [])
+
+  // Пагинация аккаунтов
+  const { totalPages, paginatedAccounts } = useMemo(() => {
+    const pages = Math.ceil(accounts.length / itemsPerPage)
+    const startIndex = (currentPage - 1) * itemsPerPage
+    const paginated = accounts.slice(startIndex, startIndex + itemsPerPage)
+    
+    return { totalPages: pages, paginatedAccounts: paginated }
+  }, [accounts, currentPage, itemsPerPage])
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('ru-RU', {
@@ -401,7 +415,7 @@ export default function AvitoPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {accounts.map((account) => (
+                {paginatedAccounts.map((account) => (
                   <TableRow 
                     key={account.id}
                     className="cursor-pointer hover:bg-gray-100"
@@ -447,6 +461,20 @@ export default function AvitoPage() {
             {!isLoading && accounts.length === 0 && (
               <div className="text-center py-12 text-gray-400">
                 Нет аккаунтов
+              </div>
+            )}
+            
+            {/* Пагинация */}
+            {!isLoading && totalPages > 1 && (
+              <div className="flex flex-col sm:flex-row items-center justify-between mt-6 gap-4 border-t pt-4 border-gray-200">
+                <div className="text-sm text-gray-600">
+                  Показано {((currentPage - 1) * itemsPerPage) + 1} - {Math.min(currentPage * itemsPerPage, accounts.length)} из {accounts.length}
+                </div>
+                <OptimizedPagination
+                  currentPage={currentPage}
+                  totalPages={totalPages}
+                  onPageChange={setCurrentPage}
+                />
               </div>
             )}
           </CardContent>

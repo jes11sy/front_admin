@@ -511,6 +511,7 @@ export default function UserLogsPage() {
                   currentPage={page}
                   totalPages={totalPages}
                   onPageChange={setPage}
+                  isDark={isDark}
                 />
               )}
             </div>

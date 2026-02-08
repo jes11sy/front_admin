@@ -1,12 +1,13 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { apiClient } from '@/lib/api'
 import { toast } from '@/components/ui/toast'
 import { logger } from '@/lib/logger'
 import { useDesignStore } from '@/store/design.store'
 import { Badge } from '@/components/ui/badge'
+import { OptimizedPagination } from '@/components/ui/optimized-pagination'
 
 interface Session {
   userId: number
@@ -29,6 +30,10 @@ export default function SessionsPage() {
   const [searchQuery, setSearchQuery] = useState('')
   const [filterRole, setFilterRole] = useState<string>('all')
   const [showFilters, setShowFilters] = useState(false)
+  
+  // Пагинация
+  const [currentPage, setCurrentPage] = useState(1)
+  const itemsPerPage = 20
   
   // Черновики фильтров
   const [draftSearchQuery, setDraftSearchQuery] = useState('')
@@ -113,16 +118,30 @@ export default function SessionsPage() {
     }
   }
 
-  const filteredSessions = sessions.filter(session => {
-    const matchesSearch = 
-      session.fullName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      session.ip.includes(searchQuery) ||
-      session.device.toLowerCase().includes(searchQuery.toLowerCase())
-    
-    const matchesRole = filterRole === 'all' || session.role === filterRole
+  const { filteredSessions, totalPages, paginatedSessions } = useMemo(() => {
+    const filtered = sessions.filter(session => {
+      const matchesSearch = 
+        session.fullName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        session.ip.includes(searchQuery) ||
+        session.device.toLowerCase().includes(searchQuery.toLowerCase())
+      
+      const matchesRole = filterRole === 'all' || session.role === filterRole
 
-    return matchesSearch && matchesRole
-  })
+      return matchesSearch && matchesRole
+    })
+    
+    // Пагинация
+    const pages = Math.ceil(filtered.length / itemsPerPage)
+    const startIndex = (currentPage - 1) * itemsPerPage
+    const paginated = filtered.slice(startIndex, startIndex + itemsPerPage)
+    
+    return { filteredSessions: filtered, totalPages: pages, paginatedSessions: paginated }
+  }, [sessions, searchQuery, filterRole, currentPage, itemsPerPage])
+  
+  // Сброс страницы при изменении фильтров
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [searchQuery, filterRole])
 
   const activeFiltersCount = (searchQuery ? 1 : 0) + (filterRole !== 'all' ? 1 : 0)
 
@@ -311,7 +330,7 @@ export default function SessionsPage() {
         )}
 
         {/* Таблица */}
-        {!loading && filteredSessions.length > 0 && (
+        {!loading && paginatedSessions.length > 0 && (
           <div className="overflow-x-auto">
             <table className={`w-full border-collapse text-[11px] min-w-[800px] rounded-lg shadow-lg ${isDark ? 'bg-[#2a3441]' : 'bg-white'}`}>
               <thead>
@@ -326,7 +345,7 @@ export default function SessionsPage() {
                 </tr>
               </thead>
               <tbody>
-                {filteredSessions.map((session) => (
+                {paginatedSessions.map((session) => (
                   <tr 
                     key={session.userId}
                     onClick={() => router.push(`/admin/sessions/${session.userId}`)}
@@ -365,6 +384,23 @@ export default function SessionsPage() {
                 ))}
               </tbody>
             </table>
+          </div>
+        )}
+        
+        {/* Пагинация */}
+        {!loading && totalPages > 1 && (
+          <div className={`flex flex-col sm:flex-row items-center justify-between mt-6 gap-4 border-t pt-4 ${
+            isDark ? 'border-gray-700' : 'border-gray-200'
+          }`}>
+            <div className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
+              Показано {((currentPage - 1) * itemsPerPage) + 1} - {Math.min(currentPage * itemsPerPage, filteredSessions.length)} из {filteredSessions.length}
+            </div>
+            <OptimizedPagination
+              currentPage={currentPage}
+              totalPages={totalPages}
+              onPageChange={setCurrentPage}
+              isDark={isDark}
+            />
           </div>
         )}
 
