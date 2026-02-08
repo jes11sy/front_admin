@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, Suspense, useCallback } from 'react'
+import { useState, useEffect, Suspense, useCallback, useRef } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Image from 'next/image'
 import { Button } from "@/components/ui/button"
@@ -79,11 +79,21 @@ function LoginForm() {
   }, [searchParams])
 
   // Проверяем автовход при загрузке страницы логина
+  // Используем useRef чтобы предотвратить повторные проверки
+  const autoLoginCheckedRef = useRef(false)
+  
   useEffect(() => {
+    // Предотвращаем повторные проверки
+    if (autoLoginCheckedRef.current) {
+      return
+    }
+    
     let isMounted = true
     let timeoutId: NodeJS.Timeout | null = null
     
     const tryAutoLogin = async () => {
+      autoLoginCheckedRef.current = true
+      
       // Таймаут безопасности - если проверка зависла, показываем форму
       timeoutId = setTimeout(() => {
         if (isMounted) {
@@ -168,7 +178,7 @@ function LoginForm() {
       isMounted = false
       if (timeoutId) clearTimeout(timeoutId)
     }
-  }, [router, setUser, getSafeRedirectUrl])
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
   
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
