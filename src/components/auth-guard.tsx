@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { apiClient } from '@/lib/api'
 import { logger } from '@/lib/logger'
@@ -13,131 +13,111 @@ interface AuthGuardProps {
 
 /**
  * AuthGuard - компонент защиты маршрутов
- * 
- * ✅ FIX: Не показывает LoadingScreen если пользователь уже есть в store (из persist)
- * Проверка авторизации происходит в фоне, без мерцания UI
  */
 export default function AuthGuard({ children }: AuthGuardProps) {
   const router = useRouter()
   const initRef = useRef(false)
+  const [isChecking, setIsChecking] = useState(true)
   
-  // Используем store для состояния авторизации
   const user = useAuthStore((state) => state.user)
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated)
-  const isLoading = useAuthStore((state) => state.isLoading)
-  const setUser = useAuthStore((state) => state.setUser)
-  const setLoading = useAuthStore((state) => state.setLoading)
 
   // Устанавливаем колбэк для обработки ошибок авторизации
   useEffect(() => {
-    const handleAuthError = () => {
-      logger.debug('Auth error callback triggered, redirecting to login')
+    apiClient.setAuthErrorCallback(() => {
+      logger.debug('Auth error callback triggered')
+      useAuthStore.setState({ user: null, isAuthenticated: false })
       router.push('/login')
-    }
-    
-    apiClient.setAuthErrorCallback(handleAuthError)
+    })
     
     return () => {
       apiClient.setAuthErrorCallback(() => {})
     }
   }, [router])
 
+  // Проверка авторизации при монтировании
   useEffect(() => {
-    // Предотвращаем повторную инициализацию
-    if (initRef.current) {
-      return
-    }
-
+    if (initRef.current) return
+    initRef.current = true
+    
     const checkAuth = async () => {
-      initRef.current = true
+      // Даём время для hydration persist store
+      await new Promise(resolve => setTimeout(resolve, 100))
       
-      // ✅ FIX: Если пользователь уже есть в store (из persist) - проверяем в фоне без loading
-      const hasStoredUser = !!user
+      const store = useAuthStore.getState()
       
-      if (!hasStoredUser) {
-        setLoading(true)
+      // Если пользователь уже есть в store — всё ок
+      if (store.user) {
+        logger.debug('User found in store')
+        setIsChecking(false)
+        return
       }
-
+      
+      // Нет пользователя — проверяем сессию
       try {
-        // Проверяем валидность сессии через httpOnly cookies
-        const timeoutPromise = new Promise<never>((_, reject) => 
-          setTimeout(() => reject(new Error('AUTH_TIMEOUT')), 15000)
-        )
+        const isValid = await apiClient.isAuthenticated()
         
-        const profileResponse = await Promise.race([apiClient.getProfile(), timeoutPromise])
-        
-        if (profileResponse.success && profileResponse.data) {
-          setUser({
-            id: profileResponse.data.id,
-            login: profileResponse.data.login,
-            name: profileResponse.data.name || profileResponse.data.login,
-            role: profileResponse.data.role || 'admin',
-          })
-        } else {
-          throw new Error('Profile not found')
-        }
-        
-      } catch (error) {
-        const errorMessage = error instanceof Error ? error.message : 'Unknown error'
-        
-        // Проверяем тип ошибки - сетевые ошибки не разлогинивают
-        if (errorMessage === 'AUTH_TIMEOUT' || 
-            errorMessage.includes('сеть') || 
-            errorMessage.includes('network') ||
-            errorMessage.includes('Проблемы с сетью')) {
-          logger.debug('Network error during auth check, not logging out')
-          setLoading(false)
+        if (!isValid) {
+          logger.debug('Session invalid, redirecting to login')
+          router.push('/login')
           return
         }
         
-        logger.error('Auth check failed:', { error: errorMessage })
+        // Сессия валидна — получаем профиль
+        const controller = new AbortController()
+        const timeoutId = setTimeout(() => controller.abort(), 5000)
         
-        // Пробуем восстановить через refresh token из IndexedDB
-        logger.debug('Cookies invalid, trying to restore from IndexedDB')
-        const restored = await apiClient.restoreSessionFromIndexedDB()
+        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || ''}/api/v1/auth/profile`, {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-Use-Cookies': 'true',
+          },
+          credentials: 'include',
+          signal: controller.signal,
+        })
         
-        if (restored) {
-          logger.debug('Session restored from IndexedDB')
-          try {
-            const profileResponse = await apiClient.getProfile()
-            if (profileResponse.success && profileResponse.data) {
-              setUser({
-                id: profileResponse.data.id,
-                login: profileResponse.data.login,
-                name: profileResponse.data.name || profileResponse.data.login,
-                role: profileResponse.data.role || 'admin',
-              })
-            }
-          } catch {
-            logger.debug('Failed to load user data after session restore')
+        clearTimeout(timeoutId)
+        
+        if (response.ok) {
+          const data = await response.json()
+          if (data.success && data.data) {
+            useAuthStore.setState({
+              user: {
+                id: data.data.id,
+                login: data.data.login,
+                name: data.data.name || data.data.login,
+                role: data.data.role || 'admin',
+              },
+              isAuthenticated: true,
+            })
+            setIsChecking(false)
+            return
           }
-        } else {
-          // Не удалось восстановить — редирект на логин
-          logger.debug('Could not restore session, redirecting to login')
-          if (errorMessage !== 'SESSION_EXPIRED') {
-            await apiClient.logout()
-          }
-          useAuthStore.setState({ user: null, isAuthenticated: false })
-          router.push('/login')
         }
-      } finally {
-        setLoading(false)
+        
+        // Не удалось получить профиль
+        router.push('/login')
+        
+      } catch (error) {
+        logger.error('Auth check error:', { error: String(error) })
+        router.push('/login')
       }
     }
-
+    
     checkAuth()
-  }, [router, setUser, setLoading, user])
+  }, [router])
 
-  // ✅ FIX: Показываем loading ТОЛЬКО если нет сохранённого пользователя
-  // Если пользователь есть из persist — показываем контент сразу
-  if (isLoading && !user) {
+  // Показываем loading пока проверяем и нет пользователя
+  if (isChecking && !user) {
     return <LoadingScreen />
   }
 
-  // Если не авторизован и нет пользователя - не показываем контент
-  if (!isAuthenticated && !user) {
-    return null
+  // Есть пользователь — показываем контент
+  if (user) {
+    return <>{children}</>
   }
 
-  return <>{children}</>
+  // Нет пользователя — ничего (идёт редирект)
+  return null
 }

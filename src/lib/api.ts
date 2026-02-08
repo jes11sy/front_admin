@@ -158,13 +158,14 @@ class ApiClient {
           })
 
           if (!retryResponse.ok) {
-            // Если после обновления токена все еще ошибка - выход
+            // Если после обновления токена все еще ошибка
             if (retryResponse.status === 401) {
               this.clearToken()
-              if (typeof window !== 'undefined') {
-                window.location.href = '/login'
+              // Вызываем callback вместо редиректа
+              if (this.authErrorCallback) {
+                this.authErrorCallback()
               }
-              throw new Error('Сессия истекла. Пожалуйста, войдите снова.')
+              throw new Error('SESSION_EXPIRED')
             }
           }
 
@@ -176,12 +177,13 @@ class ApiClient {
           const data = await retryResponse.json()
           return data
         } else {
-          // Не удалось обновить токен - выход
+          // Не удалось обновить токен
           this.clearToken()
-          if (typeof window !== 'undefined') {
-            window.location.href = '/login'
+          // Вызываем callback вместо редиректа
+          if (this.authErrorCallback) {
+            this.authErrorCallback()
           }
-          throw new Error('Сессия истекла. Пожалуйста, войдите снова.')
+          throw new Error('SESSION_EXPIRED')
         }
       }
 

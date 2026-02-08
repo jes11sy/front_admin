@@ -38,7 +38,7 @@ export const useAuthStore = create<AuthState>()(
     (set, get) => ({
       user: null,
       isAuthenticated: false,
-      isLoading: true, // true по умолчанию, чтобы AuthGuard показывал loading до проверки
+      isLoading: false, // false по умолчанию, AuthGuard сам установит true при проверке
 
       setUser: (user: User | null) => {
         set({

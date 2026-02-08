@@ -185,7 +185,10 @@ function LoginForm() {
       
       // Сохраняем пользователя в store
       if (data.data?.user) {
-        setUser(data.data.user)
+        useAuthStore.setState({
+          user: data.data.user,
+          isAuthenticated: true,
+        })
       }
       
       logger.info('Пользователь успешно авторизован')
