@@ -66,7 +66,9 @@ function LoginForm() {
         const controller = new AbortController()
         const timeoutId = setTimeout(() => controller.abort(), 2000)
         
-        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || ''}/api/v1/auth/profile`, {
+        // ✅ FIX: NEXT_PUBLIC_API_URL уже содержит /api/v1, не дублируем
+        const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'https://api.lead-schem.ru/api/v1'
+        const response = await fetch(`${baseUrl}/auth/profile`, {
           method: 'GET',
           headers: { 'X-Use-Cookies': 'true' },
           credentials: 'include',
