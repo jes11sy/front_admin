@@ -16,7 +16,7 @@ const navigationItems = [
   { name: 'Касса', href: '/cashbox', icon: '/navigate/cash.svg' },
   { name: 'Зарплата', href: '/salary', icon: '/navigate/stats.svg' },
   { name: 'Отчеты', href: '/reports', icon: '/navigate/reports.svg' },
-  { name: 'Администрирование', href: '/admin', icon: '/navigate/master-handover.svg' },
+  { name: 'Администрирование', href: '/admin', icon: '/navigate/admin.svg' },
 ]
 
 interface MenuContentProps {

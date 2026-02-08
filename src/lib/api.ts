@@ -1293,7 +1293,6 @@ class ApiClient {
     const data = await response.json()
     return { filePath: data.data?.filePath || data.filePath }
   }
-}
 
   // Orders History API - получить заказы по номеру телефона
   async getOrdersByPhone(phone: string): Promise<{
