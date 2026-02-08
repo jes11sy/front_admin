@@ -15,18 +15,23 @@ interface LoadingScreenProps {
 
 /**
  * Хук для определения темы без мелькания
- * Сначала проверяет localStorage напрямую, потом синхронизируется со store
- * ✅ FIX: Дефолт должен совпадать со store (light)
+ * Сначала проверяет класс dark на html, потом синхронизируется со store
+ * ✅ FIX: Проверяем класс dark на html (установлен синхронным скриптом в layout.tsx)
  */
 function useThemeWithoutFlash() {
   const storeTheme = useDesignStore((state) => state.theme)
   const hasHydrated = useDesignStore((state) => state._hasHydrated)
   
   const [initialTheme] = useState(() => {
-    // На сервере возвращаем light по умолчанию (как в store)
+    // На сервере возвращаем light по умолчанию
     if (typeof window === 'undefined') return 'light'
     
-    // На клиенте читаем из localStorage напрямую
+    // Сначала проверяем класс dark на html (установлен до React)
+    if (document.documentElement.classList.contains('dark')) {
+      return 'dark'
+    }
+    
+    // Fallback на localStorage
     try {
       const stored = localStorage.getItem('admin-design-storage')
       if (stored) {

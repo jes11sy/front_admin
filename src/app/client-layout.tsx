@@ -8,9 +8,16 @@ import { useDesignStore } from '@/store/design.store'
 import React, { useLayoutEffect, useEffect, useMemo, useRef, useState } from 'react'
 
 // Функция для синхронного получения темы из localStorage
-// ✅ FIX: Дефолт должен совпадать со store (light), иначе контент мерцает
+// ✅ FIX: Проверяем класс dark на html (установлен синхронным скриптом в layout.tsx)
 function getInitialTheme(): 'light' | 'dark' {
-  if (typeof window === 'undefined') return 'light'
+  if (typeof window === 'undefined') return 'light' // SSR
+  
+  // Сначала проверяем класс dark на html (установлен до React)
+  if (document.documentElement.classList.contains('dark')) {
+    return 'dark'
+  }
+  
+  // Fallback на localStorage
   try {
     const stored = localStorage.getItem('admin-design-storage')
     if (stored) {
