@@ -5,41 +5,17 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { useAuthStore } from '@/store/auth.store'
-import { Sun, Moon, Bell, User, Menu, X, ChevronDown } from 'lucide-react'
+import { Sun, Moon, Bell, User, Menu, X } from 'lucide-react'
 
 const navigationItems = [
   { name: 'Дашборд', href: '/', icon: '/navigate/dashboard.svg' },
-  {
-    name: 'Сотрудники',
-    icon: '/navigate/employees.svg',
-    dropdown: [
-      { name: 'Кол-центр', href: '/employees/callcenter' },
-      { name: 'Директора', href: '/employees/directors' },
-      { name: 'Мастера', href: '/employees/masters' },
-    ]
-  },
+  { name: 'Сотрудники', href: '/employees', icon: '/navigate/employees.svg' },
   { name: 'Телефония', href: '/telephony', icon: '/navigate/telephony.svg' },
   { name: 'Заказы', href: '/orders', icon: '/navigate/orders.svg' },
   { name: 'Касса', href: '/cashbox', icon: '/navigate/cash.svg' },
   { name: 'Зарплата', href: '/salary', icon: '/navigate/stats.svg' },
-  {
-    name: 'Отчеты',
-    icon: '/navigate/reports.svg',
-    dropdown: [
-      { name: 'Отчет по городам', href: '/reports/cities' },
-      { name: 'Отчет по мастерам', href: '/reports/masters' },
-      { name: 'Отчет по РК', href: '/reports/campaigns' },
-    ]
-  },
-  {
-    name: 'Администрирование',
-    icon: '/navigate/master-handover.svg',
-    dropdown: [
-      { name: 'Активные сессии', href: '/admin/sessions' },
-      { name: 'Логирование пользователей', href: '/admin/user-logs' },
-      { name: 'Ошибки', href: '/admin/errors' },
-    ]
-  },
+  { name: 'Отчеты', href: '/reports', icon: '/navigate/reports.svg' },
+  { name: 'Администрирование', href: '/admin', icon: '/navigate/master-handover.svg' },
 ]
 
 interface MenuContentProps {
@@ -49,8 +25,6 @@ interface MenuContentProps {
   toggleTheme: () => void
   userName: string | undefined
   onCloseMobileMenu: () => void
-  expandedItem: string | null
-  setExpandedItem: (item: string | null) => void
 }
 
 const MenuContent = memo(function MenuContent({
@@ -60,8 +34,6 @@ const MenuContent = memo(function MenuContent({
   toggleTheme,
   userName,
   onCloseMobileMenu,
-  expandedItem,
-  setExpandedItem,
 }: MenuContentProps) {
   const isDark = theme === 'dark'
   
@@ -69,11 +41,8 @@ const MenuContent = memo(function MenuContent({
   const isActive = (href: string) => {
     if (pathname === href) return true
     if (href !== '/' && pathname.startsWith(href + '/')) return true
+    if (href !== '/' && pathname.startsWith(href)) return true
     return false
-  }
-
-  const isAnyChildActive = (dropdown: typeof navigationItems[0]['dropdown']) => {
-    return dropdown?.some(child => pathname === child.href || pathname.startsWith(child.href + '/'))
   }
 
   return (
@@ -81,115 +50,44 @@ const MenuContent = memo(function MenuContent({
       {/* Navigation */}
       <nav className={`flex-1 px-5 ${isMobile ? 'space-y-2' : 'space-y-1'} overflow-y-auto`}>
         {navigationItems.map((item) => {
-          const hasDropdown = !!item.dropdown
-          const isExpanded = expandedItem === item.name
-          const childActive = isAnyChildActive(item.dropdown)
-          const active = item.href ? isActive(item.href) : childActive
+          const active = isActive(item.href)
           
           return (
-            <div key={item.name}>
-              {hasDropdown ? (
-                <button
-                  onClick={() => setExpandedItem(isExpanded ? null : item.name)}
-                  className={`nav-icon-hover w-full relative flex items-center justify-between gap-3 px-3 font-normal group ${
-                    isMobile ? 'py-3.5 text-base' : 'py-2.5 text-sm'
-                  }`}
-                >
-                  <div className="flex items-center gap-3">
-                    {/* Индикатор активной вкладки */}
-                    <span 
-                      className={`absolute left-0 top-1/2 -translate-y-1/2 w-[6px] ${
-                        childActive ? 'opacity-100' : 'opacity-0'
-                      } ${isMobile ? 'h-12' : 'h-10'}`}
-                    >
-                      <svg viewBox="0 0 6 40" fill="none" className="w-full h-full">
-                        <path 
-                          d="M5 1C2.5 1 1 4.5 1 10v20c0 5.5 1.5 9 4 9" 
-                          stroke="#0d5c4b" 
-                          strokeWidth="1.5" 
-                          strokeLinecap="round"
-                          fill="none"
-                        />
-                      </svg>
-                    </span>
-                    <Image 
-                      src={item.icon} 
-                      alt={item.name} 
-                      width={isMobile ? 24 : 20} 
-                      height={isMobile ? 24 : 20} 
-                      className={`nav-icon ${childActive ? 'nav-icon-active' : ''} ${isMobile ? 'w-6 h-6' : 'w-5 h-5'}`}
-                    />
-                    <span className={`${isDark ? 'text-gray-200' : 'text-gray-800'} group-hover:text-[#0d5c4b]`}>
-                      {item.name}
-                    </span>
-                  </div>
-                  <ChevronDown className={`h-4 w-4 transition-transform duration-200 ${isDark ? 'text-gray-400' : 'text-gray-500'} group-hover:text-[#0d5c4b] ${isExpanded ? 'rotate-180' : ''}`} />
-                </button>
-              ) : (
-                <Link
-                  href={item.href!}
-                  className={`nav-icon-hover relative flex items-center gap-3 px-3 font-normal group ${
-                    isMobile ? 'py-3.5 text-base' : 'py-2.5 text-sm'
-                  }`}
-                  onClick={onCloseMobileMenu}
-                >
-                  {/* Индикатор активной вкладки */}
-                  <span 
-                    className={`absolute left-0 top-1/2 -translate-y-1/2 w-[6px] ${
-                      active ? 'opacity-100' : 'opacity-0'
-                    } ${isMobile ? 'h-12' : 'h-10'}`}
-                  >
-                    <svg viewBox="0 0 6 40" fill="none" className="w-full h-full">
-                      <path 
-                        d="M5 1C2.5 1 1 4.5 1 10v20c0 5.5 1.5 9 4 9" 
-                        stroke="#0d5c4b" 
-                        strokeWidth="1.5" 
-                        strokeLinecap="round"
-                        fill="none"
-                      />
-                    </svg>
-                  </span>
-                  <Image 
-                    src={item.icon} 
-                    alt={item.name} 
-                    width={isMobile ? 24 : 20} 
-                    height={isMobile ? 24 : 20} 
-                    className={`nav-icon ${active ? 'nav-icon-active' : ''} ${isMobile ? 'w-6 h-6' : 'w-5 h-5'}`}
+            <Link
+              key={item.name}
+              href={item.href}
+              className={`nav-icon-hover relative flex items-center gap-3 px-3 font-normal group ${
+                isMobile ? 'py-3.5 text-base' : 'py-2.5 text-sm'
+              }`}
+              onClick={onCloseMobileMenu}
+            >
+              {/* Индикатор активной вкладки */}
+              <span 
+                className={`absolute left-0 top-1/2 -translate-y-1/2 w-[6px] ${
+                  active ? 'opacity-100' : 'opacity-0'
+                } ${isMobile ? 'h-12' : 'h-10'}`}
+              >
+                <svg viewBox="0 0 6 40" fill="none" className="w-full h-full">
+                  <path 
+                    d="M5 1C2.5 1 1 4.5 1 10v20c0 5.5 1.5 9 4 9" 
+                    stroke="#0d5c4b" 
+                    strokeWidth="1.5" 
+                    strokeLinecap="round"
+                    fill="none"
                   />
-                  <span className={`${isDark ? 'text-gray-200' : 'text-gray-800'} group-hover:text-[#0d5c4b]`}>
-                    {item.name}
-                  </span>
-                </Link>
-              )}
-
-              {/* Выпадающий список */}
-              {hasDropdown && isExpanded && (
-                <div className={`mt-1 ml-4 space-y-1 ${isDark ? 'border-l-2 border-[#0d5c4b]/30' : 'border-l-2 border-[#0d5c4b]/20'}`}>
-                  {item.dropdown!.map((subItem) => {
-                    const isSubActive = pathname === subItem.href || pathname.startsWith(subItem.href + '/')
-                    
-                    return (
-                      <Link
-                        key={subItem.name}
-                        href={subItem.href}
-                        onClick={onCloseMobileMenu}
-                        className={`flex items-center gap-3 px-3 rounded-lg transition-all duration-200 ${
-                          isMobile ? 'py-2.5 text-base' : 'py-2 text-sm'
-                        } ${
-                          isSubActive 
-                            ? 'text-white bg-[#0d5c4b] shadow-sm'
-                            : isDark
-                              ? 'text-gray-400 hover:text-[#0d5c4b]'
-                              : 'text-gray-600 hover:text-[#0d5c4b]'
-                        }`}
-                      >
-                        <span>{subItem.name}</span>
-                      </Link>
-                    )
-                  })}
-                </div>
-              )}
-            </div>
+                </svg>
+              </span>
+              <Image 
+                src={item.icon} 
+                alt={item.name} 
+                width={isMobile ? 24 : 20} 
+                height={isMobile ? 24 : 20} 
+                className={`nav-icon ${active ? 'nav-icon-active' : ''} ${isMobile ? 'w-6 h-6' : 'w-5 h-5'}`}
+              />
+              <span className={`${isDark ? 'text-gray-200' : 'text-gray-800'} group-hover:text-[#0d5c4b]`}>
+                {item.name}
+              </span>
+            </Link>
           )
         })}
       </nav>
@@ -274,7 +172,6 @@ export function CustomNavigation() {
   const pathname = usePathname()
   const router = useRouter()
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
-  const [expandedItem, setExpandedItem] = useState<string | null>(null)
   
   // Тема
   const [theme, setTheme] = useState<'light' | 'dark'>('light')
@@ -309,20 +206,6 @@ export function CustomNavigation() {
 
   // Стабильная ссылка на колбэк закрытия мобильного меню
   const closeMobileMenu = useCallback(() => setIsMobileMenuOpen(false), [])
-
-  // Автоматически раскрываем dropdown если находимся на дочерней странице
-  useEffect(() => {
-    navigationItems.forEach(item => {
-      if (item.dropdown) {
-        const isChildActive = item.dropdown.some(child => 
-          pathname === child.href || pathname.startsWith(child.href + '/')
-        )
-        if (isChildActive) {
-          setExpandedItem(item.name)
-        }
-      }
-    })
-  }, [pathname])
 
   // Закрываем меню при смене маршрута
   useEffect(() => {
@@ -415,8 +298,6 @@ export function CustomNavigation() {
             toggleTheme={toggleTheme}
             userName={userName}
             onCloseMobileMenu={closeMobileMenu}
-            expandedItem={expandedItem}
-            setExpandedItem={setExpandedItem}
           />
         </div>
       </aside>
@@ -448,8 +329,6 @@ export function CustomNavigation() {
           toggleTheme={toggleTheme}
           userName={userName}
           onCloseMobileMenu={closeMobileMenu}
-          expandedItem={expandedItem}
-          setExpandedItem={setExpandedItem}
         />
       </aside>
     </>
