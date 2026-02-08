@@ -17,11 +17,18 @@ const inter = Inter({
 export const metadata: Metadata = {
   title: 'Новые Схемы Рук',
   description: 'Панель управления учредителя',
+  manifest: '/manifest.json',
   icons: {
-    icon: '/logo.png',
-    shortcut: '/logo.png',
-    apple: '/logo.png',
+    icon: '/logo/favicon.png',
+    shortcut: '/logo/favicon.png',
+    apple: '/logo/pwa_light.png',
   },
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: 'black-translucent',
+    title: 'НС Админ',
+  },
+  themeColor: '#0d5c4b',
 }
 
 // Скрипт для предотвращения мерцания темы
