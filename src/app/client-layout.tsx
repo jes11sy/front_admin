@@ -8,16 +8,17 @@ import { useDesignStore } from '@/store/design.store'
 import React, { useLayoutEffect, useEffect, useMemo, useRef, useState } from 'react'
 
 // Функция для синхронного получения темы из localStorage
+// ✅ FIX: Дефолт должен совпадать со store (light), иначе контент мерцает
 function getInitialTheme(): 'light' | 'dark' {
-  if (typeof window === 'undefined') return 'dark'
+  if (typeof window === 'undefined') return 'light'
   try {
     const stored = localStorage.getItem('admin-design-storage')
     if (stored) {
       const parsed = JSON.parse(stored)
-      return parsed.state?.theme || 'dark'
+      return parsed.state?.theme || 'light'
     }
   } catch {}
-  return 'dark'
+  return 'light'
 }
 
 interface ClientLayoutProps {

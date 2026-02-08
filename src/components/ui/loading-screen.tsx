@@ -16,24 +16,25 @@ interface LoadingScreenProps {
 /**
  * Хук для определения темы без мелькания
  * Сначала проверяет localStorage напрямую, потом синхронизируется со store
+ * ✅ FIX: Дефолт должен совпадать со store (light)
  */
 function useThemeWithoutFlash() {
   const storeTheme = useDesignStore((state) => state.theme)
   const hasHydrated = useDesignStore((state) => state._hasHydrated)
   
   const [initialTheme] = useState(() => {
-    // На сервере возвращаем dark по умолчанию
-    if (typeof window === 'undefined') return 'dark'
+    // На сервере возвращаем light по умолчанию (как в store)
+    if (typeof window === 'undefined') return 'light'
     
     // На клиенте читаем из localStorage напрямую
     try {
       const stored = localStorage.getItem('admin-design-storage')
       if (stored) {
         const parsed = JSON.parse(stored)
-        return parsed.state?.theme || 'dark'
+        return parsed.state?.theme || 'light'
       }
     } catch {}
-    return 'dark'
+    return 'light'
   })
 
   // До гидратации используем значение из localStorage, после - из store

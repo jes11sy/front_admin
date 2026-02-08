@@ -9,16 +9,17 @@ import { useDesignStore } from '@/store/design.store'
 import { Sun, Moon, Bell, User, Menu, X } from 'lucide-react'
 
 // Функция для синхронного получения темы из localStorage (для SSR)
+// ✅ FIX: Дефолт должен совпадать со store (light), иначе навигация мерцает
 function getInitialTheme(): 'light' | 'dark' {
-  if (typeof window === 'undefined') return 'dark' // SSR - возвращаем dark по умолчанию
+  if (typeof window === 'undefined') return 'light' // SSR - возвращаем light (как в store)
   try {
     const stored = localStorage.getItem('admin-design-storage')
     if (stored) {
       const parsed = JSON.parse(stored)
-      return parsed.state?.theme || 'dark'
+      return parsed.state?.theme || 'light'
     }
   } catch {}
-  return 'dark'
+  return 'light'
 }
 
 // Хук для получения темы с поддержкой SSR без мерцания
