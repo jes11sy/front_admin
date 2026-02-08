@@ -12,6 +12,7 @@ import CustomSelect from '@/components/optimized/CustomSelect'
 import { StatusSelect } from '@/components/orders/StatusSelect'
 import { OrderMasterTab } from '@/components/orders/OrderMasterTab'
 import { OrderMultipleFileUpload } from '@/components/orders/OrderMultipleFileUpload'
+import { OrderCallsTab } from '@/components/orders/OrderCallsTab'
 
 export default function OrderDetailPage() {
   const router = useRouter()
@@ -480,30 +481,12 @@ export default function OrderDetailPage() {
           )}
 
           {activeTab === 'chat' && (
-            <div className="space-y-4">
-              {/* История заказа - упрощенная версия */}
-              <div className={`rounded-xl shadow-sm ${isDark ? 'bg-[#2a3441]' : 'bg-white border border-gray-200'}`}>
-                <div className={`px-4 py-3 border-b ${isDark ? 'border-gray-700' : 'border-gray-100'}`}>
-                  <h3 className={`font-medium text-sm ${isDark ? 'text-gray-200' : 'text-gray-700'}`}>Информация о заказе</h3>
-                </div>
-                <div className="p-4 space-y-3">
-                  <div className={`p-3 rounded-lg border ${isDark ? 'bg-[#3a4451] border-gray-600' : 'bg-gray-50 border-gray-100'}`}>
-                    <div className="flex items-center justify-between mb-2">
-                      <span className={`text-sm font-medium ${isDark ? 'text-gray-100' : 'text-gray-800'}`}>Заказ #{order.id}</span>
-                      <span className={`text-xs ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
-                        {formatDate(order.createDate)}
-                      </span>
-                    </div>
-                    <div className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
-                      <p>Статус: <span className={isDark ? 'text-gray-200' : 'text-gray-800'}>{order.statusOrder}</span></p>
-                      <p>Мастер: <span className={isDark ? 'text-gray-200' : 'text-gray-800'}>{order.master?.name || 'Не назначен'}</span></p>
-                      <p>Оператор: <span className={isDark ? 'text-gray-200' : 'text-gray-800'}>{order.operator?.login || '-'}</span></p>
-                      {order.result && <p>Итог: <span className={isDark ? 'text-teal-400' : 'text-teal-600'}>{order.result.toLocaleString('ru-RU')} ₽</span></p>}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
+            <OrderCallsTab
+              order={order}
+              calls={calls}
+              callsLoading={callsLoading}
+              callsError={callsError ? (callsError instanceof Error ? callsError.message : String(callsError)) : null}
+            />
           )}
         </>
       )}

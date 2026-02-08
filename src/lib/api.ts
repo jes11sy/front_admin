@@ -1295,6 +1295,85 @@ class ApiClient {
   }
 }
 
+  // Orders History API - получить заказы по номеру телефона
+  async getOrdersByPhone(phone: string): Promise<{
+    success: boolean;
+    data: Array<{
+      id: number;
+      clientName: string;
+      city: string;
+      statusOrder: string;
+      dateMeeting: string;
+      typeEquipment: string;
+      typeOrder: string;
+      problem: string;
+      createdAt: string;
+      rk: string;
+      avitoName: string;
+      address: string;
+      result: number | null;
+      master: { id: number; name: string } | null;
+    }>;
+  }> {
+    // Нормализуем номер телефона
+    const normalizedPhone = phone.replace(/[\s\+\(\)\-]/g, '')
+    
+    const response = await this.safeFetch(`${this.baseURL}/orders/by-phone/${encodeURIComponent(normalizedPhone)}`, {
+      method: 'GET',
+    })
+
+    if (!response.ok) {
+      if (response.status === 404) {
+        return { success: true, data: [] }
+      }
+      throw new Error('Ошибка получения истории заказов')
+    }
+
+    const data = await response.json()
+    return data
+  }
+
+  // Orders History API - получить историю изменений заказа
+  async getOrderHistory(orderId: number): Promise<OrderHistoryItem[]> {
+    const response = await this.safeFetch(`${this.baseURL}/orders/${orderId}/history`, {
+      method: 'GET',
+    })
+
+    if (!response.ok) {
+      if (response.status === 404) {
+        return []
+      }
+      throw new Error('Ошибка получения истории изменений')
+    }
+
+    const result = await response.json()
+    return Array.isArray(result) ? result : (result.data || [])
+  }
+}
+
+// Типы для истории заказа
+export interface OrderHistoryItem {
+  id: number;
+  timestamp: string;
+  eventType: 'order.create' | 'order.update' | 'order.close' | 'order.status.change';
+  userId?: number;
+  role?: string;
+  login?: string;
+  userName?: string;
+  metadata?: {
+    orderId?: number;
+    changes?: Record<string, { old: string | number | null; new: string | number | null }>;
+    oldStatus?: string;
+    newStatus?: string;
+    result?: string;
+    expenditure?: string;
+    clean?: string;
+    city?: string;
+    clientName?: string;
+    phone?: string;
+  };
+}
+
 export const apiClient = new ApiClient(API_BASE_URL)
 export default apiClient
 
