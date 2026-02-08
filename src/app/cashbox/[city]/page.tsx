@@ -1,16 +1,10 @@
 'use client'
 
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Label } from '@/components/ui/label'
+import { useState, useEffect, useCallback } from 'react'
 import { useRouter, useParams } from 'next/navigation'
-import { useState, useEffect } from 'react'
-import { ArrowLeft, TrendingUp, TrendingDown, DollarSign, Calendar, FileText } from 'lucide-react'
 import { apiClient } from '@/lib/api'
 import { toast } from 'sonner'
+import { useDesignStore } from '@/store/design.store'
 import { OptimizedPagination } from '@/components/ui/optimized-pagination'
 
 interface Transaction {
@@ -35,6 +29,8 @@ export default function CityTransactionsPage() {
   const router = useRouter()
   const params = useParams()
   const cityName = decodeURIComponent(params.city as string)
+  const { theme } = useDesignStore()
+  const isDark = theme === 'dark'
 
   const [transactions, setTransactions] = useState<Transaction[]>([])
   const [loading, setLoading] = useState(true)
@@ -51,6 +47,13 @@ export default function CityTransactionsPage() {
   const [dateFilter, setDateFilter] = useState<DateFilter>('all')
   const [startDate, setStartDate] = useState('')
   const [endDate, setEndDate] = useState('')
+  const [showFilterDrawer, setShowFilterDrawer] = useState(false)
+  
+  // Черновые фильтры
+  const [draftStartDate, setDraftStartDate] = useState('')
+  const [draftEndDate, setDraftEndDate] = useState('')
+  const [draftTypeFilter, setDraftTypeFilter] = useState('all')
+  const [draftDateFilter, setDraftDateFilter] = useState<DateFilter>('all')
 
   const PAGE_SIZES = [
     { value: '20', label: '20' },
@@ -64,13 +67,19 @@ export default function CityTransactionsPage() {
     { value: 'расход', label: 'Расход' },
   ]
 
-  // Функция для получения диапазона дат в зависимости от фильтра
-  const getDateRange = () => {
+  const quickPeriods = [
+    { label: 'Сегодня', filter: 'day' as DateFilter },
+    { label: 'Неделя', filter: 'week' as DateFilter },
+    { label: 'Месяц', filter: 'month' as DateFilter },
+    { label: 'Всё время', filter: 'all' as DateFilter },
+  ]
+
+  // Функция для получения диапазона дат
+  const getDateRange = useCallback(() => {
     const now = new Date()
     let start: Date | null = null
     let end: Date = now
 
-    // Форматируем даты с временем для корректной фильтрации
     const formatDateTime = (date: Date) => {
       const year = date.getFullYear()
       const month = String(date.getMonth() + 1).padStart(2, '0')
@@ -87,64 +96,74 @@ export default function CityTransactionsPage() {
         start.setHours(0, 0, 0, 0)
         end = new Date(now)
         end.setHours(23, 59, 59)
-        return {
-          startDate: formatDateTime(start),
-          endDate: formatDateTime(end)
-        }
+        return { startDate: formatDateTime(start), endDate: formatDateTime(end) }
       case 'week':
         start = new Date(now)
         start.setDate(now.getDate() - 7)
         start.setHours(0, 0, 0, 0)
         end.setHours(23, 59, 59)
-        return {
-          startDate: formatDateTime(start),
-          endDate: formatDateTime(end)
-        }
+        return { startDate: formatDateTime(start), endDate: formatDateTime(end) }
       case 'month':
         start = new Date(now)
         start.setMonth(now.getMonth() - 1)
         start.setHours(0, 0, 0, 0)
         end.setHours(23, 59, 59)
-        return {
-          startDate: formatDateTime(start),
-          endDate: formatDateTime(end)
-        }
+        return { startDate: formatDateTime(start), endDate: formatDateTime(end) }
       case 'custom':
         if (startDate && endDate) {
           const customStart = new Date(startDate)
           customStart.setHours(0, 0, 0, 0)
           const customEnd = new Date(endDate)
           customEnd.setHours(23, 59, 59)
-          return {
-            startDate: formatDateTime(customStart),
-            endDate: formatDateTime(customEnd)
-          }
+          return { startDate: formatDateTime(customStart), endDate: formatDateTime(customEnd) }
         }
         return { startDate, endDate }
       case 'all':
       default:
         return { startDate: '', endDate: '' }
     }
+  }, [dateFilter, startDate, endDate])
+
+  // Подсчёт активных фильтров
+  const activeFiltersCount = [
+    dateFilter !== 'all' ? 1 : 0,
+    typeFilter !== 'all' ? 1 : 0
+  ].reduce((a, b) => a + b, 0)
+
+  // Открытие drawer
+  const openFilterDrawer = () => {
+    setDraftStartDate(startDate)
+    setDraftEndDate(endDate)
+    setDraftTypeFilter(typeFilter)
+    setDraftDateFilter(dateFilter)
+    setShowFilterDrawer(true)
   }
 
-  const handleDateFilterChange = (filter: DateFilter) => {
-    setDateFilter(filter)
-    if (filter !== 'custom') {
-      const range = getDateRange()
-      setStartDate(range.startDate)
-      setEndDate(range.endDate)
-    } else {
-      setStartDate('')
-      setEndDate('')
-    }
+  // Применить фильтры
+  const applyFilters = () => {
+    setDateFilter(draftDateFilter)
+    setStartDate(draftStartDate)
+    setEndDate(draftEndDate)
+    setTypeFilter(draftTypeFilter)
     setCurrentPage(1)
+    setShowFilterDrawer(false)
   }
 
-  const handleCustomDateApply = () => {
-    if (startDate || endDate) {
-      setDateFilter('custom')
-      setCurrentPage(1)
-    }
+  // Сброс фильтров в drawer
+  const resetFilters = () => {
+    setDraftDateFilter('all')
+    setDraftStartDate('')
+    setDraftEndDate('')
+    setDraftTypeFilter('all')
+  }
+
+  // Сброс основных фильтров
+  const clearAllFilters = () => {
+    setDateFilter('all')
+    setStartDate('')
+    setEndDate('')
+    setTypeFilter('all')
+    setCurrentPage(1)
   }
 
   const getFilterLabel = () => {
@@ -158,25 +177,20 @@ export default function CityTransactionsPage() {
     }
   }
 
-  // 🔧 FIX: Загружаем статистику и транзакции раздельно
-  // Статистика - через серверную агрегацию (быстро)
-  // Транзакции - с серверной пагинацией (не грузим всё сразу)
+  // Загрузка данных
   useEffect(() => {
     const loadData = async () => {
       setLoading(true)
       try {
         const dateRange = getDateRange()
         
-        // Параллельно загружаем статистику и транзакции с пагинацией
         const [statsResp, transResp] = await Promise.all([
-          // Статистика по городу через серверную агрегацию
           apiClient.getCashStats({ 
             city: cityName,
             type: typeFilter !== 'all' ? typeFilter as 'приход' | 'расход' : undefined,
             startDate: dateRange.startDate || undefined,
             endDate: dateRange.endDate || undefined
           }),
-          // Транзакции с серверной пагинацией (максимум 100 на страницу)
           apiClient.getCashByCity(cityName, { 
             page: currentPage, 
             limit: itemsPerPage,
@@ -186,7 +200,6 @@ export default function CityTransactionsPage() {
           })
         ])
         
-        // Обновляем статистику
         if (statsResp.success && statsResp.data) {
           setCityStats({
             totalIncome: statsResp.data.totalIncome,
@@ -195,12 +208,10 @@ export default function CityTransactionsPage() {
           })
         }
         
-        // Обновляем транзакции
         if (transResp.success && transResp.data) {
           const data = transResp.data.data || transResp.data
           setTransactions(Array.isArray(data) ? data : [])
           
-          // Используем пагинацию с сервера
           if (transResp.data.pagination) {
             setTotalTransactions(transResp.data.pagination.total)
             setTotalPages(transResp.data.pagination.totalPages)
@@ -219,7 +230,7 @@ export default function CityTransactionsPage() {
     }
 
     loadData()
-  }, [cityName, currentPage, itemsPerPage, typeFilter, dateFilter, startDate, endDate])
+  }, [cityName, currentPage, itemsPerPage, typeFilter, dateFilter, startDate, endDate, getDateRange])
 
   const handlePageChange = (page: number) => {
     setCurrentPage(page)
@@ -228,314 +239,387 @@ export default function CityTransactionsPage() {
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('ru-RU', {
-      style: 'currency',
-      currency: 'RUB',
       minimumFractionDigits: 0,
-    }).format(amount)
+    }).format(amount) + ' ₽'
   }
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('ru-RU', {
       day: '2-digit',
       month: '2-digit',
-      year: 'numeric'
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
     })
   }
 
-  if (loading) {
-    return (
-      <div className="min-h-screen" style={{backgroundColor: '#114643'}}>
-        <div className="container mx-auto px-4 py-8">
-          <Card className="border-0 shadow-lg">
-            <CardContent className="p-8 text-center">
-              <p className="text-gray-600">Загрузка...</p>
-            </CardContent>
-          </Card>
-        </div>
-      </div>
-    )
+  const getTypeColor = (type: string) => {
+    switch (type) {
+      case 'приход': return '#0d5c4b'
+      case 'расход': return '#ef4444'
+      default: return '#6b7280'
+    }
   }
 
   return (
-    <div className="min-h-screen" style={{backgroundColor: '#114643'}}>
-      <div className="container mx-auto px-4 py-8 max-w-7xl">
-        <Button 
-          variant="outline" 
-          className="mb-6 bg-white"
+    <div className={`min-h-screen transition-colors duration-300 ${isDark ? 'bg-[#1e2530]' : 'bg-white'}`}>
+      <div className="px-6 py-6">
+        {/* Кнопка назад */}
+        <button 
           onClick={() => router.push('/cashbox')}
+          className={`mb-6 flex items-center gap-2 px-4 py-2 rounded-lg transition-all duration-200 ${isDark ? 'bg-[#3a4451] hover:bg-[#4a5461] text-gray-300' : 'bg-gray-100 hover:bg-gray-200 text-gray-600'}`}
         >
-          <ArrowLeft className="h-4 w-4 mr-2" />
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+          </svg>
           Назад к списку
-        </Button>
+        </button>
 
-        {/* Статистика по городу */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-          <Card className="border-0 shadow-lg">
-            <CardContent className="pt-6">
-              <div className="flex items-center justify-between mb-2">
-                <div className="text-sm text-gray-500">Доходы</div>
-                <TrendingUp className="h-4 w-4 text-green-600" />
-              </div>
-              <div className="text-3xl font-bold text-green-600">
-                {formatCurrency(cityStats.totalIncome)}
-              </div>
-              <p className="text-xs text-gray-500 mt-1">{getFilterLabel()}</p>
-            </CardContent>
-          </Card>
+        {/* Заголовок */}
+        <h1 className={`text-2xl font-bold mb-6 ${isDark ? 'text-gray-100' : 'text-gray-800'}`}>
+          Транзакции: {cityName}
+        </h1>
 
-          <Card className="border-0 shadow-lg">
-            <CardContent className="pt-6">
-              <div className="flex items-center justify-between mb-2">
-                <div className="text-sm text-gray-500">Расходы</div>
-                <TrendingDown className="h-4 w-4 text-red-600" />
-              </div>
-              <div className="text-3xl font-bold text-red-600">
-                {formatCurrency(cityStats.totalExpenses)}
-              </div>
-              <p className="text-xs text-gray-500 mt-1">{getFilterLabel()}</p>
-            </CardContent>
-          </Card>
-
-          <Card className="border-0 shadow-lg bg-gradient-to-br from-teal-50 to-emerald-50">
-            <CardContent className="pt-6">
-              <div className="flex items-center justify-between mb-2">
-                <div className="text-sm text-teal-700">Баланс</div>
-                <DollarSign className="h-4 w-4 text-teal-700" />
-              </div>
-              <div className="text-3xl font-bold text-teal-700">
-                {formatCurrency(cityStats.balance)}
-              </div>
-              <p className="text-xs text-teal-600 mt-1">Касса</p>
-            </CardContent>
-          </Card>
+        {/* Статистика */}
+        <div className="mb-6 grid grid-cols-1 md:grid-cols-3 gap-4 animate-slide-in-left">
+          <div className={`rounded-lg p-4 border shadow-sm hover:shadow-md transition-all duration-200 ${isDark ? 'bg-[#2a3441] border-gray-700' : 'bg-white border-gray-200'}`}>
+            <div className={`text-sm font-medium ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>Приходы</div>
+            <div className={`text-xl font-bold ${isDark ? 'text-white' : 'text-[#0d5c4b]'}`}>{formatCurrency(cityStats.totalIncome)}</div>
+            <p className={`text-xs mt-1 ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>{getFilterLabel()}</p>
+          </div>
+          <div className={`rounded-lg p-4 border shadow-sm hover:shadow-md transition-all duration-200 ${isDark ? 'bg-[#2a3441] border-gray-700' : 'bg-white border-gray-200'}`}>
+            <div className={`text-sm font-medium ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>Расходы</div>
+            <div className={`text-xl font-bold ${isDark ? 'text-gray-200' : 'text-red-600'}`}>{formatCurrency(cityStats.totalExpenses)}</div>
+            <p className={`text-xs mt-1 ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>{getFilterLabel()}</p>
+          </div>
+          <div className={`rounded-lg p-4 border shadow-sm hover:shadow-md transition-all duration-200 ${isDark ? 'bg-[#2a3441] border-gray-700' : 'bg-white border-gray-200'}`}>
+            <div className={`text-sm font-medium ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>Баланс</div>
+            <div className={`text-xl font-bold ${cityStats.balance >= 0 ? (isDark ? 'text-white' : 'text-[#0d5c4b]') : (isDark ? 'text-gray-200' : 'text-red-600')}`}>
+              {formatCurrency(cityStats.balance)}
+            </div>
+            <p className={`text-xs mt-1 ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>Касса</p>
+          </div>
         </div>
 
-        {/* Таблица транзакций */}
-        <Card className="border-0 shadow-lg">
-          <CardHeader>
-            <CardTitle className="text-xl text-gray-800">
-              Транзакции по городу: {cityName}
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="p-4">
-            {/* Фильтры */}
-            <div className="mb-4 space-y-4 pb-4 border-b border-gray-200">
-              {/* Быстрые фильтры по периоду */}
-              <div className="flex flex-wrap items-center gap-2">
-                <Calendar className="h-5 w-5 text-gray-600" />
-                <span className="text-sm font-semibold text-gray-700 mr-2">Период:</span>
-                <Button
-                  variant={dateFilter === 'all' ? 'default' : 'outline'}
-                  size="sm"
-                  onClick={() => handleDateFilterChange('all')}
-                  className={dateFilter === 'all' ? 'bg-teal-600 hover:bg-teal-700' : ''}
-                >
-                  Всё время
-                </Button>
-                <Button
-                  variant={dateFilter === 'day' ? 'default' : 'outline'}
-                  size="sm"
-                  onClick={() => handleDateFilterChange('day')}
-                  className={dateFilter === 'day' ? 'bg-teal-600 hover:bg-teal-700' : ''}
-                >
-                  День
-                </Button>
-                <Button
-                  variant={dateFilter === 'week' ? 'default' : 'outline'}
-                  size="sm"
-                  onClick={() => handleDateFilterChange('week')}
-                  className={dateFilter === 'week' ? 'bg-teal-600 hover:bg-teal-700' : ''}
-                >
-                  Неделя
-                </Button>
-                <Button
-                  variant={dateFilter === 'month' ? 'default' : 'outline'}
-                  size="sm"
-                  onClick={() => handleDateFilterChange('month')}
-                  className={dateFilter === 'month' ? 'bg-teal-600 hover:bg-teal-700' : ''}
-                >
-                  Месяц
-                </Button>
-              </div>
+        {/* Состояние загрузки */}
+        {loading && (
+          <div className="text-center py-8 animate-fade-in">
+            <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-teal-600"></div>
+            <div className={`text-lg mt-4 ${isDark ? 'text-gray-200' : 'text-gray-700'}`}>Загрузка...</div>
+          </div>
+        )}
 
-              {/* Фильтры типа и пользовательских дат */}
-              <div className="flex flex-wrap items-center gap-3">
-                <div className="w-48">
-                  <Select
-                    value={typeFilter}
-                    onValueChange={(value) => {
-                      setTypeFilter(value)
-                      setCurrentPage(1)
-                    }}
-                    disabled={loading}
-                  >
-                    <SelectTrigger className="bg-white">
-                      <SelectValue placeholder="Все типы" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {TRANSACTION_TYPES.map((type) => (
-                        <SelectItem key={type.value} value={type.value}>
-                          {type.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Label className="text-sm text-gray-600">От:</Label>
-                  <Input
-                    type="date"
-                    value={startDate}
-                    onChange={(e) => {
-                      setStartDate(e.target.value)
-                      setDateFilter('custom')
-                      setCurrentPage(1)
-                    }}
-                    className="w-40 bg-white"
-                  />
-                </div>
-                <div className="flex items-center gap-2">
-                  <Label className="text-sm text-gray-600">До:</Label>
-                  <Input
-                    type="date"
-                    value={endDate}
-                    onChange={(e) => {
-                      setEndDate(e.target.value)
-                      setDateFilter('custom')
-                      setCurrentPage(1)
-                    }}
-                    className="w-40 bg-white"
-                  />
-                </div>
-                {(typeFilter !== 'all' || dateFilter !== 'all') && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => {
-                      setTypeFilter('all')
-                      setDateFilter('all')
-                      setStartDate('')
-                      setEndDate('')
-                      setCurrentPage(1)
-                    }}
-                    className="bg-white"
-                  >
-                    Сбросить фильтры
-                  </Button>
-                )}
-              </div>
-            </div>
+        {/* Фильтры */}
+        <div className="mb-4 animate-slide-in-left">
+          <div className="flex items-center gap-2 flex-wrap">
+            {/* Иконка фильтров */}
+            <button
+              onClick={openFilterDrawer}
+              className={`relative p-2 rounded-lg transition-all duration-200 ${isDark ? 'bg-[#3a4451] hover:bg-[#4a5461] text-gray-300 hover:text-teal-400' : 'bg-gray-100 hover:bg-gray-200 text-gray-600 hover:text-teal-600'}`}
+              title="Фильтры"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
+              </svg>
+              {activeFiltersCount > 0 && (
+                <span className={`absolute -top-0.5 -right-0.5 w-2.5 h-2.5 bg-teal-500 rounded-full border-2 ${isDark ? 'border-[#2a3441]' : 'border-white'}`}></span>
+              )}
+            </button>
 
-            <Table>
-              <TableHeader className="bg-gray-50/50">
-                <TableRow>
-                  <TableHead className="text-xs font-semibold text-gray-600 uppercase tracking-wider">Дата</TableHead>
-                  <TableHead className="text-xs font-semibold text-gray-600 uppercase tracking-wider">Тип</TableHead>
-                  <TableHead className="text-xs font-semibold text-gray-600 uppercase tracking-wider">Описание</TableHead>
-                  <TableHead className="text-xs font-semibold text-gray-600 uppercase tracking-wider">Заказ</TableHead>
-                  <TableHead className="text-xs font-semibold text-gray-600 uppercase tracking-wider">Город</TableHead>
-                  <TableHead className="text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">Сумма</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {transactions.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={6} className="text-center py-8 text-gray-500">
-                      Нет транзакций для этого города
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  transactions.map((transaction) => (
-                    <TableRow key={transaction.id}>
-                      <TableCell className="text-gray-600">
-                        <div className="flex items-center gap-2">
-                          <Calendar className="h-4 w-4 text-gray-400" />
-                          {formatDate(transaction.createdAt)}
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <span className={`px-3 py-1 rounded-full text-xs font-medium ${
-                          transaction.name === 'приход' 
-                            ? 'bg-green-100 text-green-800' 
-                            : 'bg-red-100 text-red-800'
-                        }`}>
-                          {transaction.name === 'приход' ? 'Приход' : 'Расход'}
-                        </span>
-                      </TableCell>
-                      <TableCell className="text-gray-900">
-                        <div className="flex items-center gap-2">
-                          <FileText className="h-4 w-4 text-gray-400" />
-                          {transaction.note || '-'}
-                        </div>
-                      </TableCell>
-                      <TableCell className="text-gray-600">
-                        {transaction.paymentPurpose ? `${transaction.paymentPurpose}` : '-'}
-                      </TableCell>
-                      <TableCell className="text-gray-600">
-                        {transaction.city}
-                      </TableCell>
-                      <TableCell className={`text-right font-medium ${
-                        transaction.name === 'приход' 
-                          ? 'text-green-600' 
-                          : 'text-red-600'
-                      }`}>
-                        {transaction.name === 'приход' ? '+' : '-'}{formatCurrency(Number(transaction.amount))}
-                      </TableCell>
-                    </TableRow>
-                  ))
+            {/* Активные фильтры как теги */}
+            {activeFiltersCount > 0 && (
+              <div className="flex items-center gap-2 flex-wrap">
+                {dateFilter !== 'all' && (
+                  <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium border ${isDark ? 'bg-teal-900/30 text-teal-300 border-teal-700' : 'bg-teal-50 text-teal-700 border-teal-200'}`}>
+                    {getFilterLabel()}
+                    <button onClick={() => { setDateFilter('all'); setStartDate(''); setEndDate(''); setCurrentPage(1); }} className={`ml-1 ${isDark ? 'hover:text-teal-100' : 'hover:text-teal-900'}`}>×</button>
+                  </span>
                 )}
-              </TableBody>
-            </Table>
-
-            {/* Пагинация */}
-            {!loading && transactions.length > 0 && (
-              <div className="flex flex-col sm:flex-row items-center justify-between mt-6 gap-4 border-t border-gray-200 pt-4">
-                <div className="flex items-center gap-4">
-                  <div className="text-sm text-gray-600">
-                    Показано {((currentPage - 1) * itemsPerPage) + 1} - {Math.min(currentPage * itemsPerPage, totalTransactions)} из {totalTransactions} транзакций
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Label htmlFor="page-size" className="text-sm text-gray-600">
-                      На странице:
-                    </Label>
-                    <Select
-                      value={itemsPerPage.toString()}
-                      onValueChange={(value) => {
-                        setItemsPerPage(parseInt(value))
-                        setCurrentPage(1)
-                      }}
-                      disabled={loading}
-                    >
-                      <SelectTrigger className="w-20" id="page-size">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {PAGE_SIZES.map((size) => (
-                          <SelectItem key={size.value} value={size.value}>
-                            {size.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-                {totalPages > 1 && (
-                  <OptimizedPagination
-                    currentPage={currentPage}
-                    totalPages={totalPages}
-                    onPageChange={handlePageChange}
-                    showFirstLast={true}
-                    showPrevNext={true}
-                    maxVisiblePages={5}
-                    disabled={loading}
-                  />
+                {typeFilter !== 'all' && (
+                  <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium border ${isDark ? 'bg-teal-900/30 text-teal-300 border-teal-700' : 'bg-teal-50 text-teal-700 border-teal-200'}`}>
+                    {TRANSACTION_TYPES.find(t => t.value === typeFilter)?.label}
+                    <button onClick={() => { setTypeFilter('all'); setCurrentPage(1); }} className={`ml-1 ${isDark ? 'hover:text-teal-100' : 'hover:text-teal-900'}`}>×</button>
+                  </span>
                 )}
+                <button
+                  onClick={clearAllFilters}
+                  className={`text-xs transition-colors ${isDark ? 'text-gray-400 hover:text-red-400' : 'text-gray-500 hover:text-red-500'}`}
+                >
+                  Сбросить
+                </button>
               </div>
             )}
-          </CardContent>
-        </Card>
+          </div>
+        </div>
+
+        {/* Sidebar Drawer для фильтров */}
+        {showFilterDrawer && (
+          <>
+            {/* Overlay */}
+            <div 
+              className="fixed inset-0 bg-black/30 z-40 transition-opacity duration-300"
+              onClick={() => setShowFilterDrawer(false)}
+            />
+            
+            {/* Drawer */}
+            <div className={`fixed top-16 md:top-0 right-0 h-[calc(100%-4rem)] md:h-full w-full sm:w-80 shadow-xl z-50 transform transition-transform duration-300 ease-out overflow-y-auto ${isDark ? 'bg-[#2a3441]' : 'bg-white'}`}>
+              {/* Header */}
+              <div className={`hidden md:flex sticky top-0 border-b px-4 py-3 items-center justify-between z-10 ${isDark ? 'bg-[#2a3441] border-gray-700' : 'bg-white border-gray-200'}`}>
+                <h2 className={`text-lg font-semibold ${isDark ? 'text-gray-100' : 'text-gray-800'}`}>Фильтры</h2>
+                <button
+                  onClick={() => setShowFilterDrawer(false)}
+                  className={`p-2 rounded-lg transition-colors ${isDark ? 'text-gray-400 hover:text-gray-200 hover:bg-[#3a4451]' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'}`}
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+
+              {/* Мобильный хедер */}
+              <div className={`md:hidden sticky top-0 border-b px-4 py-3 z-10 ${isDark ? 'bg-[#2a3441] border-gray-700' : 'bg-white border-gray-200'}`}>
+                <button
+                  onClick={() => setShowFilterDrawer(false)}
+                  className={`w-full py-2.5 px-4 rounded-xl text-sm font-medium transition-colors flex items-center justify-center gap-2 ${isDark ? 'bg-[#3a4451] hover:bg-[#4a5461] text-gray-300' : 'bg-gray-100 hover:bg-gray-200 text-gray-600'}`}
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
+                  </svg>
+                  Скрыть фильтры
+                </button>
+              </div>
+
+              {/* Content */}
+              <div className="p-4 space-y-4">
+                {/* Секция: Период */}
+                <div className="space-y-3">
+                  <h3 className={`text-xs font-semibold uppercase tracking-wider ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>Период</h3>
+                  
+                  <div className="grid grid-cols-2 gap-2">
+                    {quickPeriods.map((period) => (
+                      <button
+                        key={period.filter}
+                        onClick={() => {
+                          setDraftDateFilter(period.filter)
+                          if (period.filter !== 'custom') {
+                            setDraftStartDate('')
+                            setDraftEndDate('')
+                          }
+                        }}
+                        className={`px-3 py-2 border rounded-lg text-sm font-medium transition-all duration-200 ${
+                          draftDateFilter === period.filter
+                            ? isDark 
+                              ? 'bg-teal-900/50 border-teal-600 text-teal-400' 
+                              : 'bg-teal-50 border-teal-300 text-teal-700'
+                            : isDark 
+                              ? 'bg-[#3a4451] hover:bg-teal-900/30 border-gray-600 hover:border-teal-600 text-gray-300 hover:text-teal-400' 
+                              : 'bg-gray-50 hover:bg-teal-50 border-gray-200 hover:border-teal-300 text-gray-700 hover:text-teal-700'
+                        }`}
+                      >
+                        {period.label}
+                      </button>
+                    ))}
+                  </div>
+                  
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className={`block text-sm font-medium mb-1 ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>С</label>
+                      <input
+                        type="date"
+                        value={draftStartDate}
+                        onChange={(e) => {
+                          setDraftStartDate(e.target.value)
+                          setDraftDateFilter('custom')
+                        }}
+                        className={`w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent transition-all ${isDark ? 'bg-[#3a4451] border-gray-600 text-gray-200' : 'bg-gray-50 border-gray-200 text-gray-800'}`}
+                      />
+                    </div>
+                    <div>
+                      <label className={`block text-sm font-medium mb-1 ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>По</label>
+                      <input
+                        type="date"
+                        value={draftEndDate}
+                        onChange={(e) => {
+                          setDraftEndDate(e.target.value)
+                          setDraftDateFilter('custom')
+                        }}
+                        className={`w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent transition-all ${isDark ? 'bg-[#3a4451] border-gray-600 text-gray-200' : 'bg-gray-50 border-gray-200 text-gray-800'}`}
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <hr className={isDark ? 'border-gray-700' : 'border-gray-200'} />
+
+                {/* Секция: Основные */}
+                <div className="space-y-3">
+                  <h3 className={`text-xs font-semibold uppercase tracking-wider ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>Тип</h3>
+                  
+                  <div className="flex flex-col gap-2">
+                    {TRANSACTION_TYPES.map((type) => (
+                      <button
+                        key={type.value}
+                        onClick={() => setDraftTypeFilter(type.value)}
+                        className={`px-3 py-2 border rounded-lg text-sm font-medium transition-all duration-200 text-left ${
+                          draftTypeFilter === type.value
+                            ? isDark 
+                              ? 'bg-teal-900/50 border-teal-600 text-teal-400' 
+                              : 'bg-teal-50 border-teal-300 text-teal-700'
+                            : isDark 
+                              ? 'bg-[#3a4451] hover:bg-teal-900/30 border-gray-600 hover:border-teal-600 text-gray-300 hover:text-teal-400' 
+                              : 'bg-gray-50 hover:bg-teal-50 border-gray-200 hover:border-teal-300 text-gray-700 hover:text-teal-700'
+                        }`}
+                      >
+                        {type.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              {/* Footer */}
+              <div className={`sticky bottom-0 border-t px-4 py-3 flex gap-2 ${isDark ? 'bg-[#2a3441] border-gray-700' : 'bg-white border-gray-200'}`}>
+                <button
+                  onClick={resetFilters}
+                  className={`flex-1 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${isDark ? 'bg-[#3a4451] hover:bg-[#4a5461] text-gray-300' : 'bg-gray-100 hover:bg-gray-200 text-gray-700'}`}
+                >
+                  Сбросить
+                </button>
+                <button
+                  onClick={applyFilters}
+                  className="flex-1 px-4 py-2 bg-teal-600 hover:bg-teal-700 text-white rounded-lg text-sm font-medium transition-colors"
+                >
+                  Применить
+                </button>
+              </div>
+            </div>
+          </>
+        )}
+
+        {/* Таблица */}
+        {!loading && (
+          <div className="overflow-x-auto -mx-4 px-4 md:mx-0 md:px-0 animate-fade-in">
+            <table className={`w-full border-collapse text-[11px] min-w-[700px] rounded-lg shadow-lg ${isDark ? 'bg-[#2a3441]' : 'bg-white'}`}>
+              <thead>
+                <tr className={`border-b-2 ${isDark ? 'bg-[#3a4451]' : 'bg-gray-50'}`} style={{borderColor: '#0d5c4b'}}>
+                  <th className={`text-left py-3 px-3 font-semibold ${isDark ? 'text-gray-200' : 'text-gray-700'}`}>Дата</th>
+                  <th className={`text-left py-3 px-3 font-semibold ${isDark ? 'text-gray-200' : 'text-gray-700'}`}>Тип</th>
+                  <th className={`text-left py-3 px-3 font-semibold ${isDark ? 'text-gray-200' : 'text-gray-700'}`}>Описание</th>
+                  <th className={`text-left py-3 px-3 font-semibold ${isDark ? 'text-gray-200' : 'text-gray-700'}`}>Назначение</th>
+                  <th className={`text-left py-3 px-3 font-semibold ${isDark ? 'text-gray-200' : 'text-gray-700'}`}>Город</th>
+                  <th className={`text-right py-3 px-3 font-semibold ${isDark ? 'text-gray-200' : 'text-gray-700'}`}>Сумма</th>
+                </tr>
+              </thead>
+              <tbody>
+                {transactions.length === 0 ? (
+                  <tr>
+                    <td colSpan={6} className={`text-center py-8 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
+                      Нет транзакций для этого города
+                    </td>
+                  </tr>
+                ) : (
+                  transactions.map((transaction) => (
+                    <tr key={transaction.id} className={`border-b transition-colors ${isDark ? 'hover:bg-[#3a4451] border-gray-700' : 'hover:bg-teal-50 border-gray-200'}`}>
+                      <td className={`py-3 px-3 ${isDark ? 'text-gray-300' : 'text-gray-800'}`}>
+                        {formatDate(transaction.createdAt)}
+                      </td>
+                      <td className="py-3 px-3">
+                        <span className="px-3 py-1 rounded-full text-xs font-medium text-white shadow-sm" style={{backgroundColor: getTypeColor(transaction.name)}}>
+                          {transaction.name === 'приход' ? 'Приход' : 'Расход'}
+                        </span>
+                      </td>
+                      <td className={`py-3 px-3 ${isDark ? 'text-gray-300' : 'text-gray-800'}`}>
+                        {transaction.note || '-'}
+                      </td>
+                      <td className={`py-3 px-3 ${isDark ? 'text-gray-300' : 'text-gray-800'}`}>
+                        {transaction.paymentPurpose || '-'}
+                      </td>
+                      <td className={`py-3 px-3 ${isDark ? 'text-gray-300' : 'text-gray-800'}`}>
+                        {transaction.city}
+                      </td>
+                      <td className={`py-3 px-3 text-right font-semibold ${
+                        transaction.name === 'приход' 
+                          ? (isDark ? 'text-white' : 'text-[#0d5c4b]')
+                          : (isDark ? 'text-gray-200' : 'text-red-600')
+                      }`}>
+                        {transaction.name === 'приход' ? '+' : '-'}{formatCurrency(Number(transaction.amount))}
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        )}
+
+        {/* Пагинация */}
+        {!loading && transactions.length > 0 && (
+          <div className="flex flex-col sm:flex-row items-center justify-between mt-6 gap-4 border-t pt-4 animate-fade-in" style={{borderColor: isDark ? '#374151' : '#e5e7eb'}}>
+            <div className="flex items-center gap-4">
+              <div className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
+                Показано {((currentPage - 1) * itemsPerPage) + 1} - {Math.min(currentPage * itemsPerPage, totalTransactions)} из {totalTransactions}
+              </div>
+              <div className="flex items-center gap-2">
+                <label className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
+                  На странице:
+                </label>
+                <select
+                  value={itemsPerPage.toString()}
+                  onChange={(e) => {
+                    setItemsPerPage(parseInt(e.target.value))
+                    setCurrentPage(1)
+                  }}
+                  className={`px-2 py-1 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 ${isDark ? 'bg-[#3a4451] border-gray-600 text-gray-200' : 'bg-white border-gray-200 text-gray-800'}`}
+                >
+                  {PAGE_SIZES.map((size) => (
+                    <option key={size.value} value={size.value}>
+                      {size.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+            {totalPages > 1 && (
+              <OptimizedPagination
+                currentPage={currentPage}
+                totalPages={totalPages}
+                onPageChange={handlePageChange}
+                showFirstLast={true}
+                showPrevNext={true}
+                maxVisiblePages={5}
+                disabled={loading}
+              />
+            )}
+          </div>
+        )}
       </div>
+
+      {/* CSS анимации */}
+      <style jsx global>{`
+        @keyframes slideInLeft {
+          from {
+            transform: translateX(-20px);
+            opacity: 0;
+          }
+          to {
+            transform: translateX(0);
+            opacity: 1;
+          }
+        }
+        
+        .animate-slide-in-left {
+          animation: slideInLeft 0.3s ease-out forwards;
+        }
+        
+        @keyframes fadeIn {
+          from { opacity: 0; }
+          to { opacity: 1; }
+        }
+        
+        .animate-fade-in {
+          animation: fadeIn 0.3s ease-out forwards;
+        }
+      `}</style>
     </div>
   )
 }
-

@@ -148,8 +148,8 @@ export default function CitiesReportPage() {
   }
 
   return (
-    <div className="min-h-screen" style={{backgroundColor: '#114643'}}>
-      <div className="container mx-auto px-4 py-8 max-w-7xl">
+    <div>
+      <div className="container mx-auto max-w-7xl">
         <Card className="border-0 shadow-lg">
           <CardContent className="p-4">
             {/* Фильтры по датам */}

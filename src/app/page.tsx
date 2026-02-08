@@ -1,18 +1,7 @@
 'use client'
 
 import React, { useState, useEffect, useCallback, useRef } from 'react'
-import { Card, CardContent } from '@/components/ui/card'
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { 
-  Calendar,
-  Download,
-  RefreshCw,
-  Loader2,
-  ChevronDown
-} from 'lucide-react'
 import { apiClient } from '@/lib/api'
 import { toast } from 'sonner'
 import { logger } from '@/lib/logger'
@@ -48,14 +37,6 @@ const ALL_PURPOSES = [
 // Все доступные города (хардкод из системы + "Не указан" для транзакций без города)
 const ALL_CITIES = ['Саратов', 'Энгельс', 'Ульяновск', 'Пенза', 'Тольятти', 'Омск', 'Ярославль', 'Не указан']
 
-// Критерии для отчёта по кассе
-interface CashCriteria {
-  showIncome: boolean
-  showExpenses: boolean
-  showBalance: boolean
-  showTransactions: boolean
-}
-
 // Интерфейс данных отчёта
 interface ReportData {
   type: ReportType
@@ -67,6 +48,19 @@ interface ReportData {
 }
 
 export default function ReportsPage() {
+  // Тема
+  const [theme, setTheme] = useState<'light' | 'dark'>('light')
+  
+  // Загружаем тему из localStorage
+  useEffect(() => {
+    const savedTheme = localStorage.getItem('admin-theme') as 'light' | 'dark' | null
+    if (savedTheme) {
+      setTheme(savedTheme)
+    }
+  }, [])
+  
+  const isDark = theme === 'dark'
+  
   // Состояние выбора
   const [selectedReport, setSelectedReport] = useState<ReportType>('cash')
   const [availableCities, setAvailableCities] = useState<string[]>([])
@@ -82,38 +76,19 @@ export default function ReportsPage() {
     return new Date().toISOString().split('T')[0]
   })
   
-  // Критерии для кассы
-  const [cashCriteria, setCashCriteria] = useState<CashCriteria>({
-    showIncome: true,
-    showExpenses: true,
-    showBalance: true,
-    showTransactions: false
-  })
-  
   // Фильтр по назначению платежа
   const [filterByPurpose, setFilterByPurpose] = useState(false)
   const [selectedPurposes, setSelectedPurposes] = useState<string[]>([])
-  const [purposeDropdownOpen, setPurposeDropdownOpen] = useState(false)
-  const purposeDropdownRef = useRef<HTMLDivElement>(null)
   
-  // Выпадающий список городов
-  const [cityDropdownOpen, setCityDropdownOpen] = useState(false)
-  const cityDropdownRef = useRef<HTMLDivElement>(null)
+  // Выпадающий список
+  const [showFilters, setShowFilters] = useState(false)
   
-  // Закрытие dropdown при клике вне
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (purposeDropdownRef.current && !purposeDropdownRef.current.contains(event.target as Node)) {
-        setPurposeDropdownOpen(false)
-      }
-      if (cityDropdownRef.current && !cityDropdownRef.current.contains(event.target as Node)) {
-        setCityDropdownOpen(false)
-      }
-    }
-    
-    document.addEventListener('mousedown', handleClickOutside)
-    return () => document.removeEventListener('mousedown', handleClickOutside)
-  }, [])
+  // Черновики фильтров
+  const [draftSelectedCities, setDraftSelectedCities] = useState<string[]>([])
+  const [draftDateFrom, setDraftDateFrom] = useState('')
+  const [draftDateTo, setDraftDateTo] = useState('')
+  const [draftFilterByPurpose, setDraftFilterByPurpose] = useState(false)
+  const [draftSelectedPurposes, setDraftSelectedPurposes] = useState<string[]>([])
   
   // Состояние UI
   const [isLoadingCities, setIsLoadingCities] = useState(true)
@@ -122,24 +97,48 @@ export default function ReportsPage() {
   
   // Загрузка списка городов
   useEffect(() => {
-    // Используем полный список городов из константы
     setAvailableCities(ALL_CITIES)
     setSelectedCities(ALL_CITIES)
+    setDraftSelectedCities(ALL_CITIES)
     setIsLoadingCities(false)
   }, [])
   
-  // Обработка выбора города
-  const handleCityChange = (city: string) => {
-    if (city === 'all') {
-      setSelectedCities([...availableCities])
-    } else {
-      setSelectedCities([city])
-    }
+  // Открытие панели фильтров
+  const openFiltersPanel = () => {
+    setDraftSelectedCities(selectedCities)
+    setDraftDateFrom(dateFrom)
+    setDraftDateTo(dateTo)
+    setDraftFilterByPurpose(filterByPurpose)
+    setDraftSelectedPurposes(selectedPurposes)
+    setShowFilters(true)
+  }
+  
+  // Применение фильтров
+  const applyFilters = () => {
+    setSelectedCities(draftSelectedCities)
+    setDateFrom(draftDateFrom)
+    setDateTo(draftDateTo)
+    setFilterByPurpose(draftFilterByPurpose)
+    setSelectedPurposes(draftSelectedPurposes)
+    setShowFilters(false)
+  }
+  
+  // Сброс фильтров
+  const resetFilters = () => {
+    setDraftSelectedCities(ALL_CITIES)
+    setDraftDateFrom(() => {
+      const date = new Date()
+      date.setDate(1)
+      return date.toISOString().split('T')[0]
+    })
+    setDraftDateTo(new Date().toISOString().split('T')[0])
+    setDraftFilterByPurpose(false)
+    setDraftSelectedPurposes([])
   }
   
   // Обработка выбора назначения платежа
   const handlePurposeToggle = (purpose: string) => {
-    setSelectedPurposes(prev => {
+    setDraftSelectedPurposes(prev => {
       if (prev.includes(purpose)) {
         return prev.filter(p => p !== purpose)
       } else {
@@ -150,10 +149,10 @@ export default function ReportsPage() {
   
   // Выбрать все назначения
   const handleSelectAllPurposes = () => {
-    if (selectedPurposes.length === ALL_PURPOSES.length) {
-      setSelectedPurposes([])
+    if (draftSelectedPurposes.length === ALL_PURPOSES.length) {
+      setDraftSelectedPurposes([])
     } else {
-      setSelectedPurposes(ALL_PURPOSES.map(p => p.value))
+      setDraftSelectedPurposes(ALL_PURPOSES.map(p => p.value))
     }
   }
   
@@ -382,7 +381,7 @@ export default function ReportsPage() {
     } finally {
       setIsGenerating(false)
     }
-  }, [selectedReport, selectedCities, dateFrom, dateTo, cashCriteria, availableCities.length, filterByPurpose, selectedPurposes])
+  }, [selectedReport, selectedCities, dateFrom, dateTo, availableCities.length, filterByPurpose, selectedPurposes])
   
   // Форматирование валюты
   const formatCurrency = (amount: number) => {
@@ -403,580 +402,567 @@ export default function ReportsPage() {
   }
 
   return (
-    <div className="min-h-screen" style={{ backgroundColor: '#114643' }}>
-      <div className="container mx-auto px-4 py-8 max-w-7xl">
-        
-        {/* Фильтры */}
-        <Card className="border-0 shadow-lg mb-6">
-          <CardContent className="p-4">
-            <div className="flex flex-col gap-4">
-              
-              {/* Строка 1: Тип отчёта и период */}
-              <div className="flex flex-wrap items-center gap-4">
-                <div className="flex items-center gap-2">
-                  <span className="text-sm font-medium text-gray-600">Отчёт:</span>
-                  <Select value={selectedReport} onValueChange={(v) => setSelectedReport(v as ReportType)}>
-                    <SelectTrigger className="w-48">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="cash">По кассе</SelectItem>
-                      <SelectItem value="orders">По заказам</SelectItem>
-                      <SelectItem value="campaigns">По рекламным кампаниям</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                
-                <div className="flex items-center gap-2">
-                  <Calendar className="h-4 w-4 text-gray-500" />
-                  <span className="text-sm text-gray-600">от:</span>
-                  <Input
-                    type="date"
-                    value={dateFrom}
-                    onChange={(e) => setDateFrom(e.target.value)}
-                    className="w-40"
-                  />
-                  <span className="text-sm text-gray-600">до:</span>
-                  <Input
-                    type="date"
-                    value={dateTo}
-                    onChange={(e) => setDateTo(e.target.value)}
-                    className="w-40"
-                  />
-                </div>
-                
-                {/* Быстрые периоды: День, Неделя, Месяц */}
-                <div className="flex gap-1">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => {
-                      const today = new Date().toISOString().split('T')[0]
-                      setDateFrom(today)
-                      setDateTo(today)
-                    }}
-                  >
-                    День
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => {
-                      const now = new Date()
-                      setDateFrom(new Date(now.setDate(now.getDate() - 7)).toISOString().split('T')[0])
-                      setDateTo(new Date().toISOString().split('T')[0])
-                    }}
-                  >
-                    Неделя
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => {
-                      const now = new Date()
-                      setDateFrom(new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0])
-                      setDateTo(new Date().toISOString().split('T')[0])
-                    }}
-                  >
-                    Месяц
-                  </Button>
+    <div className={`min-h-screen transition-colors duration-300 ${isDark ? 'bg-[#1e2530]' : 'bg-white'}`}>
+      <div className="px-4 py-6">
+        <div className="w-full">
+          
+          {/* Табы типов отчётов + кнопка фильтров */}
+          <div className="mb-4 animate-slide-in-left">
+            <div className="flex items-center gap-2">
+              {/* Табы с прокруткой */}
+              <div className="flex-1 min-w-0 overflow-x-auto scrollbar-hide">
+                <div className={`flex gap-1 p-1 rounded-lg w-max ${isDark ? 'bg-[#2a3441]' : 'bg-gray-100'}`}>
+                  {[
+                    { id: 'cash', label: 'По кассе' },
+                    { id: 'orders', label: 'По заказам' },
+                    { id: 'campaigns', label: 'По РК' },
+                  ].map((tab) => (
+                    <button
+                      key={tab.id}
+                      onClick={() => setSelectedReport(tab.id as ReportType)}
+                      className={`px-3 py-1.5 text-sm font-medium rounded-md transition-all duration-200 whitespace-nowrap ${
+                        selectedReport === tab.id
+                          ? 'bg-[#0d5c4b] text-white shadow-sm'
+                          : isDark
+                            ? 'text-gray-400 hover:text-gray-200 hover:bg-[#3a4451]'
+                            : 'text-gray-600 hover:text-gray-800 hover:bg-gray-50'
+                      }`}
+                    >
+                      {tab.label}
+                    </button>
+                  ))}
                 </div>
               </div>
+
+              {/* Иконка фильтров */}
+              <button
+                onClick={openFiltersPanel}
+                className={`relative flex-shrink-0 p-2 rounded-lg transition-all duration-200 ${
+                  isDark 
+                    ? 'bg-[#2a3441] hover:bg-[#3a4451] text-gray-400 hover:text-teal-400'
+                    : 'bg-gray-100 hover:bg-gray-200 text-gray-600 hover:text-teal-600'
+                }`}
+                title="Фильтры"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
+                </svg>
+                {/* Индикатор активных фильтров */}
+                {(selectedCities.length < availableCities.length || filterByPurpose) && (
+                  <span className={`absolute -top-0.5 -right-0.5 w-2.5 h-2.5 bg-teal-500 rounded-full border-2 ${
+                    isDark ? 'border-[#1e2530]' : 'border-white'
+                  }`}></span>
+                )}
+              </button>
+
+              {/* Кнопка генерации */}
+              <button
+                onClick={generateReport}
+                disabled={isGenerating || isLoadingCities}
+                className="flex-shrink-0 px-4 py-2 bg-teal-600 hover:bg-teal-700 disabled:bg-gray-400 text-white rounded-lg transition-all duration-200 text-sm font-medium flex items-center gap-2"
+              >
+                {isGenerating ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                    <span className="hidden sm:inline">Формирование...</span>
+                  </>
+                ) : (
+                  <>
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
+                    <span className="hidden sm:inline">Сформировать</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+
+          {/* Выезжающая панель фильтров справа */}
+          {showFilters && (
+            <>
+              {/* Затемнение фона */}
+              <div 
+                className={`fixed inset-0 z-40 transition-opacity duration-300 ${isDark ? 'bg-black/50' : 'bg-black/30'}`}
+                onClick={() => setShowFilters(false)}
+              />
               
-              {/* Строка 2: Города и критерии */}
-              <div className="flex flex-wrap items-center gap-4">
-                <div className="flex items-center gap-2">
-                  <span className="text-sm font-medium text-gray-600">Город:</span>
-                  <Select 
-                    value={selectedCities.length === availableCities.length ? 'all' : selectedCities[0] || 'all'}
-                    onValueChange={handleCityChange}
+              {/* Панель фильтров */}
+              <div className={`fixed top-16 md:top-0 right-0 h-[calc(100%-4rem)] md:h-full w-full sm:w-80 shadow-xl z-50 transform transition-transform duration-300 ease-out overflow-y-auto ${
+                isDark ? 'bg-[#2a3441]' : 'bg-white'
+              }`}>
+                {/* Заголовок панели - только на десктопе */}
+                <div className={`hidden md:flex sticky top-0 border-b px-4 py-3 items-center justify-between z-10 ${
+                  isDark ? 'bg-[#2a3441] border-gray-700' : 'bg-white border-gray-200'
+                }`}>
+                  <h2 className={`text-lg font-semibold ${isDark ? 'text-gray-100' : 'text-gray-800'}`}>Фильтры отчёта</h2>
+                  <button
+                    onClick={() => setShowFilters(false)}
+                    className={`p-2 rounded-lg transition-colors ${
+                      isDark ? 'text-gray-400 hover:text-gray-200 hover:bg-[#3a4451]' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
+                    }`}
+                    title="Закрыть"
                   >
-                    <SelectTrigger className="w-48">
-                      <SelectValue placeholder="Выберите город" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">Все города</SelectItem>
-                      {availableCities.map(city => (
-                        <SelectItem key={city} value={city}>{city}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
                 </div>
-                
-                {/* Критерии для кассы */}
-                {selectedReport === 'cash' && (
-                  <div className="flex items-center gap-4 border-l pl-4 ml-2">
-                    <span className="text-sm text-gray-500">Показать:</span>
-                    <label className="flex items-center gap-1.5 cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={cashCriteria.showIncome}
-                        onChange={(e) => setCashCriteria(prev => ({ ...prev, showIncome: e.target.checked }))}
-                        className="h-4 w-4 rounded border-gray-300 text-teal-600"
-                      />
-                      <span className="text-sm text-gray-600">Оборот</span>
-                    </label>
-                    <label className="flex items-center gap-1.5 cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={cashCriteria.showExpenses}
-                        onChange={(e) => setCashCriteria(prev => ({ ...prev, showExpenses: e.target.checked }))}
-                        className="h-4 w-4 rounded border-gray-300 text-teal-600"
-                      />
-                      <span className="text-sm text-gray-600">Прибыль</span>
-                    </label>
-                    <label className="flex items-center gap-1.5 cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={cashCriteria.showBalance}
-                        onChange={(e) => setCashCriteria(prev => ({ ...prev, showBalance: e.target.checked }))}
-                        className="h-4 w-4 rounded border-gray-300 text-teal-600"
-                      />
-                      <span className="text-sm text-gray-600">Касса</span>
-                    </label>
-                    <label className="flex items-center gap-1.5 cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={cashCriteria.showTransactions}
-                        onChange={(e) => setCashCriteria(prev => ({ ...prev, showTransactions: e.target.checked }))}
-                        className="h-4 w-4 rounded border-gray-300 text-teal-600"
-                      />
-                      <span className="text-sm text-gray-600">Заказов</span>
-                    </label>
+
+                {/* Кнопка скрыть - только на мобильных */}
+                <div className={`md:hidden sticky top-0 border-b px-4 py-3 z-10 ${
+                  isDark ? 'bg-[#2a3441] border-gray-700' : 'bg-white border-gray-200'
+                }`}>
+                  <button
+                    onClick={() => setShowFilters(false)}
+                    className={`w-full py-2.5 px-4 rounded-xl text-sm font-medium transition-colors flex items-center justify-center gap-2 ${
+                      isDark ? 'bg-[#3a4451] hover:bg-[#4a5461] text-gray-300' : 'bg-gray-100 hover:bg-gray-200 text-gray-600'
+                    }`}
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
+                    </svg>
+                    Скрыть фильтры
+                  </button>
+                </div>
+
+                {/* Содержимое фильтров */}
+                <div className="p-4 space-y-4">
+                  {/* Секция: Период */}
+                  <div className="space-y-3">
+                    <h3 className={`text-xs font-semibold uppercase tracking-wider ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>Период</h3>
                     
-                    {/* Фильтр по назначению платежа */}
-                    <div className="flex items-center gap-2 border-l pl-4 ml-2">
-                      <label className="flex items-center gap-1.5 cursor-pointer">
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <label className={`block text-sm font-medium mb-1 ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>С</label>
                         <input
-                          type="checkbox"
-                          checked={filterByPurpose}
-                          onChange={(e) => {
-                            setFilterByPurpose(e.target.checked)
-                            if (!e.target.checked) {
-                              setSelectedPurposes([])
-                              setPurposeDropdownOpen(false)
-                            }
-                          }}
-                          className="h-4 w-4 rounded border-gray-300 text-teal-600"
+                          type="date"
+                          value={draftDateFrom}
+                          onChange={(e) => setDraftDateFrom(e.target.value)}
+                          className={`w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent transition-all ${
+                            isDark 
+                              ? 'bg-[#3a4451] border-gray-600 text-gray-100'
+                              : 'bg-gray-50 border-gray-200 text-gray-800'
+                          }`}
                         />
-                        <span className="text-sm text-gray-600">Назначение:</span>
-                      </label>
-                      
-                      {filterByPurpose && (
-                        <div className="relative" ref={purposeDropdownRef}>
-                          <button
-                            type="button"
-                            onClick={() => setPurposeDropdownOpen(!purposeDropdownOpen)}
-                            className="flex items-center gap-2 px-3 py-1.5 text-sm border border-gray-300 rounded-lg bg-white hover:bg-gray-50"
-                          >
-                            <span className="text-gray-700">
-                              {selectedPurposes.length === 0 
-                                ? 'Выбрать' 
-                                : selectedPurposes.length === ALL_PURPOSES.length 
-                                  ? 'Все' 
-                                  : `Выбрано: ${selectedPurposes.length}`
-                              }
-                            </span>
-                            <ChevronDown className={`h-4 w-4 text-gray-500 transition-transform ${purposeDropdownOpen ? 'rotate-180' : ''}`} />
-                          </button>
-                          
-                          {purposeDropdownOpen && (
-                            <div className="absolute top-full left-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-50 min-w-48">
-                              <div className="p-2 border-b border-gray-100">
-                                <label className="flex items-center gap-2 cursor-pointer hover:bg-gray-50 p-1.5 rounded">
-                                  <input
-                                    type="checkbox"
-                                    checked={selectedPurposes.length === ALL_PURPOSES.length}
-                                    onChange={handleSelectAllPurposes}
-                                    className="h-4 w-4 rounded border-gray-300 text-teal-600"
-                                  />
-                                  <span className="text-sm font-medium text-gray-700">Выбрать все</span>
-                                </label>
-                              </div>
-                              <div className="p-2 max-h-48 overflow-y-auto">
-                                {ALL_PURPOSES.map(purpose => (
-                                  <label 
-                                    key={purpose.value} 
-                                    className="flex items-center gap-2 cursor-pointer hover:bg-gray-50 p-1.5 rounded"
-                                  >
-                                    <input
-                                      type="checkbox"
-                                      checked={selectedPurposes.includes(purpose.value)}
-                                      onChange={() => handlePurposeToggle(purpose.value)}
-                                      className="h-4 w-4 rounded border-gray-300 text-teal-600"
-                                    />
-                                    <span className="text-sm text-gray-700">{purpose.label}</span>
-                                  </label>
-                                ))}
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                      )}
+                      </div>
+                      <div>
+                        <label className={`block text-sm font-medium mb-1 ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>По</label>
+                        <input
+                          type="date"
+                          value={draftDateTo}
+                          onChange={(e) => setDraftDateTo(e.target.value)}
+                          className={`w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent transition-all ${
+                            isDark 
+                              ? 'bg-[#3a4451] border-gray-600 text-gray-100'
+                              : 'bg-gray-50 border-gray-200 text-gray-800'
+                          }`}
+                        />
+                      </div>
+                    </div>
+                    
+                    {/* Быстрые периоды */}
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => {
+                          const today = new Date().toISOString().split('T')[0]
+                          setDraftDateFrom(today)
+                          setDraftDateTo(today)
+                        }}
+                        className={`flex-1 px-3 py-1.5 text-xs font-medium rounded-md transition-all ${
+                          isDark 
+                            ? 'bg-[#3a4451] hover:bg-[#4a5461] text-gray-300'
+                            : 'bg-gray-100 hover:bg-gray-200 text-gray-600'
+                        }`}
+                      >
+                        День
+                      </button>
+                      <button
+                        onClick={() => {
+                          const now = new Date()
+                          setDraftDateFrom(new Date(now.setDate(now.getDate() - 7)).toISOString().split('T')[0])
+                          setDraftDateTo(new Date().toISOString().split('T')[0])
+                        }}
+                        className={`flex-1 px-3 py-1.5 text-xs font-medium rounded-md transition-all ${
+                          isDark 
+                            ? 'bg-[#3a4451] hover:bg-[#4a5461] text-gray-300'
+                            : 'bg-gray-100 hover:bg-gray-200 text-gray-600'
+                        }`}
+                      >
+                        Неделя
+                      </button>
+                      <button
+                        onClick={() => {
+                          const now = new Date()
+                          setDraftDateFrom(new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0])
+                          setDraftDateTo(new Date().toISOString().split('T')[0])
+                        }}
+                        className={`flex-1 px-3 py-1.5 text-xs font-medium rounded-md transition-all ${
+                          isDark 
+                            ? 'bg-[#3a4451] hover:bg-[#4a5461] text-gray-300'
+                            : 'bg-gray-100 hover:bg-gray-200 text-gray-600'
+                        }`}
+                      >
+                        Месяц
+                      </button>
                     </div>
                   </div>
-                )}
-                
-                {/* Кнопка генерации */}
-                <div className="ml-auto">
-                  <Button
-                    onClick={generateReport}
-                    disabled={isGenerating || isLoadingCities}
-                    className="bg-teal-600 hover:bg-teal-700"
-                  >
-                    {isGenerating ? (
-                      <>
-                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                        Формирование...
-                      </>
-                    ) : (
-                      'Сформировать отчёт'
-                    )}
-                  </Button>
+
+                  <hr className={isDark ? 'border-gray-700' : 'border-gray-200'} />
+
+                  {/* Секция: Город */}
+                  <div className="space-y-3">
+                    <h3 className={`text-xs font-semibold uppercase tracking-wider ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>Город</h3>
+                    
+                    <div>
+                      <Select 
+                        value={draftSelectedCities.length === availableCities.length ? 'all' : draftSelectedCities[0] || 'all'}
+                        onValueChange={(value) => {
+                          if (value === 'all') {
+                            setDraftSelectedCities([...availableCities])
+                          } else {
+                            setDraftSelectedCities([value])
+                          }
+                        }}
+                      >
+                        <SelectTrigger className={`w-full ${isDark ? 'bg-[#3a4451] border-gray-600 text-gray-100' : 'bg-gray-50 border-gray-200 text-gray-800'}`}>
+                          <SelectValue placeholder="Выберите город" />
+                        </SelectTrigger>
+                        <SelectContent className={isDark ? 'bg-[#2a3441] border-gray-600' : 'bg-white border-gray-200'}>
+                          <SelectItem value="all" className={isDark ? 'text-gray-100 focus:bg-[#3a4451] focus:text-teal-400' : 'text-gray-800 focus:bg-teal-50 focus:text-teal-700'}>Все города</SelectItem>
+                          {availableCities.map(city => (
+                            <SelectItem key={city} value={city} className={isDark ? 'text-gray-100 focus:bg-[#3a4451] focus:text-teal-400' : 'text-gray-800 focus:bg-teal-50 focus:text-teal-700'}>{city}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+
+                  {/* Секция: Назначение платежа (только для отчёта по кассе) */}
+                  {selectedReport === 'cash' && (
+                    <>
+                      <hr className={isDark ? 'border-gray-700' : 'border-gray-200'} />
+                      
+                      <div className="space-y-3">
+                        <div className="flex items-center justify-between">
+                          <h3 className={`text-xs font-semibold uppercase tracking-wider ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>Назначение платежа</h3>
+                          <label className="flex items-center gap-2 cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={draftFilterByPurpose}
+                              onChange={(e) => setDraftFilterByPurpose(e.target.checked)}
+                              className="h-4 w-4 rounded border-gray-300 text-teal-600 focus:ring-teal-500"
+                            />
+                            <span className={`text-xs ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>Группировать</span>
+                          </label>
+                        </div>
+                        
+                        {draftFilterByPurpose && (
+                          <div className={`p-3 rounded-lg space-y-2 ${isDark ? 'bg-[#3a4451]' : 'bg-gray-50'}`}>
+                            <label className="flex items-center gap-2 cursor-pointer hover:bg-opacity-50 p-1.5 rounded">
+                              <input
+                                type="checkbox"
+                                checked={draftSelectedPurposes.length === ALL_PURPOSES.length}
+                                onChange={handleSelectAllPurposes}
+                                className="h-4 w-4 rounded border-gray-300 text-teal-600 focus:ring-teal-500"
+                              />
+                              <span className={`text-sm font-medium ${isDark ? 'text-gray-200' : 'text-gray-700'}`}>Выбрать все</span>
+                            </label>
+                            <hr className={isDark ? 'border-gray-600' : 'border-gray-200'} />
+                            <div className="max-h-40 overflow-y-auto space-y-1">
+                              {ALL_PURPOSES.map(purpose => (
+                                <label 
+                                  key={purpose.value} 
+                                  className="flex items-center gap-2 cursor-pointer hover:bg-opacity-50 p-1.5 rounded"
+                                >
+                                  <input
+                                    type="checkbox"
+                                    checked={draftSelectedPurposes.includes(purpose.value)}
+                                    onChange={() => handlePurposeToggle(purpose.value)}
+                                    className="h-4 w-4 rounded border-gray-300 text-teal-600 focus:ring-teal-500"
+                                  />
+                                  <span className={`text-sm ${isDark ? 'text-gray-300' : 'text-gray-600'}`}>{purpose.label}</span>
+                                </label>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </>
+                  )}
                 </div>
+
+                {/* Нижняя панель с кнопками */}
+                <div className={`sticky bottom-0 border-t px-4 py-3 flex gap-2 ${
+                  isDark ? 'bg-[#2a3441] border-gray-700' : 'bg-white border-gray-200'
+                }`}>
+                  <button
+                    onClick={resetFilters}
+                    className={`flex-1 px-4 py-2 rounded-lg transition-colors text-sm font-medium ${
+                      isDark 
+                        ? 'bg-[#3a4451] hover:bg-[#4a5461] text-gray-300'
+                        : 'bg-gray-100 hover:bg-gray-200 text-gray-700'
+                    }`}
+                  >
+                    Сбросить
+                  </button>
+                  <button
+                    onClick={applyFilters}
+                    className="flex-1 px-4 py-2 bg-teal-500 hover:bg-teal-600 text-white rounded-lg transition-colors text-sm font-medium"
+                  >
+                    Применить
+                  </button>
+                </div>
+              </div>
+            </>
+          )}
+
+          {/* Информация о текущих фильтрах */}
+          {reportData && (
+            <div className={`mb-4 flex items-center justify-between text-sm ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
+              <div className="flex items-center gap-2 flex-wrap">
+                <span>
+                  {reportData.cities.length === availableCities.length 
+                    ? 'Все города' 
+                    : `Город: ${reportData.cities.join(', ')}`
+                  }
+                </span>
+                <span>•</span>
+                <span>{formatDate(reportData.period.from)} — {formatDate(reportData.period.to)}</span>
+                {reportData.purposes && reportData.purposes.length > 0 && (
+                  <>
+                    <span>•</span>
+                    <span>Назначение: {reportData.purposes.length === ALL_PURPOSES.length ? 'Все' : reportData.purposes.join(', ')}</span>
+                  </>
+                )}
+              </div>
+              <div className="flex gap-2">
+                <button 
+                  onClick={() => window.print()}
+                  className={`p-2 rounded-lg transition-colors ${isDark ? 'hover:bg-[#3a4451] text-gray-400' : 'hover:bg-gray-100 text-gray-500'}`}
+                  title="Экспорт"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                  </svg>
+                </button>
+                <button 
+                  onClick={generateReport}
+                  className={`p-2 rounded-lg transition-colors ${isDark ? 'hover:bg-[#3a4451] text-gray-400' : 'hover:bg-gray-100 text-gray-500'}`}
+                  title="Обновить"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                  </svg>
+                </button>
               </div>
             </div>
-          </CardContent>
-        </Card>
-        
-        {/* Результат - показываем только после генерации */}
-        {reportData && (
-          <>
-            {/* Таблица */}
-            <Card className="border-0 shadow-lg">
-              <CardContent className="p-4">
-                <div className="flex items-center justify-between mb-4">
-                  <div className="text-sm text-gray-500">
-                    {reportData.cities.length === availableCities.length 
-                      ? 'Все города' 
-                      : `Город: ${reportData.cities.join(', ')}`
-                    }
-                    {' | '}
-                    {formatDate(reportData.period.from)} — {formatDate(reportData.period.to)}
-                    {reportData.purposes && reportData.purposes.length > 0 && (
-                      <> | Назначение: {reportData.purposes.length === ALL_PURPOSES.length ? 'Все' : reportData.purposes.join(', ')}</>
-                    )}
-                  </div>
-                  <div className="flex gap-2">
-                    <Button variant="outline" size="sm" onClick={() => window.print()}>
-                      <Download className="h-4 w-4 mr-2" />
-                      Экспорт
-                    </Button>
-                    <Button variant="outline" size="sm" onClick={generateReport}>
-                      <RefreshCw className="h-4 w-4 mr-2" />
-                      Обновить
-                    </Button>
-                  </div>
-                </div>
-                
-                {/* Таблица кассы (простой режим - без группировки по назначению) */}
-                {reportData.type === 'cash' && !reportData.data.groupByPurpose && (
-                  <Table>
-                    <TableHeader className="bg-gray-50/50">
-                      <TableRow>
-                        <TableHead className="text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                          Город
-                        </TableHead>
-                        <TableHead className="text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                          Приход
-                        </TableHead>
-                        <TableHead className="text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                          Расход
-                        </TableHead>
-                        <TableHead className="text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                          Касса
-                        </TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
+          )}
+
+          {/* Состояние загрузки */}
+          {isGenerating && (
+            <div className="text-center py-8 animate-fade-in">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-teal-600 mx-auto mb-4"></div>
+              <p className={`font-medium ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>Формирование отчёта...</p>
+            </div>
+          )}
+
+          {/* Пустое состояние */}
+          {!reportData && !isGenerating && (
+            <div className={`text-center py-16 rounded-lg ${isDark ? 'bg-[#2a3441]' : 'bg-gray-50'}`}>
+              <svg className={`w-16 h-16 mx-auto mb-4 ${isDark ? 'text-gray-600' : 'text-gray-300'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
+              <p className={`text-lg mb-2 ${isDark ? 'text-gray-300' : 'text-gray-600'}`}>Выберите параметры и нажмите &quot;Сформировать&quot;</p>
+              <p className={`text-sm ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>Результат появится здесь</p>
+            </div>
+          )}
+
+          {/* Таблица результатов */}
+          {reportData && !isGenerating && (
+            <div className="animate-fade-in">
+              
+              {/* Таблица кассы (простой режим) */}
+              {reportData.type === 'cash' && !reportData.data.groupByPurpose && (
+                <div className={`rounded-lg shadow-lg overflow-hidden ${isDark ? 'bg-[#2a3441]' : 'bg-white'}`}>
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className={`border-b-2 ${isDark ? 'bg-[#3a4451] border-[#0d5c4b]' : 'bg-gray-50 border-[#0d5c4b]'}`}>
+                        <th className={`text-left py-3 px-4 font-semibold ${isDark ? 'text-gray-200' : 'text-gray-700'}`}>Город</th>
+                        <th className={`text-right py-3 px-4 font-semibold ${isDark ? 'text-gray-200' : 'text-gray-700'}`}>Приход</th>
+                        <th className={`text-right py-3 px-4 font-semibold ${isDark ? 'text-gray-200' : 'text-gray-700'}`}>Расход</th>
+                        <th className={`text-right py-3 px-4 font-semibold ${isDark ? 'text-gray-200' : 'text-gray-700'}`}>Касса</th>
+                      </tr>
+                    </thead>
+                    <tbody>
                       {reportData.data.cities.map((city: any) => (
-                        <TableRow key={city.city} className="hover:bg-gray-50">
-                          <TableCell className="font-medium text-gray-900">{city.city}</TableCell>
-                          <TableCell className="text-right font-medium text-green-600">
-                            {formatCurrency(city.income)}
-                          </TableCell>
-                          <TableCell className="text-right font-medium text-red-600">
-                            {formatCurrency(city.expense)}
-                          </TableCell>
-                          <TableCell className="text-right font-bold text-teal-700">
-                            {formatCurrency(city.balance)}
-                          </TableCell>
-                        </TableRow>
+                        <tr key={city.city} className={`border-b transition-colors ${isDark ? 'border-gray-700 hover:bg-[#3a4451]' : 'border-gray-200 hover:bg-gray-50'}`}>
+                          <td className={`py-3 px-4 font-medium ${isDark ? 'text-gray-100' : 'text-gray-800'}`}>{city.city}</td>
+                          <td className="py-3 px-4 text-right font-medium text-green-600">{formatCurrency(city.income)}</td>
+                          <td className="py-3 px-4 text-right font-medium text-red-600">{formatCurrency(city.expense)}</td>
+                          <td className={`py-3 px-4 text-right font-bold ${isDark ? 'text-teal-400' : 'text-teal-700'}`}>{formatCurrency(city.balance)}</td>
+                        </tr>
                       ))}
-                      
-                      {/* Итого */}
-                      <TableRow className="bg-teal-50 font-bold border-t-2 border-teal-500">
-                        <TableCell className="text-teal-900">ИТОГО</TableCell>
-                        <TableCell className="text-right text-green-700">
-                          {formatCurrency(reportData.data.totals.income)}
-                        </TableCell>
-                        <TableCell className="text-right text-red-700">
-                          {formatCurrency(reportData.data.totals.expense)}
-                        </TableCell>
-                        <TableCell className="text-right text-teal-800">
-                          {formatCurrency(reportData.data.totals.balance)}
-                        </TableCell>
-                      </TableRow>
-                    </TableBody>
-                  </Table>
-                )}
-                
-                {/* Таблица кассы с группировкой по назначениям */}
-                {reportData.type === 'cash' && reportData.data.groupByPurpose && (
-                  <Table>
-                    <TableHeader className="bg-gray-50/50">
-                      <TableRow>
-                        <TableHead className="text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                          Город / Назначение платежа
-                        </TableHead>
-                        <TableHead className="text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                          Приход
-                        </TableHead>
-                        <TableHead className="text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                          Расход
-                        </TableHead>
-                        <TableHead className="text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                          Итого
-                        </TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
+                      <tr className={`font-bold border-t-2 ${isDark ? 'bg-[#3a4451] border-[#0d5c4b]' : 'bg-teal-50 border-[#0d5c4b]'}`}>
+                        <td className={`py-3 px-4 ${isDark ? 'text-gray-100' : 'text-teal-900'}`}>ИТОГО</td>
+                        <td className="py-3 px-4 text-right text-green-700">{formatCurrency(reportData.data.totals.income)}</td>
+                        <td className="py-3 px-4 text-right text-red-700">{formatCurrency(reportData.data.totals.expense)}</td>
+                        <td className={`py-3 px-4 text-right ${isDark ? 'text-teal-400' : 'text-teal-800'}`}>{formatCurrency(reportData.data.totals.balance)}</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              )}
+              
+              {/* Таблица кассы с группировкой по назначениям */}
+              {reportData.type === 'cash' && reportData.data.groupByPurpose && (
+                <div className={`rounded-lg shadow-lg overflow-hidden ${isDark ? 'bg-[#2a3441]' : 'bg-white'}`}>
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className={`border-b-2 ${isDark ? 'bg-[#3a4451] border-[#0d5c4b]' : 'bg-gray-50 border-[#0d5c4b]'}`}>
+                        <th className={`text-left py-3 px-4 font-semibold ${isDark ? 'text-gray-200' : 'text-gray-700'}`}>Город / Назначение</th>
+                        <th className={`text-right py-3 px-4 font-semibold ${isDark ? 'text-gray-200' : 'text-gray-700'}`}>Приход</th>
+                        <th className={`text-right py-3 px-4 font-semibold ${isDark ? 'text-gray-200' : 'text-gray-700'}`}>Расход</th>
+                        <th className={`text-right py-3 px-4 font-semibold ${isDark ? 'text-gray-200' : 'text-gray-700'}`}>Итого</th>
+                      </tr>
+                    </thead>
+                    <tbody>
                       {reportData.data.cities.map((city: any) => (
                         <React.Fragment key={city.city}>
-                          {/* Строка города */}
-                          <TableRow className="bg-gray-50">
-                            <TableCell className="font-bold text-gray-900">{city.city}</TableCell>
-                            <TableCell className="text-right font-bold text-green-600">
-                              {formatCurrency(city.totalIncome)}
-                            </TableCell>
-                            <TableCell className="text-right font-bold text-red-600">
-                              {formatCurrency(city.totalExpense)}
-                            </TableCell>
-                            <TableCell className="text-right font-bold text-teal-700">
-                              {formatCurrency(city.balance)}
-                            </TableCell>
-                          </TableRow>
-                          
-                          {/* Строки назначений платежа */}
+                          <tr className={isDark ? 'bg-[#3a4451]' : 'bg-gray-50'}>
+                            <td className={`py-3 px-4 font-bold ${isDark ? 'text-gray-100' : 'text-gray-800'}`}>{city.city}</td>
+                            <td className="py-3 px-4 text-right font-bold text-green-600">{formatCurrency(city.totalIncome)}</td>
+                            <td className="py-3 px-4 text-right font-bold text-red-600">{formatCurrency(city.totalExpense)}</td>
+                            <td className={`py-3 px-4 text-right font-bold ${isDark ? 'text-teal-400' : 'text-teal-700'}`}>{formatCurrency(city.balance)}</td>
+                          </tr>
                           {city.purposes?.map((purpose: any) => (
-                            <TableRow key={`${city.city}-${purpose.purpose}`} className="hover:bg-gray-50">
-                              <TableCell className="pl-8 text-gray-700">
-                                {purpose.purpose}
-                              </TableCell>
-                              <TableCell className="text-right text-green-600">
-                                {purpose.income > 0 ? formatCurrency(purpose.income) : '-'}
-                              </TableCell>
-                              <TableCell className="text-right text-red-600">
-                                {purpose.expense > 0 ? formatCurrency(purpose.expense) : '-'}
-                              </TableCell>
-                              <TableCell className="text-right text-gray-700">
-                                {formatCurrency(purpose.balance)}
-                              </TableCell>
-                            </TableRow>
+                            <tr key={`${city.city}-${purpose.purpose}`} className={`border-b transition-colors ${isDark ? 'border-gray-700 hover:bg-[#3a4451]' : 'border-gray-100 hover:bg-gray-50'}`}>
+                              <td className={`py-2 px-4 pl-8 ${isDark ? 'text-gray-300' : 'text-gray-600'}`}>{purpose.purpose}</td>
+                              <td className="py-2 px-4 text-right text-green-600">{purpose.income > 0 ? formatCurrency(purpose.income) : '-'}</td>
+                              <td className="py-2 px-4 text-right text-red-600">{purpose.expense > 0 ? formatCurrency(purpose.expense) : '-'}</td>
+                              <td className={`py-2 px-4 text-right ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>{formatCurrency(purpose.balance)}</td>
+                            </tr>
                           ))}
                         </React.Fragment>
                       ))}
-                      
-                      {/* Итого */}
-                      <TableRow className="bg-teal-50 font-bold border-t-2 border-teal-500">
-                        <TableCell className="text-teal-900">ИТОГО</TableCell>
-                        <TableCell className="text-right text-green-700">
-                          {formatCurrency(reportData.data.totals.income)}
-                        </TableCell>
-                        <TableCell className="text-right text-red-700">
-                          {formatCurrency(reportData.data.totals.expense)}
-                        </TableCell>
-                        <TableCell className="text-right text-teal-800">
-                          {formatCurrency(reportData.data.totals.balance)}
-                        </TableCell>
-                      </TableRow>
-                    </TableBody>
-                  </Table>
-                )}
-                
-                {/* Таблица заказов */}
-                {reportData.type === 'orders' && (
-                  <Table>
-                    <TableHeader className="bg-gray-50/50">
-                      <TableRow>
-                        <TableHead className="text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                          Город
-                        </TableHead>
-                        <TableHead className="text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                          Создано
-                        </TableHead>
-                        <TableHead className="text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                          Незаказы
-                        </TableHead>
-                        <TableHead className="text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                          Отказы
-                        </TableHead>
-                        <TableHead className="text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                          В деньги
-                        </TableHead>
-                        <TableHead className="text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                          &lt;1500
-                        </TableHead>
-                        <TableHead className="text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                          &lt;10000
-                        </TableHead>
-                        <TableHead className="text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                          10000+
-                        </TableHead>
-                        <TableHead className="text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                          Макс. чек
-                        </TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
+                      <tr className={`font-bold border-t-2 ${isDark ? 'bg-[#3a4451] border-[#0d5c4b]' : 'bg-teal-50 border-[#0d5c4b]'}`}>
+                        <td className={`py-3 px-4 ${isDark ? 'text-gray-100' : 'text-teal-900'}`}>ИТОГО</td>
+                        <td className="py-3 px-4 text-right text-green-700">{formatCurrency(reportData.data.totals.income)}</td>
+                        <td className="py-3 px-4 text-right text-red-700">{formatCurrency(reportData.data.totals.expense)}</td>
+                        <td className={`py-3 px-4 text-right ${isDark ? 'text-teal-400' : 'text-teal-800'}`}>{formatCurrency(reportData.data.totals.balance)}</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              )}
+              
+              {/* Таблица заказов */}
+              {reportData.type === 'orders' && (
+                <div className={`rounded-lg shadow-lg overflow-x-auto ${isDark ? 'bg-[#2a3441]' : 'bg-white'}`}>
+                  <table className="w-full text-sm min-w-[800px]">
+                    <thead>
+                      <tr className={`border-b-2 ${isDark ? 'bg-[#3a4451] border-[#0d5c4b]' : 'bg-gray-50 border-[#0d5c4b]'}`}>
+                        <th className={`text-left py-3 px-3 font-semibold ${isDark ? 'text-gray-200' : 'text-gray-700'}`}>Город</th>
+                        <th className={`text-right py-3 px-3 font-semibold ${isDark ? 'text-gray-200' : 'text-gray-700'}`}>Создано</th>
+                        <th className={`text-right py-3 px-3 font-semibold ${isDark ? 'text-gray-200' : 'text-gray-700'}`}>Незаказы</th>
+                        <th className={`text-right py-3 px-3 font-semibold ${isDark ? 'text-gray-200' : 'text-gray-700'}`}>Отказы</th>
+                        <th className={`text-right py-3 px-3 font-semibold ${isDark ? 'text-gray-200' : 'text-gray-700'}`}>В деньги</th>
+                        <th className={`text-right py-3 px-3 font-semibold ${isDark ? 'text-gray-200' : 'text-gray-700'}`}>&lt;1500</th>
+                        <th className={`text-right py-3 px-3 font-semibold ${isDark ? 'text-gray-200' : 'text-gray-700'}`}>&lt;10000</th>
+                        <th className={`text-right py-3 px-3 font-semibold ${isDark ? 'text-gray-200' : 'text-gray-700'}`}>10000+</th>
+                        <th className={`text-right py-3 px-3 font-semibold ${isDark ? 'text-gray-200' : 'text-gray-700'}`}>Макс.чек</th>
+                      </tr>
+                    </thead>
+                    <tbody>
                       {reportData.data.cities.map((city: any) => (
-                        <TableRow key={city.city} className="hover:bg-gray-50">
-                          <TableCell className="font-medium text-gray-900">{city.city}</TableCell>
-                          <TableCell className="text-right text-gray-600">{city.totalOrders}</TableCell>
-                          <TableCell className="text-right text-gray-500">{city.notOrders}</TableCell>
-                          <TableCell className="text-right text-red-600">{city.zeroOrders}</TableCell>
-                          <TableCell className="text-right font-medium text-green-600">{city.completedOrders}</TableCell>
-                          <TableCell className="text-right text-orange-500">{city.microUnder1500}</TableCell>
-                          <TableCell className="text-right text-amber-600">{city.micro1500to10000}</TableCell>
-                          <TableCell className="text-right text-teal-600">{city.over10kCount}</TableCell>
-                          <TableCell className="text-right font-medium text-purple-600">
-                            {formatCurrency(city.maxCheck)}
-                          </TableCell>
-                        </TableRow>
+                        <tr key={city.city} className={`border-b transition-colors ${isDark ? 'border-gray-700 hover:bg-[#3a4451]' : 'border-gray-200 hover:bg-gray-50'}`}>
+                          <td className={`py-3 px-3 font-medium ${isDark ? 'text-gray-100' : 'text-gray-800'}`}>{city.city}</td>
+                          <td className={`py-3 px-3 text-right ${isDark ? 'text-gray-300' : 'text-gray-600'}`}>{city.totalOrders}</td>
+                          <td className={`py-3 px-3 text-right ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>{city.notOrders}</td>
+                          <td className="py-3 px-3 text-right text-red-600">{city.zeroOrders}</td>
+                          <td className="py-3 px-3 text-right font-medium text-green-600">{city.completedOrders}</td>
+                          <td className="py-3 px-3 text-right text-orange-500">{city.microUnder1500}</td>
+                          <td className="py-3 px-3 text-right text-amber-600">{city.micro1500to10000}</td>
+                          <td className={`py-3 px-3 text-right ${isDark ? 'text-teal-400' : 'text-teal-600'}`}>{city.over10kCount}</td>
+                          <td className="py-3 px-3 text-right font-medium text-purple-600">{formatCurrency(city.maxCheck)}</td>
+                        </tr>
                       ))}
-                      
-                      {/* Итого */}
-                      <TableRow className="bg-gray-100 font-bold border-t-2 border-gray-300">
-                        <TableCell className="text-gray-900">ИТОГО</TableCell>
-                        <TableCell className="text-right text-gray-700">{reportData.data.totals.totalOrders}</TableCell>
-                        <TableCell className="text-right text-gray-600">{reportData.data.totals.notOrders}</TableCell>
-                        <TableCell className="text-right text-red-700">{reportData.data.totals.zeroOrders}</TableCell>
-                        <TableCell className="text-right text-green-700">{reportData.data.totals.completedOrders}</TableCell>
-                        <TableCell className="text-right text-orange-600">{reportData.data.totals.microUnder1500}</TableCell>
-                        <TableCell className="text-right text-amber-700">{reportData.data.totals.micro1500to10000}</TableCell>
-                        <TableCell className="text-right text-teal-700">{reportData.data.totals.over10kCount}</TableCell>
-                        <TableCell className="text-right text-purple-700">
-                          {formatCurrency(reportData.data.totals.maxCheck)}
-                        </TableCell>
-                      </TableRow>
-                    </TableBody>
-                  </Table>
-                )}
-                
-                {/* Таблица рекламных кампаний с группировкой по городам */}
-                {reportData.type === 'campaigns' && reportData.data?.cities && (
-                  <Table>
-                    <TableHeader className="bg-gray-50/50">
-                      <TableRow>
-                        <TableHead className="text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                          Город / Тип
-                        </TableHead>
-                        <TableHead className="text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                          РК
-                        </TableHead>
-                        <TableHead className="text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                          Заказов
-                        </TableHead>
-                        <TableHead className="text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                          Оборот
-                        </TableHead>
-                        <TableHead className="text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                          Прибыль
-                        </TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
+                      <tr className={`font-bold border-t-2 ${isDark ? 'bg-[#3a4451] border-[#0d5c4b]' : 'bg-gray-100 border-[#0d5c4b]'}`}>
+                        <td className={`py-3 px-3 ${isDark ? 'text-gray-100' : 'text-gray-800'}`}>ИТОГО</td>
+                        <td className={`py-3 px-3 text-right ${isDark ? 'text-gray-200' : 'text-gray-700'}`}>{reportData.data.totals.totalOrders}</td>
+                        <td className={`py-3 px-3 text-right ${isDark ? 'text-gray-300' : 'text-gray-600'}`}>{reportData.data.totals.notOrders}</td>
+                        <td className="py-3 px-3 text-right text-red-700">{reportData.data.totals.zeroOrders}</td>
+                        <td className="py-3 px-3 text-right text-green-700">{reportData.data.totals.completedOrders}</td>
+                        <td className="py-3 px-3 text-right text-orange-600">{reportData.data.totals.microUnder1500}</td>
+                        <td className="py-3 px-3 text-right text-amber-700">{reportData.data.totals.micro1500to10000}</td>
+                        <td className={`py-3 px-3 text-right ${isDark ? 'text-teal-400' : 'text-teal-700'}`}>{reportData.data.totals.over10kCount}</td>
+                        <td className="py-3 px-3 text-right text-purple-700">{formatCurrency(reportData.data.totals.maxCheck)}</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              )}
+              
+              {/* Таблица рекламных кампаний */}
+              {reportData.type === 'campaigns' && reportData.data?.cities && (
+                <div className={`rounded-lg shadow-lg overflow-hidden ${isDark ? 'bg-[#2a3441]' : 'bg-white'}`}>
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className={`border-b-2 ${isDark ? 'bg-[#3a4451] border-[#0d5c4b]' : 'bg-gray-50 border-[#0d5c4b]'}`}>
+                        <th className={`text-left py-3 px-4 font-semibold ${isDark ? 'text-gray-200' : 'text-gray-700'}`}>Город / Тип</th>
+                        <th className={`text-left py-3 px-4 font-semibold ${isDark ? 'text-gray-200' : 'text-gray-700'}`}>РК</th>
+                        <th className={`text-right py-3 px-4 font-semibold ${isDark ? 'text-gray-200' : 'text-gray-700'}`}>Заказов</th>
+                        <th className={`text-right py-3 px-4 font-semibold ${isDark ? 'text-gray-200' : 'text-gray-700'}`}>Оборот</th>
+                        <th className={`text-right py-3 px-4 font-semibold ${isDark ? 'text-gray-200' : 'text-gray-700'}`}>Прибыль</th>
+                      </tr>
+                    </thead>
+                    <tbody>
                       {reportData.data.cities.map((cityData: any) => (
                         <React.Fragment key={cityData.city}>
-                          {/* Строка города */}
-                          <TableRow className="bg-gray-50">
-                            <TableCell className="font-bold text-gray-900">{cityData.city}</TableCell>
-                            <TableCell></TableCell>
-                            <TableCell className="text-right font-bold text-gray-700">
-                              {cityData.totals.ordersCount}
-                            </TableCell>
-                            <TableCell className="text-right font-bold text-green-600">
-                              {formatCurrency(cityData.totals.revenue)}
-                            </TableCell>
-                            <TableCell className="text-right font-bold text-teal-600">
-                              {formatCurrency(cityData.totals.profit)}
-                            </TableCell>
-                          </TableRow>
-                          
-                          {/* Строки типов рекламы внутри города */}
+                          <tr className={isDark ? 'bg-[#3a4451]' : 'bg-gray-50'}>
+                            <td className={`py-3 px-4 font-bold ${isDark ? 'text-gray-100' : 'text-gray-800'}`}>{cityData.city}</td>
+                            <td></td>
+                            <td className={`py-3 px-4 text-right font-bold ${isDark ? 'text-gray-200' : 'text-gray-700'}`}>{cityData.totals.ordersCount}</td>
+                            <td className="py-3 px-4 text-right font-bold text-green-600">{formatCurrency(cityData.totals.revenue)}</td>
+                            <td className={`py-3 px-4 text-right font-bold ${isDark ? 'text-teal-400' : 'text-teal-600'}`}>{formatCurrency(cityData.totals.profit)}</td>
+                          </tr>
                           {cityData.campaigns?.map((campaign: any, idx: number) => (
-                            <TableRow key={`${cityData.city}-${campaign.typeName}-${idx}`} className="hover:bg-gray-50">
-                              <TableCell className="pl-8 text-gray-700">
-                                {campaign.typeName}
-                              </TableCell>
-                              <TableCell className="text-gray-500 text-sm">{campaign.rk}</TableCell>
-                              <TableCell className="text-right text-gray-600">{campaign.ordersCount}</TableCell>
-                              <TableCell className="text-right font-medium text-green-600">
-                                {formatCurrency(campaign.revenue)}
-                              </TableCell>
-                              <TableCell className="text-right font-medium text-teal-600">
-                                {formatCurrency(campaign.profit)}
-                              </TableCell>
-                            </TableRow>
+                            <tr key={`${cityData.city}-${campaign.typeName}-${idx}`} className={`border-b transition-colors ${isDark ? 'border-gray-700 hover:bg-[#3a4451]' : 'border-gray-100 hover:bg-gray-50'}`}>
+                              <td className={`py-2 px-4 pl-8 ${isDark ? 'text-gray-300' : 'text-gray-600'}`}>{campaign.typeName}</td>
+                              <td className={`py-2 px-4 text-sm ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>{campaign.rk}</td>
+                              <td className={`py-2 px-4 text-right ${isDark ? 'text-gray-300' : 'text-gray-600'}`}>{campaign.ordersCount}</td>
+                              <td className="py-2 px-4 text-right font-medium text-green-600">{formatCurrency(campaign.revenue)}</td>
+                              <td className={`py-2 px-4 text-right font-medium ${isDark ? 'text-teal-400' : 'text-teal-600'}`}>{formatCurrency(campaign.profit)}</td>
+                            </tr>
                           ))}
                         </React.Fragment>
                       ))}
-                      
-                      {/* Итого */}
-                      <TableRow className="bg-teal-50 font-bold border-t-2 border-teal-500">
-                        <TableCell className="text-teal-900">ИТОГО</TableCell>
-                        <TableCell></TableCell>
-                        <TableCell className="text-right text-gray-700">{reportData.data.totals.ordersCount}</TableCell>
-                        <TableCell className="text-right text-green-700">
-                          {formatCurrency(reportData.data.totals.revenue)}
-                        </TableCell>
-                        <TableCell className="text-right text-teal-700">
-                          {formatCurrency(reportData.data.totals.profit)}
-                        </TableCell>
-                      </TableRow>
-                    </TableBody>
-                  </Table>
-                )}
-                
-                {reportData.type === 'campaigns' && (!reportData.data?.cities || reportData.data.cities.length === 0) && (
-                  <div className="text-center py-8 text-gray-500">
-                    Нет данных по рекламным кампаниям за выбранный период
-                  </div>
-                )}
+                      <tr className={`font-bold border-t-2 ${isDark ? 'bg-[#3a4451] border-[#0d5c4b]' : 'bg-teal-50 border-[#0d5c4b]'}`}>
+                        <td className={`py-3 px-4 ${isDark ? 'text-gray-100' : 'text-teal-900'}`}>ИТОГО</td>
+                        <td></td>
+                        <td className={`py-3 px-4 text-right ${isDark ? 'text-gray-200' : 'text-gray-700'}`}>{reportData.data.totals.ordersCount}</td>
+                        <td className="py-3 px-4 text-right text-green-700">{formatCurrency(reportData.data.totals.revenue)}</td>
+                        <td className={`py-3 px-4 text-right ${isDark ? 'text-teal-400' : 'text-teal-700'}`}>{formatCurrency(reportData.data.totals.profit)}</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              )}
+              
+              {reportData.type === 'campaigns' && (!reportData.data?.cities || reportData.data.cities.length === 0) && (
+                <div className={`text-center py-8 rounded-lg ${isDark ? 'bg-[#2a3441] text-gray-400' : 'bg-gray-50 text-gray-500'}`}>
+                  Нет данных по рекламным кампаниям за выбранный период
+                </div>
+              )}
 
-                {reportData.type !== 'campaigns' && reportData.data?.cities?.length === 0 && (
-                  <div className="text-center py-8 text-gray-500">
-                    Нет данных за выбранный период
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </>
-        )}
-        
-        {/* Пустое состояние */}
-        {!reportData && !isGenerating && (
-          <Card className="border-0 shadow-lg">
-            <CardContent className="p-8">
-              <div className="text-center text-gray-500">
-                <p className="text-lg mb-2">Выберите параметры и нажмите &quot;Сформировать отчёт&quot;</p>
-                <p className="text-sm">Результат появится здесь</p>
-              </div>
-            </CardContent>
-          </Card>
-        )}
-        
-        {/* Загрузка */}
-        {isGenerating && (
-          <Card className="border-0 shadow-lg">
-            <CardContent className="p-8">
-              <div className="flex flex-col items-center justify-center">
-                <Loader2 className="h-8 w-8 animate-spin text-teal-600 mb-4" />
-                <p className="text-gray-600">Формирование отчёта...</p>
-              </div>
-            </CardContent>
-          </Card>
-        )}
+              {reportData.type !== 'campaigns' && reportData.data?.cities?.length === 0 && (
+                <div className={`text-center py-8 rounded-lg ${isDark ? 'bg-[#2a3441] text-gray-400' : 'bg-gray-50 text-gray-500'}`}>
+                  Нет данных за выбранный период
+                </div>
+              )}
+            </div>
+          )}
+        </div>
       </div>
     </div>
   )

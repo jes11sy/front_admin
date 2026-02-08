@@ -1,11 +1,9 @@
 'use client'
 
-import { Card, CardContent, CardHeader } from '@/components/ui/card'
-import { Plus, Edit, Trash2, Search, Loader2 } from 'lucide-react'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
+import { Edit, Trash2 } from 'lucide-react'
+import { Button } from '@/components/ui/button'
 import { apiClient } from '@/lib/api'
 import { toast } from 'sonner'
 import { logger } from '@/lib/logger'
@@ -20,22 +18,35 @@ interface Operator {
   note?: string
 }
 
-interface Admin {
-  id: number
-  login: string
-  note?: string
-}
-
-interface OperatorsResponse {
-  admins: Admin[]
-  operators: Operator[]
-}
-
 export default function CallCenterPage() {
   const router = useRouter()
-  const [searchQuery, setSearchQuery] = useState('')
   const [operators, setOperators] = useState<Operator[]>([])
   const [isLoading, setIsLoading] = useState(true)
+  
+  // Тема
+  const [theme, setTheme] = useState<'light' | 'dark'>('light')
+  
+  useEffect(() => {
+    const savedTheme = localStorage.getItem('admin-theme') as 'light' | 'dark' | null
+    if (savedTheme) {
+      setTheme(savedTheme)
+    }
+    
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === 'admin-theme' && e.newValue) {
+        setTheme(e.newValue as 'light' | 'dark')
+      }
+    }
+    window.addEventListener('storage', handleStorageChange)
+    return () => window.removeEventListener('storage', handleStorageChange)
+  }, [])
+  
+  const isDark = theme === 'dark'
+
+  // Фильтры
+  const [showFilters, setShowFilters] = useState(false)
+  const [searchName, setSearchName] = useState('')
+  const [statusFilter, setStatusFilter] = useState<'working' | 'fired' | 'all'>('working')
   
   // Загрузка сотрудников при монтировании компонента
   useEffect(() => {
@@ -59,21 +70,87 @@ export default function CallCenterPage() {
     }
   }
 
-  // Фильтрация операторов по имени и логину
-  const filteredEmployees = operators.filter(operator =>
-    operator.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    operator.login.toLowerCase().includes(searchQuery.toLowerCase())
-  )
-
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('ru-RU', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric'
-    })
+  // Проверка статуса работы
+  const isWorking = (status: string | undefined) => {
+    if (!status) return false
+    const statusLower = status.toLowerCase()
+    return statusLower.includes('работает') || statusLower.includes('работающий') || statusLower === 'active'
   }
 
-  const handleDelete = async (id: number) => {
+  const isFired = (status: string | undefined) => {
+    if (!status) return false
+    const statusLower = status.toLowerCase()
+    return statusLower.includes('уволен') || statusLower.includes('уволенный') || statusLower === 'fired' || statusLower === 'inactive'
+  }
+
+  // Фильтрация и сортировка данных
+  const filteredAndSortedData = useMemo(() => {
+    const safeOperators = Array.isArray(operators) ? operators : []
+    
+    // Фильтруем по статусу
+    let filtered = safeOperators.filter(operator => {
+      if (statusFilter === 'working') return isWorking(operator.statusWork)
+      if (statusFilter === 'fired') return isFired(operator.statusWork)
+      return true // 'all'
+    })
+    
+    // Фильтруем по имени/логину
+    if (searchName.trim()) {
+      const searchLower = searchName.toLowerCase().trim()
+      filtered = filtered.filter(operator => 
+        operator.name?.toLowerCase().includes(searchLower) ||
+        operator.login?.toLowerCase().includes(searchLower)
+      )
+    }
+    
+    // Сортируем: работающие первыми, затем по дате создания
+    return filtered.sort((a, b) => {
+      const aIsWorking = isWorking(a.statusWork)
+      const bIsWorking = isWorking(b.statusWork)
+      
+      if (aIsWorking && !bIsWorking) return -1
+      if (!aIsWorking && bIsWorking) return 1
+      
+      const aDate = new Date(a.dateCreate || 0).getTime()
+      const bDate = new Date(b.dateCreate || 0).getTime()
+      return bDate - aDate
+    })
+  }, [operators, statusFilter, searchName])
+
+  // Проверка есть ли активные фильтры (кроме дефолтного)
+  const hasActiveFilters = searchName.trim() !== '' || statusFilter !== 'working'
+
+  const formatDate = (dateString: string) => {
+    if (!dateString) return 'Не указана'
+    return new Date(dateString).toLocaleDateString('ru-RU')
+  }
+
+  const getStatusColor = (status: string | undefined) => {
+    if (!status) return '#6b7280'
+    const statusLower = status.toLowerCase()
+    if (statusLower.includes('работает') || statusLower.includes('работающий') || statusLower === 'active') {
+      return '#0d5c4b'
+    }
+    if (statusLower.includes('уволен') || statusLower.includes('уволенный') || statusLower === 'fired' || statusLower === 'inactive') {
+      return '#6b7280'
+    }
+    return '#6b7280'
+  }
+
+  const getStatusLabel = (status: string | undefined) => {
+    if (!status) return 'Не указан'
+    const statusLower = status.toLowerCase()
+    if (statusLower.includes('работает') || statusLower.includes('работающий') || statusLower === 'active') {
+      return 'Работает'
+    }
+    if (statusLower.includes('уволен') || statusLower.includes('уволенный') || statusLower === 'fired' || statusLower === 'inactive') {
+      return 'Уволен'
+    }
+    return status
+  }
+
+  const handleDelete = async (id: number, e: React.MouseEvent) => {
+    e.stopPropagation()
     if (!confirm('Вы уверены, что хотите удалить этого сотрудника?')) {
       return
     }
@@ -92,112 +169,189 @@ export default function CallCenterPage() {
     }
   }
 
+  if (isLoading) {
+    return (
+      <div className="text-center py-8">
+        <div className={`inline-block animate-spin rounded-full h-8 w-8 border-b-2 ${
+          isDark ? 'border-[#0d5c4b]' : 'border-[#0d5c4b]'
+        }`}></div>
+        <div className={`text-lg mt-4 ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>Загрузка операторов...</div>
+      </div>
+    )
+  }
+  
   return (
-    <div className="min-h-screen" style={{backgroundColor: '#114643'}}>
-      <div className="container mx-auto px-4 py-8">
-        <Card className="hover:shadow-lg transition-shadow duration-300">
-          <CardHeader>
-            <div className="flex items-center justify-between gap-4">
-              <div className="relative flex-1 max-w-sm">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-                <Input
-                  type="text"
-                  placeholder="Поиск по имени или логину..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-10"
-                  disabled={isLoading}
-                />
-              </div>
-              <Button 
-                className="bg-gradient-to-r from-teal-600 to-emerald-600 hover:from-teal-700 hover:to-emerald-700 text-white"
-                onClick={() => router.push('/employees/callcenter/add')}
-                disabled={isLoading}
-              >
-                <Plus className="h-4 w-4 mr-2" />
-                Добавить сотрудника
-              </Button>
-            </div>
-          </CardHeader>
-          <CardContent>
-            {isLoading ? (
-              <div className="flex items-center justify-center py-12">
-                <Loader2 className="h-8 w-8 animate-spin text-teal-600" />
-                <span className="ml-3 text-gray-600">Загрузка сотрудников...</span>
-              </div>
-            ) : (
-              <>
-                <div className="overflow-x-auto">
-                  <table className="w-full">
-                    <thead>
-                      <tr className="border-b border-gray-200">
-                        <th className="text-left py-3 px-4 font-semibold text-gray-700">ID</th>
-                        <th className="text-left py-3 px-4 font-semibold text-gray-700">Имя</th>
-                        <th className="text-left py-3 px-4 font-semibold text-gray-700">Логин</th>
-                        <th className="text-left py-3 px-4 font-semibold text-gray-700">Статус работы</th>
-                        <th className="text-left py-3 px-4 font-semibold text-gray-700">SIP адрес</th>
-                        <th className="text-left py-3 px-4 font-semibold text-gray-700">Дата создания</th>
-                        <th className="text-left py-3 px-4 font-semibold text-gray-700">Действия</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {filteredEmployees.map((operator) => (
-                        <tr key={operator.id} className="border-b border-gray-100 hover:bg-gray-50 transition-colors">
-                          <td className="py-3 px-4 text-gray-600">#{operator.id}</td>
-                          <td className="py-3 px-4 text-gray-800 font-medium">{operator.name}</td>
-                          <td className="py-3 px-4 text-gray-600">{operator.login}</td>
-                          <td className="py-3 px-4">
-                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                              operator.statusWork === 'active' 
-                                ? 'bg-green-100 text-green-800' 
-                                : 'bg-gray-100 text-gray-800'
-                            }`}>
-                              {operator.statusWork === 'active' ? 'Активен' : operator.statusWork}
-                            </span>
-                          </td>
-                          <td className="py-3 px-4 text-gray-600 font-mono">{operator.sipAddress || '-'}</td>
-                          <td className="py-3 px-4 text-gray-600">{formatDate(operator.dateCreate)}</td>
-                          <td className="py-3 px-4">
-                            <div className="flex items-center gap-2">
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                className="text-teal-600 hover:text-teal-700 hover:bg-teal-50"
-                                onClick={() => router.push(`/employees/callcenter/edit/${operator.id}`)}
-                              >
-                                <Edit className="h-4 w-4" />
-                              </Button>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                                onClick={() => handleDelete(operator.id)}
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
-                            </div>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-
-                {filteredEmployees.length === 0 && operators.length > 0 && (
-                  <div className="text-center py-8 text-gray-500">
-                    Операторы не найдены. Попробуйте изменить поисковый запрос.
-                  </div>
-                )}
-
-                {operators.length === 0 && !isLoading && (
-                  <div className="text-center py-8 text-gray-500">
-                    Нет операторов. Добавьте первого оператора.
-                  </div>
-                )}
-              </>
+    <div>
+      {/* Панель управления: фильтры + добавление */}
+      <div className="mb-6 flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          {/* Иконка фильтров */}
+          <button
+            onClick={() => setShowFilters(!showFilters)}
+            className={`relative p-2 rounded-lg transition-all duration-200 ${
+              showFilters 
+                ? isDark 
+                  ? 'bg-[#0d5c4b]/20 text-[#0d5c4b]'
+                  : 'bg-[#daece2] text-[#0d5c4b]'
+                : isDark
+                  ? 'bg-[#2a3441] text-gray-400 hover:bg-[#2a3441]/80 hover:text-[#0d5c4b]'
+                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200 hover:text-[#0d5c4b]'
+            }`}
+            title="Фильтры"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
+            </svg>
+            {/* Индикатор активных фильтров */}
+            {hasActiveFilters && (
+              <span className={`absolute -top-0.5 -right-0.5 w-2.5 h-2.5 bg-[#0d5c4b] rounded-full border-2 ${isDark ? 'border-[#1e2530]' : 'border-white'}`}></span>
             )}
-          </CardContent>
-        </Card>
+          </button>
+        </div>
+
+        <Button 
+          onClick={() => router.push('/employees/callcenter/add')}
+          className="px-4 py-2 bg-[#0d5c4b] hover:bg-[#0a4a3c] text-white rounded-lg transition-colors text-sm font-medium"
+        >
+          + Добавить оператора
+        </Button>
+      </div>
+
+      {/* Панель фильтров */}
+      {showFilters && (
+        <div className={`mb-6 p-4 rounded-lg border animate-fade-in ${
+          isDark 
+            ? 'bg-[#2a3441] border-[#0d5c4b]/30' 
+            : 'bg-gray-50 border-gray-200'
+        }`}>
+          <div className="flex flex-wrap gap-4 items-end">
+            {/* Поиск по имени */}
+            <div className="flex-1 min-w-[200px]">
+              <label className={`block text-sm font-medium mb-1 ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>Поиск по имени или логину</label>
+              <input
+                type="text"
+                value={searchName}
+                onChange={(e) => setSearchName(e.target.value)}
+                placeholder="Введите имя или логин..."
+                className={`w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#0d5c4b] focus:border-transparent transition-all ${
+                  isDark 
+                    ? 'bg-[#1e2530] border-[#0d5c4b]/30 text-gray-200 placeholder-gray-500'
+                    : 'bg-white border-gray-200 text-gray-800 placeholder-gray-400'
+                }`}
+              />
+            </div>
+
+            {/* Статус */}
+            <div className="min-w-[180px]">
+              <label className={`block text-sm font-medium mb-1 ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>Статус</label>
+              <select
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value as 'working' | 'fired' | 'all')}
+                className={`w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#0d5c4b] focus:border-transparent transition-all ${
+                  isDark 
+                    ? 'bg-[#1e2530] border-[#0d5c4b]/30 text-gray-200'
+                    : 'bg-white border-gray-200 text-gray-800'
+                }`}
+              >
+                <option value="working">Работает</option>
+                <option value="fired">Уволен</option>
+                <option value="all">Все</option>
+              </select>
+            </div>
+
+            {/* Кнопка сброса */}
+            <button
+              onClick={() => {
+                setSearchName('')
+                setStatusFilter('working')
+              }}
+              className={`px-4 py-2 rounded-lg text-sm transition-colors font-medium ${
+                isDark 
+                  ? 'bg-[#1e2530] hover:bg-[#1e2530]/80 text-gray-300'
+                  : 'bg-gray-200 hover:bg-gray-300 text-gray-700'
+              }`}
+            >
+              Сбросить
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Таблица */}
+      <div className="overflow-x-auto">
+        <table className="w-full border-collapse text-sm">
+          <thead>
+            <tr className={`border-b-2 ${
+              isDark ? 'border-[#0d5c4b]/30 bg-[#2a3441]' : 'border-gray-200 bg-gray-50'
+            }`}>
+              <th className={`text-left py-3 px-4 font-semibold ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>ID</th>
+              <th className={`text-left py-3 px-4 font-semibold ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>Имя</th>
+              <th className={`text-left py-3 px-4 font-semibold ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>Логин</th>
+              <th className={`text-left py-3 px-4 font-semibold ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>SIP адрес</th>
+              <th className={`text-left py-3 px-4 font-semibold ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>Статус</th>
+              <th className={`text-left py-3 px-4 font-semibold ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>Дата создания</th>
+              <th className={`text-left py-3 px-4 font-semibold ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>Действия</th>
+            </tr>
+          </thead>
+          <tbody>
+            {filteredAndSortedData.length === 0 ? (
+              <tr>
+                <td colSpan={7} className={`py-8 text-center ${isDark ? 'text-gray-500' : 'text-gray-500'}`}>
+                  {hasActiveFilters 
+                    ? 'Нет операторов по заданным фильтрам'
+                    : 'Нет работающих операторов'
+                  }
+                </td>
+              </tr>
+            ) : (
+              filteredAndSortedData.map((operator) => (
+                <tr 
+                  key={operator.id} 
+                  className={`border-b transition-colors cursor-pointer ${
+                    isDark 
+                      ? 'border-[#0d5c4b]/20 hover:bg-[#2a3441]' 
+                      : 'border-gray-100 hover:bg-gray-50'
+                  }`}
+                  onClick={() => router.push(`/employees/callcenter/edit/${operator.id}`)}
+                >
+                  <td className={`py-3 px-4 ${isDark ? 'text-gray-300' : 'text-gray-800'}`}>{operator.id}</td>
+                  <td className={`py-3 px-4 font-medium ${isDark ? 'text-gray-200' : 'text-gray-800'}`}>{operator.name}</td>
+                  <td className={`py-3 px-4 ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>{operator.login || '-'}</td>
+                  <td className={`py-3 px-4 font-mono text-xs ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>{operator.sipAddress || '-'}</td>
+                  <td className="py-3 px-4">
+                    <span className="px-2 py-1 rounded-full text-xs font-medium text-white" style={{backgroundColor: getStatusColor(operator.statusWork)}}>
+                      {getStatusLabel(operator.statusWork)}
+                    </span>
+                  </td>
+                  <td className={`py-3 px-4 ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>{formatDate(operator.dateCreate)}</td>
+                  <td className="py-3 px-4">
+                    <div className="flex items-center gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className={`${isDark ? 'text-[#0d5c4b] border-[#0d5c4b]/30 hover:bg-[#0d5c4b]/10' : 'text-teal-600 hover:text-teal-700 hover:bg-teal-50'}`}
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          router.push(`/employees/callcenter/edit/${operator.id}`)
+                        }}
+                      >
+                        <Edit className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className={`${isDark ? 'text-red-400 border-red-400/30 hover:bg-red-400/10' : 'text-red-600 hover:text-red-700 hover:bg-red-50'}`}
+                        onClick={(e) => handleDelete(operator.id, e)}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </td>
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
       </div>
     </div>
   )

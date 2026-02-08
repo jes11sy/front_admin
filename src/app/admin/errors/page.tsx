@@ -114,10 +114,7 @@ export default function ErrorLogsPage() {
   }
 
   return (
-    <div 
-      className="min-h-screen p-6"
-      style={{ backgroundColor: '#114643' }}
-    >
+    <div>
       <div className="max-w-[1400px] mx-auto">
         <Card className="backdrop-blur-lg shadow-2xl rounded-2xl border border-white/20 bg-white/95 hover:bg-white transition-all duration-300">
           <div className="p-6">

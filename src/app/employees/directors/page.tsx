@@ -1,11 +1,9 @@
 'use client'
 
-import { Card, CardContent, CardHeader } from '@/components/ui/card'
-import { Plus, Edit, Trash2, Search, Loader2 } from 'lucide-react'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
+import { Edit, Trash2 } from 'lucide-react'
+import { Button } from '@/components/ui/button'
 import { apiClient } from '@/lib/api'
 import { toast } from 'sonner'
 import { logger } from '@/lib/logger'
@@ -23,9 +21,33 @@ interface Director {
 
 export default function DirectorsPage() {
   const router = useRouter()
-  const [searchQuery, setSearchQuery] = useState('')
   const [directors, setDirectors] = useState<Director[]>([])
   const [isLoading, setIsLoading] = useState(true)
+  
+  // Тема
+  const [theme, setTheme] = useState<'light' | 'dark'>('light')
+  
+  useEffect(() => {
+    const savedTheme = localStorage.getItem('admin-theme') as 'light' | 'dark' | null
+    if (savedTheme) {
+      setTheme(savedTheme)
+    }
+    
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === 'admin-theme' && e.newValue) {
+        setTheme(e.newValue as 'light' | 'dark')
+      }
+    }
+    window.addEventListener('storage', handleStorageChange)
+    return () => window.removeEventListener('storage', handleStorageChange)
+  }, [])
+  
+  const isDark = theme === 'dark'
+
+  // Фильтры
+  const [showFilters, setShowFilters] = useState(false)
+  const [searchName, setSearchName] = useState('')
+  const [cityFilter, setCityFilter] = useState('')
   
   // Загрузка директоров при монтировании компонента
   useEffect(() => {
@@ -49,132 +71,256 @@ export default function DirectorsPage() {
     }
   }
 
-  // Фильтрация директоров по имени и логину
-  const filteredDirectors = directors.filter(director =>
-    director.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    director.login.toLowerCase().includes(searchQuery.toLowerCase())
-  )
+  // Получаем уникальные города для фильтра
+  const uniqueCities = useMemo(() => {
+    const cities = new Set<string>()
+    directors.forEach(d => d.cities?.forEach(c => cities.add(c)))
+    return Array.from(cities).sort()
+  }, [directors])
+
+  // Фильтрация и сортировка данных
+  const filteredAndSortedData = useMemo(() => {
+    const safeDirectors = Array.isArray(directors) ? directors : []
+    
+    let filtered = safeDirectors
+    
+    // Фильтруем по имени/логину
+    if (searchName.trim()) {
+      const searchLower = searchName.toLowerCase().trim()
+      filtered = filtered.filter(director => 
+        director.name?.toLowerCase().includes(searchLower) ||
+        director.login?.toLowerCase().includes(searchLower)
+      )
+    }
+    
+    // Фильтруем по городу
+    if (cityFilter) {
+      filtered = filtered.filter(director => 
+        director.cities?.includes(cityFilter)
+      )
+    }
+    
+    // Сортируем по дате создания (новые первыми)
+    return filtered.sort((a, b) => {
+      const aDate = new Date(a.dateCreate || 0).getTime()
+      const bDate = new Date(b.dateCreate || 0).getTime()
+      return bDate - aDate
+    })
+  }, [directors, searchName, cityFilter])
+
+  // Проверка есть ли активные фильтры
+  const hasActiveFilters = searchName.trim() !== '' || cityFilter !== ''
 
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('ru-RU', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric'
-    })
+    if (!dateString) return 'Не указана'
+    return new Date(dateString).toLocaleDateString('ru-RU')
   }
 
+  const handleDelete = async (id: number, e: React.MouseEvent) => {
+    e.stopPropagation()
+    if (!confirm('Вы уверены, что хотите удалить этого директора?')) {
+      return
+    }
+    toast.error('Удаление директоров пока не реализовано')
+  }
+
+  if (isLoading) {
+    return (
+      <div className="text-center py-8">
+        <div className={`inline-block animate-spin rounded-full h-8 w-8 border-b-2 ${
+          isDark ? 'border-[#0d5c4b]' : 'border-[#0d5c4b]'
+        }`}></div>
+        <div className={`text-lg mt-4 ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>Загрузка директоров...</div>
+      </div>
+    )
+  }
+  
   return (
-    <div className="min-h-screen" style={{backgroundColor: '#114643'}}>
-      <div className="container mx-auto px-4 py-8">
-        <Card className="hover:shadow-lg transition-shadow duration-300">
-          <CardHeader>
-            <div className="flex items-center justify-between gap-4">
-              <div className="relative flex-1 max-w-sm">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-                <Input
-                  type="text"
-                  placeholder="Поиск по имени или логину..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-10"
-                  disabled={isLoading}
-                />
-              </div>
-              <Button 
-                className="bg-gradient-to-r from-teal-600 to-emerald-600 hover:from-teal-700 hover:to-emerald-700 text-white"
-                onClick={() => router.push('/employees/directors/add')}
-                disabled={isLoading}
-              >
-                <Plus className="h-4 w-4 mr-2" />
-                Добавить директора
-              </Button>
-            </div>
-          </CardHeader>
-          <CardContent>
-            {isLoading ? (
-              <div className="flex items-center justify-center py-12">
-                <Loader2 className="h-8 w-8 animate-spin text-teal-600" />
-                <span className="ml-3 text-gray-600">Загрузка директоров...</span>
-              </div>
-            ) : (
-              <>
-                <div className="overflow-x-auto">
-                  <table className="w-full">
-                    <thead>
-                      <tr className="border-b border-gray-200">
-                        <th className="text-left py-3 px-4 font-semibold text-gray-700">ID</th>
-                        <th className="text-left py-3 px-4 font-semibold text-gray-700">Города</th>
-                        <th className="text-left py-3 px-4 font-semibold text-gray-700">Имя</th>
-                        <th className="text-left py-3 px-4 font-semibold text-gray-700">Логин</th>
-                        <th className="text-left py-3 px-4 font-semibold text-gray-700">Дата создания</th>
-                        <th className="text-left py-3 px-4 font-semibold text-gray-700">Действия</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {filteredDirectors.map((director) => (
-                        <tr key={director.id} className="border-b border-gray-100 hover:bg-gray-50 transition-colors">
-                          <td className="py-3 px-4 text-gray-600">#{director.id}</td>
-                          <td className="py-3 px-4 text-gray-600">
-                            {director.cities.length > 0 ? (
-                              <div className="flex flex-wrap gap-1">
-                                {director.cities.map((city, idx) => (
-                                  <span key={idx} className="inline-flex items-center px-2 py-0.5 rounded text-xs bg-teal-100 text-teal-800">
-                                    {city}
-                                  </span>
-                                ))}
-                              </div>
-                            ) : (
-                              <span className="text-gray-400">-</span>
-                            )}
-                          </td>
-                          <td className="py-3 px-4 text-gray-800 font-medium">{director.name}</td>
-                          <td className="py-3 px-4 text-gray-600">{director.login}</td>
-                          <td className="py-3 px-4 text-gray-600">{formatDate(director.dateCreate)}</td>
-                          <td className="py-3 px-4">
-                            <div className="flex items-center gap-2">
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                className="text-teal-600 hover:text-teal-700 hover:bg-teal-50"
-                                onClick={() => router.push(`/employees/directors/edit/${director.id}`)}
-                              >
-                                <Edit className="h-4 w-4" />
-                              </Button>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                                onClick={() => {
-                                  if (confirm('Вы уверены, что хотите удалить этого директора?')) {
-                                    toast.error('Удаление директоров пока не реализовано')
-                                  }
-                                }}
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
-                            </div>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-
-                {filteredDirectors.length === 0 && directors.length > 0 && (
-                  <div className="text-center py-8 text-gray-500">
-                    Директора не найдены. Попробуйте изменить поисковый запрос.
-                  </div>
-                )}
-
-                {directors.length === 0 && !isLoading && (
-                  <div className="text-center py-8 text-gray-500">
-                    Нет директоров. Добавьте первого директора.
-                  </div>
-                )}
-              </>
+    <div>
+      {/* Панель управления: фильтры + добавление */}
+      <div className="mb-6 flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          {/* Иконка фильтров */}
+          <button
+            onClick={() => setShowFilters(!showFilters)}
+            className={`relative p-2 rounded-lg transition-all duration-200 ${
+              showFilters 
+                ? isDark 
+                  ? 'bg-[#0d5c4b]/20 text-[#0d5c4b]'
+                  : 'bg-[#daece2] text-[#0d5c4b]'
+                : isDark
+                  ? 'bg-[#2a3441] text-gray-400 hover:bg-[#2a3441]/80 hover:text-[#0d5c4b]'
+                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200 hover:text-[#0d5c4b]'
+            }`}
+            title="Фильтры"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
+            </svg>
+            {/* Индикатор активных фильтров */}
+            {hasActiveFilters && (
+              <span className={`absolute -top-0.5 -right-0.5 w-2.5 h-2.5 bg-[#0d5c4b] rounded-full border-2 ${isDark ? 'border-[#1e2530]' : 'border-white'}`}></span>
             )}
-          </CardContent>
-        </Card>
+          </button>
+        </div>
+
+        <Button 
+          onClick={() => router.push('/employees/directors/add')}
+          className="px-4 py-2 bg-[#0d5c4b] hover:bg-[#0a4a3c] text-white rounded-lg transition-colors text-sm font-medium"
+        >
+          + Добавить директора
+        </Button>
+      </div>
+
+      {/* Панель фильтров */}
+      {showFilters && (
+        <div className={`mb-6 p-4 rounded-lg border animate-fade-in ${
+          isDark 
+            ? 'bg-[#2a3441] border-[#0d5c4b]/30' 
+            : 'bg-gray-50 border-gray-200'
+        }`}>
+          <div className="flex flex-wrap gap-4 items-end">
+            {/* Поиск по имени */}
+            <div className="flex-1 min-w-[200px]">
+              <label className={`block text-sm font-medium mb-1 ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>Поиск по имени или логину</label>
+              <input
+                type="text"
+                value={searchName}
+                onChange={(e) => setSearchName(e.target.value)}
+                placeholder="Введите имя или логин..."
+                className={`w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#0d5c4b] focus:border-transparent transition-all ${
+                  isDark 
+                    ? 'bg-[#1e2530] border-[#0d5c4b]/30 text-gray-200 placeholder-gray-500'
+                    : 'bg-white border-gray-200 text-gray-800 placeholder-gray-400'
+                }`}
+              />
+            </div>
+
+            {/* Город */}
+            <div className="min-w-[180px]">
+              <label className={`block text-sm font-medium mb-1 ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>Город</label>
+              <select
+                value={cityFilter}
+                onChange={(e) => setCityFilter(e.target.value)}
+                className={`w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#0d5c4b] focus:border-transparent transition-all ${
+                  isDark 
+                    ? 'bg-[#1e2530] border-[#0d5c4b]/30 text-gray-200'
+                    : 'bg-white border-gray-200 text-gray-800'
+                }`}
+              >
+                <option value="">Все города</option>
+                {uniqueCities.map(city => (
+                  <option key={city} value={city}>{city}</option>
+                ))}
+              </select>
+            </div>
+
+            {/* Кнопка сброса */}
+            <button
+              onClick={() => {
+                setSearchName('')
+                setCityFilter('')
+              }}
+              className={`px-4 py-2 rounded-lg text-sm transition-colors font-medium ${
+                isDark 
+                  ? 'bg-[#1e2530] hover:bg-[#1e2530]/80 text-gray-300'
+                  : 'bg-gray-200 hover:bg-gray-300 text-gray-700'
+              }`}
+            >
+              Сбросить
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Таблица */}
+      <div className="overflow-x-auto">
+        <table className="w-full border-collapse text-sm">
+          <thead>
+            <tr className={`border-b-2 ${
+              isDark ? 'border-[#0d5c4b]/30 bg-[#2a3441]' : 'border-gray-200 bg-gray-50'
+            }`}>
+              <th className={`text-left py-3 px-4 font-semibold ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>ID</th>
+              <th className={`text-left py-3 px-4 font-semibold ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>Имя</th>
+              <th className={`text-left py-3 px-4 font-semibold ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>Логин</th>
+              <th className={`text-left py-3 px-4 font-semibold ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>Города</th>
+              <th className={`text-left py-3 px-4 font-semibold ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>Дата создания</th>
+              <th className={`text-left py-3 px-4 font-semibold ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>Действия</th>
+            </tr>
+          </thead>
+          <tbody>
+            {filteredAndSortedData.length === 0 ? (
+              <tr>
+                <td colSpan={6} className={`py-8 text-center ${isDark ? 'text-gray-500' : 'text-gray-500'}`}>
+                  {hasActiveFilters 
+                    ? 'Нет директоров по заданным фильтрам'
+                    : 'Нет директоров'
+                  }
+                </td>
+              </tr>
+            ) : (
+              filteredAndSortedData.map((director) => (
+                <tr 
+                  key={director.id} 
+                  className={`border-b transition-colors cursor-pointer ${
+                    isDark 
+                      ? 'border-[#0d5c4b]/20 hover:bg-[#2a3441]' 
+                      : 'border-gray-100 hover:bg-gray-50'
+                  }`}
+                  onClick={() => router.push(`/employees/directors/edit/${director.id}`)}
+                >
+                  <td className={`py-3 px-4 ${isDark ? 'text-gray-300' : 'text-gray-800'}`}>{director.id}</td>
+                  <td className={`py-3 px-4 font-medium ${isDark ? 'text-gray-200' : 'text-gray-800'}`}>{director.name}</td>
+                  <td className={`py-3 px-4 ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>{director.login || '-'}</td>
+                  <td className="py-3 px-4">
+                    {director.cities && director.cities.length > 0 ? (
+                      <div className="flex flex-wrap gap-1">
+                        {director.cities.map((city, idx) => (
+                          <span 
+                            key={idx} 
+                            className={`inline-flex items-center px-2 py-0.5 rounded text-xs ${
+                              isDark 
+                                ? 'bg-[#0d5c4b]/20 text-[#0d5c4b]' 
+                                : 'bg-teal-100 text-teal-800'
+                            }`}
+                          >
+                            {city}
+                          </span>
+                        ))}
+                      </div>
+                    ) : (
+                      <span className={isDark ? 'text-gray-500' : 'text-gray-400'}>-</span>
+                    )}
+                  </td>
+                  <td className={`py-3 px-4 ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>{formatDate(director.dateCreate)}</td>
+                  <td className="py-3 px-4">
+                    <div className="flex items-center gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className={`${isDark ? 'text-[#0d5c4b] border-[#0d5c4b]/30 hover:bg-[#0d5c4b]/10' : 'text-teal-600 hover:text-teal-700 hover:bg-teal-50'}`}
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          router.push(`/employees/directors/edit/${director.id}`)
+                        }}
+                      >
+                        <Edit className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className={`${isDark ? 'text-red-400 border-red-400/30 hover:bg-red-400/10' : 'text-red-600 hover:text-red-700 hover:bg-red-50'}`}
+                        onClick={(e) => handleDelete(director.id, e)}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </td>
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
       </div>
     </div>
   )

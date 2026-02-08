@@ -1,13 +1,10 @@
 'use client'
 
-import { Card, CardContent } from '@/components/ui/card'
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
-import { Input } from '@/components/ui/input'
-import { Button } from '@/components/ui/button'
-import { Search, Download, DollarSign, User, Calendar } from 'lucide-react'
+import { DollarSign, User, Download } from 'lucide-react'
 import { useState, useEffect } from 'react'
 import { apiClient } from '@/lib/api'
 import { toast } from 'sonner'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 
 interface Director {
   id: number
@@ -27,15 +24,39 @@ interface SalaryRecord {
 type DatePeriod = 'day' | 'week' | 'month' | 'custom'
 
 export default function SalaryPage() {
-  const [searchQuery, setSearchQuery] = useState('')
+  // Тема
+  const [theme, setTheme] = useState<'light' | 'dark'>('light')
+  
+  useEffect(() => {
+    const savedTheme = localStorage.getItem('admin-theme') as 'light' | 'dark' | null
+    if (savedTheme) {
+      setTheme(savedTheme)
+    }
+  }, [])
+  
+  const isDark = theme === 'dark'
+  
+  // Состояния
   const [salaryRecords, setSalaryRecords] = useState<SalaryRecord[]>([])
   const [isLoading, setIsLoading] = useState(true)
-  const [period, setPeriod] = useState<DatePeriod>('day')
+  const [showFilters, setShowFilters] = useState(false)
+  
+  // Фильтры
+  const [period, setPeriod] = useState<DatePeriod>('month')
+  const [searchQuery, setSearchQuery] = useState('')
+  const [cityFilter, setCityFilter] = useState('')
   const [startDate, setStartDate] = useState('')
   const [endDate, setEndDate] = useState('')
+  
+  // Черновики
+  const [draftPeriod, setDraftPeriod] = useState<DatePeriod>('month')
+  const [draftSearchQuery, setDraftSearchQuery] = useState('')
+  const [draftCityFilter, setDraftCityFilter] = useState('')
+  const [draftStartDate, setDraftStartDate] = useState('')
+  const [draftEndDate, setDraftEndDate] = useState('')
 
   // Функция для получения дат периода
-  const getDateRange = (selectedPeriod: DatePeriod) => {
+  const getDateRange = (selectedPeriod: DatePeriod, customStart?: string, customEnd?: string) => {
     const now = new Date()
     let start: Date
     let end: Date = now
@@ -46,45 +67,34 @@ export default function SalaryPage() {
         end = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59)
         break
       case 'week':
-        // Находим понедельник текущей недели
         const dayOfWeek = now.getDay()
         const diffToMonday = dayOfWeek === 0 ? -6 : 1 - dayOfWeek
         start = new Date(now.getFullYear(), now.getMonth(), now.getDate() + diffToMonday)
         start.setHours(0, 0, 0, 0)
-        // Воскресенье
         end = new Date(start)
         end.setDate(start.getDate() + 6)
         end.setHours(23, 59, 59)
         break
       case 'month':
-        // С 1 числа по последний день месяца
         start = new Date(now.getFullYear(), now.getMonth(), 1)
         end = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59)
         break
       case 'custom':
-        // Для пользовательских дат добавляем время
-        const customStart = startDate ? `${startDate} 00:00:00` : ''
-        const customEnd = endDate ? `${endDate} 23:59:59` : ''
-        return { start: customStart, end: customEnd }
+        return { 
+          start: customStart ? `${customStart} 00:00:00` : '', 
+          end: customEnd ? `${customEnd} 23:59:59` : '' 
+        }
       default:
         start = now
     }
 
-    // Форматируем дату с учетом времени для корректной фильтрации
     const formatLocalDateTime = (date: Date, isEndOfDay: boolean = false) => {
       const year = date.getFullYear()
       const month = String(date.getMonth() + 1).padStart(2, '0')
       const day = String(date.getDate()).padStart(2, '0')
-      const hours = String(date.getHours()).padStart(2, '0')
-      const minutes = String(date.getMinutes()).padStart(2, '0')
-      const seconds = String(date.getSeconds()).padStart(2, '0')
-      
-      // Для конца дня всегда используем 23:59:59
       if (isEndOfDay) {
         return `${year}-${month}-${day} 23:59:59`
       }
-      
-      // Для начала дня используем 00:00:00
       return `${year}-${month}-${day} 00:00:00`
     }
 
@@ -98,7 +108,6 @@ export default function SalaryPage() {
     const loadData = async () => {
       setIsLoading(true)
       try {
-        // Загружаем директоров
         const directorsResponse = await apiClient.getDirectors()
         if (!directorsResponse.success || !directorsResponse.data) {
           toast.error('Не удалось загрузить данных директоров')
@@ -106,11 +115,8 @@ export default function SalaryPage() {
         }
 
         const directors: Director[] = directorsResponse.data
+        const dateRange = getDateRange(period, startDate, endDate)
 
-        // Получаем диапазон дат
-        const dateRange = getDateRange(period)
-
-        // Загружаем отчет по городам (там уже есть правильный расчет оборота из orders.clean)
         const citiesReportResponse = await apiClient.getCitiesReport({
           startDate: dateRange.start,
           endDate: dateRange.end
@@ -121,24 +127,20 @@ export default function SalaryPage() {
           return
         }
 
-        // Создаем Map для быстрого поиска оборота по городу
         const cityTurnoverOur = new Map<string, number>()
         const cityTurnoverPartner = new Map<string, number>()
         
         citiesReportResponse.data.forEach((cityData: any) => {
-          // Оборот Наш = сумма чистыми где partner = false
           cityTurnoverOur.set(cityData.city, cityData.orders.totalCleanOur || 0)
-          // Оборот Партнер = сумма чистыми где partner = true
           cityTurnoverPartner.set(cityData.city, cityData.orders.totalCleanPartner || 0)
         })
 
-        // Создаем записи зарплаты для каждого директора по каждому городу
         const records: SalaryRecord[] = []
         directors.forEach((director) => {
           director.cities.forEach((city) => {
             const turnoverOur = cityTurnoverOur.get(city) || 0
             const turnoverPartner = cityTurnoverPartner.get(city) || 0
-            const salary = turnoverOur * 0.07 // 7% от оборота нашего
+            const salary = turnoverOur * 0.07
             
             records.push({
               id: `${director.id}-${city}`,
@@ -154,8 +156,7 @@ export default function SalaryPage() {
         setSalaryRecords(records)
       } catch (error) {
         console.error('Error loading salary data:', error)
-        const errorMessage = error instanceof Error ? error.message : 'Ошибка при загрузке данных'
-        toast.error(errorMessage)
+        toast.error('Ошибка при загрузке данных')
       } finally {
         setIsLoading(false)
       }
@@ -164,11 +165,17 @@ export default function SalaryPage() {
     loadData()
   }, [period, startDate, endDate])
 
+  // Уникальные города
+  const uniqueCities = [...new Set(salaryRecords.map(r => r.city).filter(Boolean))]
 
-  const filteredRecords = salaryRecords.filter(record =>
-    record.directorName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    record.city.toLowerCase().includes(searchQuery.toLowerCase())
-  )
+  // Фильтрация
+  const filteredRecords = salaryRecords.filter(record => {
+    const matchesSearch = !searchQuery || 
+      record.directorName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      record.city.toLowerCase().includes(searchQuery.toLowerCase())
+    const matchesCity = !cityFilter || record.city === cityFilter
+    return matchesSearch && matchesCity
+  })
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('ru-RU', {
@@ -180,185 +187,437 @@ export default function SalaryPage() {
 
   // Статистика
   const stats = {
-    totalTurnoverOur: salaryRecords.reduce((sum, r) => sum + r.turnoverOur, 0),
-    totalTurnoverPartner: salaryRecords.reduce((sum, r) => sum + r.turnoverPartner, 0),
-    totalSalary: salaryRecords.reduce((sum, r) => sum + r.salary, 0),
+    totalTurnoverOur: filteredRecords.reduce((sum, r) => sum + r.turnoverOur, 0),
+    totalTurnoverPartner: filteredRecords.reduce((sum, r) => sum + r.turnoverPartner, 0),
+    totalSalary: filteredRecords.reduce((sum, r) => sum + r.salary, 0),
+  }
+
+  // Открытие панели фильтров
+  const openFiltersPanel = () => {
+    setDraftPeriod(period)
+    setDraftSearchQuery(searchQuery)
+    setDraftCityFilter(cityFilter)
+    setDraftStartDate(startDate)
+    setDraftEndDate(endDate)
+    setShowFilters(true)
+  }
+
+  // Применение фильтров
+  const applyFilters = () => {
+    setPeriod(draftPeriod)
+    setSearchQuery(draftSearchQuery)
+    setCityFilter(draftCityFilter)
+    setStartDate(draftStartDate)
+    setEndDate(draftEndDate)
+    setShowFilters(false)
+  }
+
+  // Сброс фильтров
+  const resetFilters = () => {
+    setDraftPeriod('month')
+    setDraftSearchQuery('')
+    setDraftCityFilter('')
+    setDraftStartDate('')
+    setDraftEndDate('')
+  }
+
+  // Получаем текст периода
+  const getPeriodText = () => {
+    if (period === 'custom' && startDate && endDate) {
+      return `${startDate} — ${endDate}`
+    }
+    const range = getDateRange(period)
+    const startDisplay = range.start.split(' ')[0]
+    const endDisplay = range.end.split(' ')[0]
+    return `${startDisplay} — ${endDisplay}`
   }
 
   return (
-    <div className="min-h-screen" style={{backgroundColor: '#114643'}}>
-      <div className="container mx-auto px-4 py-8 max-w-7xl">
-        {/* Статистика */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-          <Card className="border-0 shadow-lg">
-            <CardContent className="pt-6">
-              <div className="flex items-center justify-between mb-2">
-                <div className="text-sm text-gray-500">Оборот Наш</div>
-                <DollarSign className="h-4 w-4 text-blue-600" />
-              </div>
-              <div className="text-3xl font-bold text-blue-600">{formatCurrency(stats.totalTurnoverOur)}</div>
-              <p className="text-xs text-gray-500 mt-1">Партнер: нет</p>
-            </CardContent>
-          </Card>
-
-          <Card className="border-0 shadow-lg bg-gradient-to-br from-purple-50 to-pink-50">
-            <CardContent className="pt-6">
-              <div className="flex items-center justify-between mb-2">
-                <div className="text-sm text-purple-700">Оборот Партнер</div>
-                <DollarSign className="h-4 w-4 text-purple-700" />
-              </div>
-              <div className="text-3xl font-bold text-purple-700">{formatCurrency(stats.totalTurnoverPartner)}</div>
-              <p className="text-xs text-purple-600 mt-1">Партнер: да</p>
-            </CardContent>
-          </Card>
-
-          <Card className="border-0 shadow-lg bg-gradient-to-br from-teal-50 to-emerald-50">
-            <CardContent className="pt-6">
-              <div className="flex items-center justify-between mb-2">
-                <div className="text-sm text-teal-700">Общая зарплата</div>
-                <DollarSign className="h-4 w-4 text-teal-700" />
-              </div>
-              <div className="text-3xl font-bold text-teal-700">{formatCurrency(stats.totalSalary)}</div>
-              <p className="text-xs text-teal-600 mt-1">7% от Оборота Нашего</p>
-            </CardContent>
-          </Card>
+    <div className={`min-h-screen transition-colors duration-300 ${isDark ? 'bg-[#1e2530]' : 'bg-white'}`}>
+      <div className="px-4 py-6">
+        
+        {/* Статистика - компактные карточки */}
+        <div className="grid grid-cols-3 gap-3 mb-6">
+          <div className={`rounded-xl p-4 ${isDark ? 'bg-[#2a3441]' : 'bg-blue-50'}`}>
+            <div className="flex items-center justify-between mb-2">
+              <span className={`text-xs font-medium ${isDark ? 'text-gray-400' : 'text-blue-600'}`}>Оборот Наш</span>
+              <DollarSign className="h-4 w-4 text-blue-500" />
+            </div>
+            <div className={`text-xl font-bold ${isDark ? 'text-blue-400' : 'text-blue-700'}`}>
+              {formatCurrency(stats.totalTurnoverOur)}
+            </div>
+          </div>
+          
+          <div className={`rounded-xl p-4 ${isDark ? 'bg-[#2a3441]' : 'bg-purple-50'}`}>
+            <div className="flex items-center justify-between mb-2">
+              <span className={`text-xs font-medium ${isDark ? 'text-gray-400' : 'text-purple-600'}`}>Оборот Партнер</span>
+              <DollarSign className="h-4 w-4 text-purple-500" />
+            </div>
+            <div className={`text-xl font-bold ${isDark ? 'text-purple-400' : 'text-purple-700'}`}>
+              {formatCurrency(stats.totalTurnoverPartner)}
+            </div>
+          </div>
+          
+          <div className={`rounded-xl p-4 ${isDark ? 'bg-[#2a3441]' : 'bg-teal-50'}`}>
+            <div className="flex items-center justify-between mb-2">
+              <span className={`text-xs font-medium ${isDark ? 'text-gray-400' : 'text-teal-600'}`}>Зарплата</span>
+              <DollarSign className="h-4 w-4 text-teal-500" />
+            </div>
+            <div className={`text-xl font-bold ${isDark ? 'text-teal-400' : 'text-teal-700'}`}>
+              {formatCurrency(stats.totalSalary)}
+            </div>
+          </div>
         </div>
 
-        {/* Таблица зарплаты */}
-        <Card className="border-0 shadow-lg">
-          <CardContent className="p-4">
-            {/* Фильтры по датам */}
-            <div className="flex flex-wrap items-center gap-3 mb-4 pb-4 border-b border-gray-200">
-              <div className="flex items-center gap-2">
-                <Calendar className="h-4 w-4 text-gray-500" />
-                <span className="text-sm font-medium text-gray-700">Период:</span>
-              </div>
-              <div className="flex gap-2">
-                <Button
-                  variant={period === 'day' ? 'default' : 'outline'}
-                  size="sm"
-                  onClick={() => setPeriod('day')}
-                  className={period === 'day' ? 'bg-gradient-to-r from-teal-600 to-emerald-600' : 'bg-white'}
-                >
-                  День
-                </Button>
-                <Button
-                  variant={period === 'week' ? 'default' : 'outline'}
-                  size="sm"
-                  onClick={() => setPeriod('week')}
-                  className={period === 'week' ? 'bg-gradient-to-r from-teal-600 to-emerald-600' : 'bg-white'}
-                >
-                  Неделя
-                </Button>
-                <Button
-                  variant={period === 'month' ? 'default' : 'outline'}
-                  size="sm"
-                  onClick={() => setPeriod('month')}
-                  className={period === 'month' ? 'bg-gradient-to-r from-teal-600 to-emerald-600' : 'bg-white'}
-                >
-                  Месяц
-                </Button>
-              </div>
-              {period === 'custom' && (
-                <div className="flex items-center gap-2">
-                  <Input
-                    type="date"
-                    value={startDate}
-                    onChange={(e) => setStartDate(e.target.value)}
-                    className="w-40"
-                  />
-                  <span className="text-gray-500">—</span>
-                  <Input
-                    type="date"
-                    value={endDate}
-                    onChange={(e) => setEndDate(e.target.value)}
-                    className="w-40"
-                  />
-                </div>
-              )}
-              {period !== 'custom' && (
-                <div className="ml-auto text-sm text-gray-600">
-                  {(() => {
-                    const range = getDateRange(period)
-                    // Показываем только дату без времени для удобства
-                    const startDisplay = range.start.split(' ')[0]
-                    const endDisplay = range.end.split(' ')[0]
-                    return `${startDisplay} — ${endDisplay}`
-                  })()}
-                </div>
-              )}
-            </div>
+        {/* Панель действий */}
+        <div className="flex items-center gap-2 mb-4">
+          <h1 className={`text-lg font-semibold flex-1 ${isDark ? 'text-gray-100' : 'text-gray-800'}`}>
+            Зарплата директоров
+            <span className={`ml-2 text-sm font-normal ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
+              ({filteredRecords.length})
+            </span>
+          </h1>
+          
+          {/* Период */}
+          <span className={`text-xs hidden sm:inline ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
+            {getPeriodText()}
+          </span>
+          
+          {/* Иконка фильтров */}
+          <button
+            onClick={openFiltersPanel}
+            className={`relative flex-shrink-0 p-2 rounded-lg transition-all duration-200 ${
+              isDark 
+                ? 'bg-[#2a3441] hover:bg-[#3a4451] text-gray-400 hover:text-teal-400'
+                : 'bg-gray-100 hover:bg-gray-200 text-gray-600 hover:text-teal-600'
+            }`}
+            title="Фильтры"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
+            </svg>
+            {(searchQuery || cityFilter || period !== 'month') && (
+              <span className={`absolute -top-0.5 -right-0.5 w-2.5 h-2.5 bg-teal-500 rounded-full border-2 ${
+                isDark ? 'border-[#1e2530]' : 'border-white'
+              }`}></span>
+            )}
+          </button>
 
-            <div className="flex items-center justify-between gap-4 mb-4">
-              <div className="relative flex-1 max-w-sm">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-                <Input
-                  type="text"
-                  placeholder="Поиск по городу или директору..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-10"
-                />
-              </div>
-              <Button variant="outline" className="bg-white">
-                <Download className="h-4 w-4 mr-2" />
-                Экспорт
-              </Button>
-            </div>
+          {/* Кнопка экспорта */}
+          <button
+            className={`flex items-center gap-2 px-3 py-2 rounded-lg transition-all duration-200 text-sm font-medium ${
+              isDark 
+                ? 'bg-[#2a3441] hover:bg-[#3a4451] text-gray-300'
+                : 'bg-gray-100 hover:bg-gray-200 text-gray-700'
+            }`}
+          >
+            <Download className="h-4 w-4" />
+            <span className="hidden sm:inline">Экспорт</span>
+          </button>
+        </div>
 
-            <Table>
-              <TableHeader className="bg-gray-50/50">
-                <TableRow>
-                  <TableHead className="text-xs font-semibold text-gray-600 uppercase tracking-wider">Город</TableHead>
-                  <TableHead className="text-xs font-semibold text-gray-600 uppercase tracking-wider">Имя директора</TableHead>
-                  <TableHead className="text-right text-xs font-semibold text-blue-600 uppercase tracking-wider">Оборот Наш</TableHead>
-                  <TableHead className="text-right text-xs font-semibold text-purple-600 uppercase tracking-wider">Оборот Партнер</TableHead>
-                  <TableHead className="text-right text-xs font-semibold text-teal-600 uppercase tracking-wider">Зарплата</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {isLoading ? (
-                  <TableRow>
-                    <TableCell colSpan={5} className="text-center py-8 text-gray-500">
-                      Загрузка...
-                    </TableCell>
-                  </TableRow>
-                ) : filteredRecords.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={5} className="text-center py-8 text-gray-500">
-                      {searchQuery ? 'Записи не найдены. Попробуйте изменить поисковый запрос.' : 'Нет данных.'}
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  filteredRecords.map((record) => (
-                    <TableRow key={record.id}>
-                      <TableCell className="font-medium text-gray-900">
-                        {record.city}
-                      </TableCell>
-                      <TableCell className="text-gray-600">
+        {/* Выезжающая панель фильтров */}
+        {showFilters && (
+          <>
+            <div 
+              className={`fixed inset-0 z-40 transition-opacity duration-300 ${isDark ? 'bg-black/50' : 'bg-black/30'}`}
+              onClick={() => setShowFilters(false)}
+            />
+            
+            <div className={`fixed top-16 md:top-0 right-0 h-[calc(100%-4rem)] md:h-full w-full sm:w-80 shadow-xl z-50 transform transition-transform duration-300 ease-out overflow-y-auto ${
+              isDark ? 'bg-[#2a3441]' : 'bg-white'
+            }`}>
+              {/* Заголовок */}
+              <div className={`hidden md:flex sticky top-0 border-b px-4 py-3 items-center justify-between z-10 ${
+                isDark ? 'bg-[#2a3441] border-gray-700' : 'bg-white border-gray-200'
+              }`}>
+                <h2 className={`text-lg font-semibold ${isDark ? 'text-gray-100' : 'text-gray-800'}`}>Фильтры</h2>
+                <button
+                  onClick={() => setShowFilters(false)}
+                  className={`p-2 rounded-lg transition-colors ${
+                    isDark ? 'text-gray-400 hover:text-gray-200 hover:bg-[#3a4451]' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
+                  }`}
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+
+              {/* Мобильная кнопка скрыть */}
+              <div className={`md:hidden sticky top-0 border-b px-4 py-3 z-10 ${
+                isDark ? 'bg-[#2a3441] border-gray-700' : 'bg-white border-gray-200'
+              }`}>
+                <button
+                  onClick={() => setShowFilters(false)}
+                  className={`w-full py-2.5 px-4 rounded-xl text-sm font-medium transition-colors flex items-center justify-center gap-2 ${
+                    isDark ? 'bg-[#3a4451] hover:bg-[#4a5461] text-gray-300' : 'bg-gray-100 hover:bg-gray-200 text-gray-600'
+                  }`}
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
+                  </svg>
+                  Скрыть фильтры
+                </button>
+              </div>
+
+              {/* Содержимое */}
+              <div className="p-4 space-y-4">
+                {/* Период */}
+                <div className="space-y-3">
+                  <h3 className={`text-xs font-semibold uppercase tracking-wider ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>Период</h3>
+                  
+                  <div className="flex gap-2 flex-wrap">
+                    {[
+                      { id: 'day', label: 'День' },
+                      { id: 'week', label: 'Неделя' },
+                      { id: 'month', label: 'Месяц' },
+                      { id: 'custom', label: 'Свой' },
+                    ].map((item) => (
+                      <button
+                        key={item.id}
+                        onClick={() => setDraftPeriod(item.id as DatePeriod)}
+                        className={`px-3 py-1.5 text-xs font-medium rounded-md transition-all ${
+                          draftPeriod === item.id
+                            ? 'bg-teal-600 text-white'
+                            : isDark
+                              ? 'bg-[#3a4451] text-gray-300 hover:bg-[#4a5461]'
+                              : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                        }`}
+                      >
+                        {item.label}
+                      </button>
+                    ))}
+                  </div>
+                  
+                  {draftPeriod === 'custom' && (
+                    <div className="grid grid-cols-2 gap-2 mt-3">
+                      <div>
+                        <label className={`block text-sm font-medium mb-1 ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>С</label>
+                        <input
+                          type="date"
+                          value={draftStartDate}
+                          onChange={(e) => setDraftStartDate(e.target.value)}
+                          className={`w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent transition-all ${
+                            isDark 
+                              ? 'bg-[#3a4451] border-gray-600 text-gray-100'
+                              : 'bg-gray-50 border-gray-200 text-gray-800'
+                          }`}
+                        />
+                      </div>
+                      <div>
+                        <label className={`block text-sm font-medium mb-1 ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>По</label>
+                        <input
+                          type="date"
+                          value={draftEndDate}
+                          onChange={(e) => setDraftEndDate(e.target.value)}
+                          className={`w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent transition-all ${
+                            isDark 
+                              ? 'bg-[#3a4451] border-gray-600 text-gray-100'
+                              : 'bg-gray-50 border-gray-200 text-gray-800'
+                          }`}
+                        />
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                <hr className={isDark ? 'border-gray-700' : 'border-gray-200'} />
+
+                {/* Поиск и фильтры */}
+                <div className="space-y-3">
+                  <h3 className={`text-xs font-semibold uppercase tracking-wider ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>Фильтры</h3>
+                  
+                  <div>
+                    <label className={`block text-sm font-medium mb-1 ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>Поиск</label>
+                    <input
+                      type="text"
+                      value={draftSearchQuery}
+                      onChange={(e) => setDraftSearchQuery(e.target.value)}
+                      placeholder="Город или директор..."
+                      className={`w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent transition-all ${
+                        isDark 
+                          ? 'bg-[#3a4451] border-gray-600 text-gray-100 placeholder-gray-500'
+                          : 'bg-gray-50 border-gray-200 text-gray-800 placeholder-gray-400'
+                      }`}
+                    />
+                  </div>
+                  
+                  <div>
+                    <label className={`block text-sm font-medium mb-1 ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>Город</label>
+                    <Select value={draftCityFilter || "all"} onValueChange={(v) => setDraftCityFilter(v === "all" ? "" : v)}>
+                      <SelectTrigger className={`w-full ${isDark ? 'bg-[#3a4451] border-gray-600 text-gray-100' : 'bg-gray-50 border-gray-200 text-gray-800'}`}>
+                        <SelectValue placeholder="Все города" />
+                      </SelectTrigger>
+                      <SelectContent className={isDark ? 'bg-[#2a3441] border-gray-600' : 'bg-white border-gray-200'}>
+                        <SelectItem value="all" className={isDark ? 'text-gray-100' : 'text-gray-800'}>Все города</SelectItem>
+                        {uniqueCities.map(city => (
+                          <SelectItem key={city} value={city} className={isDark ? 'text-gray-100' : 'text-gray-800'}>{city}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+              </div>
+
+              {/* Кнопки */}
+              <div className={`sticky bottom-0 border-t px-4 py-3 flex gap-2 ${
+                isDark ? 'bg-[#2a3441] border-gray-700' : 'bg-white border-gray-200'
+              }`}>
+                <button
+                  onClick={resetFilters}
+                  className={`flex-1 px-4 py-2 rounded-lg transition-colors text-sm font-medium ${
+                    isDark 
+                      ? 'bg-[#3a4451] hover:bg-[#4a5461] text-gray-300'
+                      : 'bg-gray-100 hover:bg-gray-200 text-gray-700'
+                  }`}
+                >
+                  Сбросить
+                </button>
+                <button
+                  onClick={applyFilters}
+                  className="flex-1 px-4 py-2 bg-teal-500 hover:bg-teal-600 text-white rounded-lg transition-colors text-sm font-medium"
+                >
+                  Применить
+                </button>
+              </div>
+            </div>
+          </>
+        )}
+
+        {/* Загрузка */}
+        {isLoading && (
+          <div className="text-center py-8 animate-fade-in">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-teal-600 mx-auto mb-4"></div>
+            <p className={`font-medium ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>Загрузка...</p>
+          </div>
+        )}
+
+        {/* Пусто */}
+        {!isLoading && filteredRecords.length === 0 && (
+          <div className={`text-center py-16 rounded-lg ${isDark ? 'bg-[#2a3441]' : 'bg-gray-50'}`}>
+            <DollarSign className={`w-16 h-16 mx-auto mb-4 ${isDark ? 'text-gray-600' : 'text-gray-300'}`} />
+            <p className={`text-lg mb-2 ${isDark ? 'text-gray-300' : 'text-gray-600'}`}>
+              {searchQuery || cityFilter ? 'Записи не найдены' : 'Нет данных'}
+            </p>
+            <p className={`text-sm ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
+              {searchQuery || cityFilter ? 'Попробуйте изменить фильтры' : 'Выберите другой период'}
+            </p>
+          </div>
+        )}
+
+        {/* Десктопная таблица */}
+        {!isLoading && filteredRecords.length > 0 && (
+          <div className="hidden md:block animate-fade-in">
+            <div className={`rounded-lg shadow-lg overflow-hidden ${isDark ? 'bg-[#2a3441]' : 'bg-white'}`}>
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className={`border-b-2 ${isDark ? 'bg-[#3a4451] border-[#0d5c4b]' : 'bg-gray-50 border-[#0d5c4b]'}`}>
+                    <th className={`text-left py-3 px-4 font-semibold ${isDark ? 'text-gray-200' : 'text-gray-700'}`}>Город</th>
+                    <th className={`text-left py-3 px-4 font-semibold ${isDark ? 'text-gray-200' : 'text-gray-700'}`}>Директор</th>
+                    <th className={`text-right py-3 px-4 font-semibold text-blue-500`}>Оборот Наш</th>
+                    <th className={`text-right py-3 px-4 font-semibold text-purple-500`}>Оборот Партнер</th>
+                    <th className={`text-right py-3 px-4 font-semibold text-teal-500`}>Зарплата</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredRecords.map((record) => (
+                    <tr 
+                      key={record.id} 
+                      className={`border-b transition-colors ${isDark ? 'border-gray-700 hover:bg-[#3a4451]' : 'border-gray-200 hover:bg-gray-50'}`}
+                    >
+                      <td className={`py-3 px-4 font-medium ${isDark ? 'text-gray-100' : 'text-gray-900'}`}>{record.city}</td>
+                      <td className={`py-3 px-4 ${isDark ? 'text-gray-300' : 'text-gray-600'}`}>
                         <div className="flex items-center gap-2">
-                          <User className="h-4 w-4 text-gray-400" />
+                          <User className={`h-4 w-4 ${isDark ? 'text-gray-500' : 'text-gray-400'}`} />
                           {record.directorName}
                         </div>
-                      </TableCell>
-                      <TableCell className="text-right font-medium text-blue-600">
+                      </td>
+                      <td className={`py-3 px-4 text-right font-medium ${isDark ? 'text-blue-400' : 'text-blue-600'}`}>
                         {formatCurrency(record.turnoverOur)}
-                      </TableCell>
-                      <TableCell className="text-right font-medium text-purple-600">
+                      </td>
+                      <td className={`py-3 px-4 text-right font-medium ${isDark ? 'text-purple-400' : 'text-purple-600'}`}>
                         {formatCurrency(record.turnoverPartner)}
-                      </TableCell>
-                      <TableCell className="text-right font-bold text-teal-700">
+                      </td>
+                      <td className={`py-3 px-4 text-right font-bold ${isDark ? 'text-teal-400' : 'text-teal-700'}`}>
                         {formatCurrency(record.salary)}
-                      </TableCell>
-                    </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
-          </CardContent>
-        </Card>
+                      </td>
+                    </tr>
+                  ))}
+                  {/* Итого */}
+                  <tr className={`font-bold border-t-2 ${isDark ? 'bg-[#3a4451] border-[#0d5c4b]' : 'bg-gray-100 border-[#0d5c4b]'}`}>
+                    <td className={`py-3 px-4 ${isDark ? 'text-gray-100' : 'text-gray-800'}`} colSpan={2}>ИТОГО</td>
+                    <td className={`py-3 px-4 text-right ${isDark ? 'text-blue-400' : 'text-blue-700'}`}>{formatCurrency(stats.totalTurnoverOur)}</td>
+                    <td className={`py-3 px-4 text-right ${isDark ? 'text-purple-400' : 'text-purple-700'}`}>{formatCurrency(stats.totalTurnoverPartner)}</td>
+                    <td className={`py-3 px-4 text-right ${isDark ? 'text-teal-400' : 'text-teal-700'}`}>{formatCurrency(stats.totalSalary)}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
+        {/* Мобильные карточки */}
+        {!isLoading && filteredRecords.length > 0 && (
+          <div className="md:hidden space-y-3 animate-fade-in">
+            {filteredRecords.map((record) => (
+              <div 
+                key={record.id}
+                className={`rounded-xl overflow-hidden border ${isDark ? 'bg-[#2a3441] border-gray-700' : 'bg-white border-gray-200'}`}
+              >
+                {/* Верхняя строка */}
+                <div className={`flex items-center justify-between px-4 py-3 border-b ${isDark ? 'bg-[#3a4451] border-gray-700' : 'bg-gray-50 border-gray-100'}`}>
+                  <span className={`font-semibold ${isDark ? 'text-gray-100' : 'text-gray-800'}`}>{record.city}</span>
+                  <span className={`text-lg font-bold ${isDark ? 'text-teal-400' : 'text-teal-700'}`}>
+                    {formatCurrency(record.salary)}
+                  </span>
+                </div>
+                
+                {/* Контент */}
+                <div className="px-4 py-3">
+                  <div className={`flex items-center gap-2 mb-3 text-sm ${isDark ? 'text-gray-300' : 'text-gray-600'}`}>
+                    <User className={`h-4 w-4 ${isDark ? 'text-gray-500' : 'text-gray-400'}`} />
+                    {record.directorName}
+                  </div>
+                  
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className={`p-2 rounded-lg ${isDark ? 'bg-[#3a4451]' : 'bg-blue-50'}`}>
+                      <span className={`text-xs ${isDark ? 'text-gray-500' : 'text-blue-500'}`}>Наш</span>
+                      <p className={`font-semibold ${isDark ? 'text-blue-400' : 'text-blue-700'}`}>{formatCurrency(record.turnoverOur)}</p>
+                    </div>
+                    <div className={`p-2 rounded-lg ${isDark ? 'bg-[#3a4451]' : 'bg-purple-50'}`}>
+                      <span className={`text-xs ${isDark ? 'text-gray-500' : 'text-purple-500'}`}>Партнер</span>
+                      <p className={`font-semibold ${isDark ? 'text-purple-400' : 'text-purple-700'}`}>{formatCurrency(record.turnoverPartner)}</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ))}
+            
+            {/* Итого карточка */}
+            <div className={`rounded-xl overflow-hidden border-2 ${isDark ? 'bg-[#2a3441] border-teal-700' : 'bg-teal-50 border-teal-300'}`}>
+              <div className="px-4 py-4">
+                <div className="flex items-center justify-between mb-3">
+                  <span className={`font-bold ${isDark ? 'text-gray-100' : 'text-gray-800'}`}>ИТОГО</span>
+                  <span className={`text-xl font-bold ${isDark ? 'text-teal-400' : 'text-teal-700'}`}>
+                    {formatCurrency(stats.totalSalary)}
+                  </span>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <span className={`text-xs ${isDark ? 'text-gray-500' : 'text-blue-500'}`}>Оборот Наш</span>
+                    <p className={`font-semibold ${isDark ? 'text-blue-400' : 'text-blue-700'}`}>{formatCurrency(stats.totalTurnoverOur)}</p>
+                  </div>
+                  <div>
+                    <span className={`text-xs ${isDark ? 'text-gray-500' : 'text-purple-500'}`}>Оборот Партнер</span>
+                    <p className={`font-semibold ${isDark ? 'text-purple-400' : 'text-purple-700'}`}>{formatCurrency(stats.totalTurnoverPartner)}</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   )
 }
-

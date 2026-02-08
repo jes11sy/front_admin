@@ -151,8 +151,8 @@ export default function SessionsPage() {
   }
 
   return (
-    <div className="min-h-screen" style={{backgroundColor: '#114643'}}>
-      <div className="container mx-auto px-2 sm:px-4 py-8">
+    <div>
+      <div className="container mx-auto">
         <div className="max-w-none mx-auto">
           <div className="backdrop-blur-lg shadow-2xl rounded-2xl p-6 md:p-8 border bg-white/95 hover:bg-white transition-all duration-500 hover:shadow-3xl" style={{borderColor: '#114643'}}>
             
