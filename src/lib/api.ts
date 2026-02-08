@@ -1317,36 +1317,41 @@ class ApiClient {
     // Нормализуем номер телефона
     const normalizedPhone = phone.replace(/[\s\+\(\)\-]/g, '')
     
-    const response = await this.safeFetch(`${this.baseURL}/orders/by-phone/${encodeURIComponent(normalizedPhone)}`, {
-      method: 'GET',
-    })
-
-    if (!response.ok) {
-      if (response.status === 404) {
-        return { success: true, data: [] }
-      }
-      throw new Error('Ошибка получения истории заказов')
+    try {
+      const response = await this.request<Array<{
+        id: number;
+        clientName: string;
+        city: string;
+        statusOrder: string;
+        dateMeeting: string;
+        typeEquipment: string;
+        typeOrder: string;
+        problem: string;
+        createdAt: string;
+        rk: string;
+        avitoName: string;
+        address: string;
+        result: number | null;
+        master: { id: number; name: string } | null;
+      }>>(`/orders/by-phone/${encodeURIComponent(normalizedPhone)}`, { method: 'GET' })
+      
+      return { success: true, data: response.data || [] }
+    } catch (error) {
+      logger.error('Error fetching orders by phone', { error: String(error) })
+      return { success: true, data: [] }
     }
-
-    const data = await response.json()
-    return data
   }
 
   // Orders History API - получить историю изменений заказа
   async getOrderHistory(orderId: number): Promise<OrderHistoryItem[]> {
-    const response = await this.safeFetch(`${this.baseURL}/orders/${orderId}/history`, {
-      method: 'GET',
-    })
-
-    if (!response.ok) {
-      if (response.status === 404) {
-        return []
-      }
-      throw new Error('Ошибка получения истории изменений')
+    try {
+      const response = await this.request<OrderHistoryItem[]>(`/orders/${orderId}/history`, { method: 'GET' })
+      const result = response.data
+      return Array.isArray(result) ? result : []
+    } catch (error) {
+      logger.error('Error fetching order history', { error: String(error) })
+      return []
     }
-
-    const result = await response.json()
-    return Array.isArray(result) ? result : (result.data || [])
   }
 }
 

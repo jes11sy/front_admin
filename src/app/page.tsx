@@ -776,7 +776,7 @@ export default function ReportsPage() {
               
               {/* Таблица кассы (простой режим) */}
               {reportData.type === 'cash' && !reportData.data.groupByPurpose && (
-                <div className={`rounded-lg shadow-lg overflow-hidden ${isDark ? 'bg-[#2a3441]' : 'bg-white'}`}>
+                <div className={`rounded-lg shadow-lg overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0 ${isDark ? 'bg-[#2a3441]' : 'bg-white'}`}>
                   <table className="w-full text-sm">
                     <thead>
                       <tr className={`border-b-2 ${isDark ? 'bg-[#3a4451] border-[#0d5c4b]' : 'bg-gray-50 border-[#0d5c4b]'}`}>
@@ -808,7 +808,7 @@ export default function ReportsPage() {
               
               {/* Таблица кассы с группировкой по назначениям */}
               {reportData.type === 'cash' && reportData.data.groupByPurpose && (
-                <div className={`rounded-lg shadow-lg overflow-hidden ${isDark ? 'bg-[#2a3441]' : 'bg-white'}`}>
+                <div className={`rounded-lg shadow-lg overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0 ${isDark ? 'bg-[#2a3441]' : 'bg-white'}`}>
                   <table className="w-full text-sm">
                     <thead>
                       <tr className={`border-b-2 ${isDark ? 'bg-[#3a4451] border-[#0d5c4b]' : 'bg-gray-50 border-[#0d5c4b]'}`}>
@@ -850,7 +850,7 @@ export default function ReportsPage() {
               
               {/* Таблица заказов */}
               {reportData.type === 'orders' && (
-                <div className={`rounded-lg shadow-lg overflow-x-auto ${isDark ? 'bg-[#2a3441]' : 'bg-white'}`}>
+                <div className={`rounded-lg shadow-lg overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0 ${isDark ? 'bg-[#2a3441]' : 'bg-white'}`}>
                   <table className="w-full text-sm min-w-[800px]">
                     <thead>
                       <tr className={`border-b-2 ${isDark ? 'bg-[#3a4451] border-[#0d5c4b]' : 'bg-gray-50 border-[#0d5c4b]'}`}>
@@ -869,26 +869,26 @@ export default function ReportsPage() {
                       {reportData.data.cities.map((city: any) => (
                         <tr key={city.city} className={`border-b transition-colors ${isDark ? 'border-gray-700 hover:bg-[#3a4451]' : 'border-gray-200 hover:bg-gray-50'}`}>
                           <td className={`py-3 px-3 font-medium ${isDark ? 'text-gray-100' : 'text-gray-800'}`}>{city.city}</td>
-                          <td className={`py-3 px-3 text-right ${isDark ? 'text-gray-300' : 'text-gray-600'}`}>{city.totalOrders}</td>
-                          <td className={`py-3 px-3 text-right ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>{city.notOrders}</td>
-                          <td className="py-3 px-3 text-right text-red-600">{city.zeroOrders}</td>
-                          <td className="py-3 px-3 text-right font-medium text-green-600">{city.completedOrders}</td>
-                          <td className="py-3 px-3 text-right text-orange-500">{city.microUnder1500}</td>
-                          <td className="py-3 px-3 text-right text-amber-600">{city.micro1500to10000}</td>
-                          <td className={`py-3 px-3 text-right ${isDark ? 'text-teal-400' : 'text-teal-600'}`}>{city.over10kCount}</td>
-                          <td className="py-3 px-3 text-right font-medium text-purple-600">{formatCurrency(city.maxCheck)}</td>
+                          <td className={`py-3 px-3 text-right ${isDark ? 'text-gray-100' : 'text-gray-800'}`}>{city.totalOrders}</td>
+                          <td className={`py-3 px-3 text-right ${isDark ? 'text-gray-100' : 'text-gray-800'}`}>{city.notOrders}</td>
+                          <td className={`py-3 px-3 text-right ${isDark ? 'text-gray-100' : 'text-gray-800'}`}>{city.zeroOrders}</td>
+                          <td className={`py-3 px-3 text-right font-medium ${isDark ? 'text-gray-100' : 'text-gray-800'}`}>{city.completedOrders}</td>
+                          <td className={`py-3 px-3 text-right ${isDark ? 'text-gray-100' : 'text-gray-800'}`}>{city.microUnder1500}</td>
+                          <td className={`py-3 px-3 text-right ${isDark ? 'text-gray-100' : 'text-gray-800'}`}>{city.micro1500to10000}</td>
+                          <td className={`py-3 px-3 text-right ${isDark ? 'text-gray-100' : 'text-gray-800'}`}>{city.over10kCount}</td>
+                          <td className={`py-3 px-3 text-right font-medium ${isDark ? 'text-gray-100' : 'text-gray-800'}`}>{formatCurrency(city.maxCheck)}</td>
                         </tr>
                       ))}
                       <tr className={`font-bold border-t-2 ${isDark ? 'bg-[#3a4451] border-[#0d5c4b]' : 'bg-gray-100 border-[#0d5c4b]'}`}>
                         <td className={`py-3 px-3 ${isDark ? 'text-gray-100' : 'text-gray-800'}`}>ИТОГО</td>
-                        <td className={`py-3 px-3 text-right ${isDark ? 'text-gray-200' : 'text-gray-700'}`}>{reportData.data.totals.totalOrders}</td>
-                        <td className={`py-3 px-3 text-right ${isDark ? 'text-gray-300' : 'text-gray-600'}`}>{reportData.data.totals.notOrders}</td>
-                        <td className="py-3 px-3 text-right text-red-700">{reportData.data.totals.zeroOrders}</td>
-                        <td className="py-3 px-3 text-right text-green-700">{reportData.data.totals.completedOrders}</td>
-                        <td className="py-3 px-3 text-right text-orange-600">{reportData.data.totals.microUnder1500}</td>
-                        <td className="py-3 px-3 text-right text-amber-700">{reportData.data.totals.micro1500to10000}</td>
-                        <td className={`py-3 px-3 text-right ${isDark ? 'text-teal-400' : 'text-teal-700'}`}>{reportData.data.totals.over10kCount}</td>
-                        <td className="py-3 px-3 text-right text-purple-700">{formatCurrency(reportData.data.totals.maxCheck)}</td>
+                        <td className={`py-3 px-3 text-right ${isDark ? 'text-gray-100' : 'text-gray-800'}`}>{reportData.data.totals.totalOrders}</td>
+                        <td className={`py-3 px-3 text-right ${isDark ? 'text-gray-100' : 'text-gray-800'}`}>{reportData.data.totals.notOrders}</td>
+                        <td className={`py-3 px-3 text-right ${isDark ? 'text-gray-100' : 'text-gray-800'}`}>{reportData.data.totals.zeroOrders}</td>
+                        <td className={`py-3 px-3 text-right ${isDark ? 'text-gray-100' : 'text-gray-800'}`}>{reportData.data.totals.completedOrders}</td>
+                        <td className={`py-3 px-3 text-right ${isDark ? 'text-gray-100' : 'text-gray-800'}`}>{reportData.data.totals.microUnder1500}</td>
+                        <td className={`py-3 px-3 text-right ${isDark ? 'text-gray-100' : 'text-gray-800'}`}>{reportData.data.totals.micro1500to10000}</td>
+                        <td className={`py-3 px-3 text-right ${isDark ? 'text-gray-100' : 'text-gray-800'}`}>{reportData.data.totals.over10kCount}</td>
+                        <td className={`py-3 px-3 text-right ${isDark ? 'text-gray-100' : 'text-gray-800'}`}>{formatCurrency(reportData.data.totals.maxCheck)}</td>
                       </tr>
                     </tbody>
                   </table>
@@ -897,7 +897,7 @@ export default function ReportsPage() {
               
               {/* Таблица рекламных кампаний */}
               {reportData.type === 'campaigns' && reportData.data?.cities && (
-                <div className={`rounded-lg shadow-lg overflow-hidden ${isDark ? 'bg-[#2a3441]' : 'bg-white'}`}>
+                <div className={`rounded-lg shadow-lg overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0 ${isDark ? 'bg-[#2a3441]' : 'bg-white'}`}>
                   <table className="w-full text-sm">
                     <thead>
                       <tr className={`border-b-2 ${isDark ? 'bg-[#3a4451] border-[#0d5c4b]' : 'bg-gray-50 border-[#0d5c4b]'}`}>

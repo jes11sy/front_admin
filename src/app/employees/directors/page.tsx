@@ -261,10 +261,10 @@ export default function DirectorsPage() {
                         {director.cities.map((city, idx) => (
                           <span 
                             key={idx} 
-                            className={`inline-flex items-center px-2 py-0.5 rounded text-xs ${
+                            className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
                               isDark 
-                                ? 'bg-[#0d5c4b]/20 text-[#0d5c4b]' 
-                                : 'bg-teal-100 text-teal-800'
+                                ? 'bg-gray-600 text-gray-100' 
+                                : 'bg-gray-200 text-gray-700'
                             }`}
                           >
                             {city}
