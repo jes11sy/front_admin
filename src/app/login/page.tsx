@@ -6,7 +6,6 @@ import Image from 'next/image'
 import { Button } from "@/components/ui/button"
 import { CustomInput } from "@/components/ui/custom-input"
 import { Label } from "@/components/ui/label"
-import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { apiClient } from "@/lib/api"
 import { sanitizeString } from "@/lib/sanitize"
 import { logger } from "@/lib/logger"
@@ -14,6 +13,7 @@ import { toast } from "@/components/ui/toast"
 import { getErrorMessage } from "@/lib/utils"
 import { validators, validateField } from "@/lib/validation"
 import { useAuthStore } from "@/store/auth.store"
+import { Sun, Moon, Eye, EyeOff } from 'lucide-react'
 
 // Компонент формы логина (использует useSearchParams)
 function LoginForm() {
@@ -22,16 +22,34 @@ function LoginForm() {
   const setUser = useAuthStore((state) => state.setUser)
   const [login, setLogin] = useState('')
   const [password, setPassword] = useState('')
+  const [showPassword, setShowPassword] = useState(false)
   const [rememberMe, setRememberMe] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [errors, setErrors] = useState<{ login?: string; password?: string }>({})
   const [isCheckingAutoLogin, setIsCheckingAutoLogin] = useState(true)
+  
+  // Тема
+  const [theme, setTheme] = useState<'light' | 'dark'>('light')
   
   // Rate Limiting: защита от брутфорс атак
   const [attemptCount, setAttemptCount] = useState(0)
   const [blockedUntil, setBlockedUntil] = useState<number | null>(null)
   const MAX_ATTEMPTS = 10 // Максимум попыток
   const BLOCK_DURATION = 5 * 60 * 1000 // 5 минут в миллисекундах
+  
+  // Загружаем тему из localStorage
+  useEffect(() => {
+    const savedTheme = localStorage.getItem('admin-theme') as 'light' | 'dark' | null
+    if (savedTheme) {
+      setTheme(savedTheme)
+    }
+  }, [])
+  
+  const toggleTheme = () => {
+    const newTheme = theme === 'dark' ? 'light' : 'dark'
+    setTheme(newTheme)
+    localStorage.setItem('admin-theme', newTheme)
+  }
   
   /**
    * Безопасная валидация redirect URL
@@ -160,7 +178,7 @@ function LoginForm() {
       const minutes = Math.floor(remainingSeconds / 60)
       const seconds = remainingSeconds % 60
       toast.error(
-        `🔒 Слишком много попыток входа. Попробуйте через ${minutes}:${seconds.toString().padStart(2, '0')}`
+        `Слишком много попыток входа. Попробуйте через ${minutes}:${seconds.toString().padStart(2, '0')}`
       )
       return
     }
@@ -230,7 +248,7 @@ function LoginForm() {
         const blockTime = Date.now() + BLOCK_DURATION
         setBlockedUntil(blockTime)
         toast.error(
-          `🔒 Превышен лимит попыток входа (${MAX_ATTEMPTS}). Аккаунт заблокирован на 5 минут.`
+          `Превышен лимит попыток входа (${MAX_ATTEMPTS}). Аккаунт заблокирован на 5 минут.`
         )
         logger.warn('Login attempts exceeded', { attemptCount: newAttemptCount })
       } else {
@@ -252,142 +270,192 @@ function LoginForm() {
   // Показываем загрузку во время проверки автовхода
   if (isCheckingAutoLogin) {
     return (
-      <div className="min-h-screen flex items-center justify-center" style={{backgroundColor: '#114643'}}>
+      <div className={`min-h-screen flex items-center justify-center transition-colors duration-300 ${
+        theme === 'dark' ? 'bg-[#1e2530]' : 'bg-[#daece2]'
+      }`}>
         <div className="text-center">
-          <svg className="animate-spin h-12 w-12 text-white mx-auto mb-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+          <svg className={`animate-spin h-12 w-12 mx-auto mb-4 ${
+            theme === 'dark' ? 'text-white' : 'text-[#0d5c4b]'
+          }`} xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
             <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
             <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
           </svg>
-          <p className="text-white text-lg">Проверка авторизации...</p>
+          <p className={`text-lg ${theme === 'dark' ? 'text-white' : 'text-[#0d5c4b]'}`}>
+            Проверка авторизации...
+          </p>
         </div>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center" style={{backgroundColor: '#114643'}}>
-      <div className="max-w-md w-full space-y-8 py-12 px-4 sm:px-6 lg:px-8">
-        <Card className="backdrop-blur-lg shadow-2xl border-0 rounded-2xl bg-white/95 hover:bg-white transition-all duration-500 hover:shadow-3xl transform hover:scale-[1.02] animate-fade-in">
-          <CardHeader className="text-center pb-8">
-            <div className="mx-auto mb-6 animate-bounce-in">
-              <Image
-                src="/logo.png"
-                alt="Admin Panel Logo"
-                width={128}
-                height={128}
-                className="object-contain drop-shadow-lg hover:drop-shadow-xl transition-all duration-300 hover:scale-105"
-                priority
-              />
-            </div>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handleSubmit} className="space-y-6">
-              <div className="space-y-2 animate-slide-in-left">
-                <Label htmlFor="login" className="font-medium text-gray-700 transition-colors duration-200">Логин</Label>
-                <CustomInput
-                  id="login"
-                  type="text"
-                  placeholder="Введите логин"
-                  value={login}
-                  onChange={(e) => {
-                    setLogin(sanitizeString(e.target.value))
-                    // Очищаем ошибку при вводе
-                    if (errors.login) setErrors(prev => ({ ...prev, login: undefined }))
-                  }}
-                  className={`bg-white text-gray-800 placeholder:text-gray-400 rounded-xl hover:border-gray-300 shadow-sm hover:shadow-md form-input-hover ${
-                    errors.login ? 'border-red-500 focus:border-red-500' : ''
-                  }`}
-                  required
-                  autoComplete="username"
-                  maxLength={50}
-                />
-                {errors.login && (
-                  <p className="text-red-500 text-sm mt-1 animate-fade-in">
-                    {sanitizeString(errors.login)}
-                  </p>
-                )}
-              </div>
-              
-              <div className="space-y-2 animate-slide-in-right">
-                <Label htmlFor="password" className="font-medium text-gray-700 transition-colors duration-200">Пароль</Label>
-                <CustomInput
-                  id="password"
-                  type="password"
-                  placeholder="Введите пароль"
-                  value={password}
-                  onChange={(e) => {
-                    setPassword(e.target.value)
-                    // Очищаем ошибку при вводе
-                    if (errors.password) setErrors(prev => ({ ...prev, password: undefined }))
-                  }}
-                  className={`bg-white text-gray-800 placeholder:text-gray-400 rounded-xl hover:border-gray-300 shadow-sm hover:shadow-md form-input-hover ${
-                    errors.password ? 'border-red-500 focus:border-red-500' : ''
-                  }`}
-                  required
-                  autoComplete="current-password"
-                  maxLength={100}
-                />
-                {errors.password && (
-                  <p className="text-red-500 text-sm mt-1 animate-fade-in">
-                    {sanitizeString(errors.password)}
-                  </p>
-                )}
-              </div>
-              
-              <div className="flex items-center animate-fade-in-delayed">
-                <input
-                  id="remember-me"
-                  name="remember-me"
-                  type="checkbox"
-                  checked={rememberMe}
-                  onChange={(e) => setRememberMe(e.target.checked)}
-                  className="h-4 w-4 rounded border-2 border-gray-300 focus:ring-2 transition-all duration-200"
-                  style={{accentColor: '#114643'}}
-                />
-                <label htmlFor="remember-me" className="ml-2 block text-sm text-gray-600 hover:text-gray-800 transition-colors duration-200 cursor-pointer">
-                  Запомнить меня
-                </label>
-              </div>
-              
-              <Button 
-                type="submit" 
-                className="w-full text-white font-medium py-3 px-4 rounded-xl transition-all duration-300 shadow-lg hover:shadow-xl transform hover:scale-[1.02] active:scale-[0.98] bg-gradient-to-r from-teal-600 to-emerald-600 hover:from-teal-700 hover:to-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none" 
-                disabled={isLoading || (blockedUntil !== null && Date.now() < blockedUntil)}
-              >
-                <span className="flex items-center justify-center">
-                  {isLoading ? (
-                    <>
-                      <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                      </svg>
-                      Вход...
-                    </>
-                  ) : blockedUntil && Date.now() < blockedUntil ? (
-                    <>🔒 Заблокировано</>
-                  ) : (
-                    'Войти'
-                  )}
-                </span>
-              </Button>
-              
-              {/* Предупреждение о количестве оставшихся попыток */}
-              {attemptCount > 0 && attemptCount < MAX_ATTEMPTS && !blockedUntil && (
-                <div className="text-center mt-2 animate-fade-in">
-                  <p className="text-yellow-600 text-sm font-medium">
-                    ⚠️ Осталось попыток: {MAX_ATTEMPTS - attemptCount}
-                  </p>
-                </div>
-              )}
-            </form>
-          </CardContent>
-        </Card>
+    <div 
+      className={`min-h-screen flex items-center justify-center p-4 relative transition-colors duration-300 ${
+        theme === 'dark' ? 'bg-[#1e2530]' : 'bg-[#daece2]'
+      }`}
+    >
+      {/* Login Card */}
+      <div className={`w-full max-w-sm rounded-2xl p-8 shadow-xl relative transition-colors duration-300 ${
+        theme === 'dark' ? 'bg-[#2a3441]' : 'bg-white'
+      }`}>
         
-        <div className="text-center mt-8 animate-fade-in-delayed">
-          <p className="text-white/80 text-sm hover:text-white/90 transition-colors duration-200">
-            © 2025 Новые Схемы. Все права защищены.
-          </p>
+        {/* Переключатель темы справа вверху */}
+        <button
+          onClick={toggleTheme}
+          className="absolute top-4 right-4 p-2 text-[#0d5c4b] transition-colors"
+          title={theme === 'dark' ? 'Светлая тема' : 'Тёмная тема'}
+        >
+          {theme === 'dark' ? (
+            <Sun className="w-5 h-5" />
+          ) : (
+            <Moon className="w-5 h-5" />
+          )}
+        </button>
+
+        {/* Logo */}
+        <div className="flex justify-center mb-6">
+          <Image 
+            src={theme === 'dark' ? "/logo/logo_dark_v2.png" : "/logo/logo_light_v2.png"}
+            alt="Новые Схемы" 
+            width={180} 
+            height={40} 
+            className="h-10 w-auto object-contain" 
+            priority
+          />
         </div>
+
+        {/* Title */}
+        <h1 className={`text-2xl font-semibold text-center mb-8 ${
+          theme === 'dark' ? 'text-gray-100' : 'text-gray-800'
+        }`}>
+          Авторизация
+        </h1>
+
+        <form onSubmit={handleSubmit} className="space-y-5">
+          <div>
+            <Label className={`text-sm font-medium mb-2 block ${
+              theme === 'dark' ? 'text-gray-300' : 'text-gray-700'
+            }`}>
+              Логин
+            </Label>
+            <CustomInput
+              id="login"
+              type="text"
+              placeholder="Введите логин"
+              value={login}
+              onChange={(e) => {
+                setLogin(sanitizeString(e.target.value))
+                if (errors.login) setErrors(prev => ({ ...prev, login: undefined }))
+              }}
+              className={`h-12 bg-[#f5f5f0] border-0 text-gray-800 placeholder:text-gray-400 rounded-lg focus:ring-2 focus:ring-teal-500 ${
+                errors.login ? 'ring-2 ring-red-500' : ''
+              }`}
+              required
+              autoComplete="username"
+              maxLength={50}
+            />
+            {errors.login && (
+              <p className="text-red-400 text-sm mt-1">
+                {sanitizeString(errors.login)}
+              </p>
+            )}
+          </div>
+
+          <div>
+            <Label className={`text-sm font-medium mb-2 block ${
+              theme === 'dark' ? 'text-gray-300' : 'text-gray-700'
+            }`}>
+              Пароль
+            </Label>
+            <div className="relative">
+              <CustomInput
+                id="password"
+                type={showPassword ? 'text' : 'password'}
+                placeholder="Введите пароль"
+                value={password}
+                onChange={(e) => {
+                  setPassword(e.target.value)
+                  if (errors.password) setErrors(prev => ({ ...prev, password: undefined }))
+                }}
+                className={`h-12 pr-12 bg-[#f5f5f0] border-0 text-gray-800 placeholder:text-gray-400 rounded-lg focus:ring-2 focus:ring-teal-500 ${
+                  errors.password ? 'ring-2 ring-red-500' : ''
+                }`}
+                required
+                autoComplete="current-password"
+                maxLength={100}
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+              >
+                {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+              </button>
+            </div>
+            {errors.password && (
+              <p className="text-red-400 text-sm mt-1">
+                {sanitizeString(errors.password)}
+              </p>
+            )}
+          </div>
+
+          {/* Запомнить меня */}
+          <div className="flex items-center">
+            <input
+              id="remember-me"
+              name="remember-me"
+              type="checkbox"
+              checked={rememberMe}
+              onChange={(e) => setRememberMe(e.target.checked)}
+              className="h-4 w-4 rounded border-gray-300 focus:ring-2 focus:ring-teal-500"
+              style={{accentColor: '#0d5c4b'}}
+            />
+            <label 
+              htmlFor="remember-me" 
+              className={`ml-2 block text-sm cursor-pointer ${
+                theme === 'dark' ? 'text-gray-300' : 'text-gray-600'
+              }`}
+            >
+              Запомнить меня
+            </label>
+          </div>
+
+          <Button 
+            type="submit" 
+            className="w-full h-12 bg-[#0d5c4b] hover:bg-[#0a4a3c] text-white font-semibold rounded-lg transition-colors" 
+            disabled={isLoading || (blockedUntil !== null && Date.now() < blockedUntil)}
+          >
+            {isLoading ? (
+              <span className="flex items-center justify-center">
+                <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                Вход...
+              </span>
+            ) : blockedUntil && Date.now() < blockedUntil ? (
+              'Заблокировано'
+            ) : (
+              'Войти'
+            )}
+          </Button>
+          
+          {/* Предупреждение о количестве оставшихся попыток */}
+          {attemptCount > 0 && attemptCount < MAX_ATTEMPTS && !blockedUntil && (
+            <div className="text-center mt-2">
+              <p className="text-yellow-400 text-sm font-medium">
+                Осталось попыток: {MAX_ATTEMPTS - attemptCount}
+              </p>
+            </div>
+          )}
+        </form>
+      </div>
+
+      {/* Footer */}
+      <div className={`absolute bottom-6 left-1/2 transform -translate-x-1/2 text-center text-xs transition-colors ${
+        theme === 'dark' ? 'text-gray-500' : 'text-[#0d5c4b]/60'
+      }`}>
+        © 2026 Новые Схемы
       </div>
     </div>
   )
@@ -397,8 +465,14 @@ function LoginForm() {
 export default function LoginPage() {
   return (
     <Suspense fallback={
-      <div className="min-h-screen flex items-center justify-center" style={{backgroundColor: '#114643'}}>
-        <div className="text-white text-xl">Загрузка...</div>
+      <div className="min-h-screen flex items-center justify-center bg-[#daece2]">
+        <div className="text-center">
+          <svg className="animate-spin h-12 w-12 text-[#0d5c4b] mx-auto mb-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+          </svg>
+          <p className="text-[#0d5c4b] text-lg">Загрузка...</p>
+        </div>
       </div>
     }>
       <LoginForm />

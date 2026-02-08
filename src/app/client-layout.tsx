@@ -1,8 +1,8 @@
 'use client'
 
 import { usePathname, useRouter } from 'next/navigation'
-import { useEffect, useState, useRef } from 'react'
-import { Navigation } from '@/components/navigation'
+import { useEffect, useState, useRef, useLayoutEffect } from 'react'
+import { CustomNavigation } from '@/components/custom-navigation'
 import { useAuthStore } from '@/store/auth.store'
 import { apiClient } from '@/lib/api'
 import { ErrorBoundary } from '@/components/ErrorBoundary'
@@ -23,6 +23,47 @@ export default function ClientLayout({
   const [isChecking, setIsChecking] = useState(!isLoginPage)
   const [isAuthChecked, setIsAuthChecked] = useState(false)
   const authCheckStarted = useRef(false)
+  
+  // Тема
+  const [theme, setTheme] = useState<'light' | 'dark'>('light')
+  
+  // Загружаем тему из localStorage
+  useEffect(() => {
+    const savedTheme = localStorage.getItem('admin-theme') as 'light' | 'dark' | null
+    if (savedTheme) {
+      setTheme(savedTheme)
+    }
+  }, [])
+  
+  // Синхронизируем тему с документом
+  useEffect(() => {
+    const html = document.documentElement
+    if (theme === 'dark') {
+      html.classList.add('dark')
+      html.style.backgroundColor = '#1e2530'
+      html.style.colorScheme = 'dark'
+    } else {
+      html.classList.remove('dark')
+      html.style.backgroundColor = ''
+      html.style.colorScheme = ''
+    }
+  }, [theme])
+  
+  // Слушаем изменения темы из localStorage (для синхронизации между компонентами)
+  useEffect(() => {
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === 'admin-theme' && e.newValue) {
+        setTheme(e.newValue as 'light' | 'dark')
+      }
+    }
+    window.addEventListener('storage', handleStorageChange)
+    return () => window.removeEventListener('storage', handleStorageChange)
+  }, [])
+
+  // Скроллим в начало при смене страницы
+  useLayoutEffect(() => {
+    window.scrollTo(0, 0)
+  }, [pathname])
 
   useEffect(() => {
     // Предотвращаем повторный запуск проверки
@@ -140,11 +181,25 @@ export default function ClientLayout({
     checkAuth()
   }, [pathname, router, isLoginPage, setUser, clearAuth])
 
+  const isDark = theme === 'dark'
+
   // Показываем loading во время проверки авторизации (для защищенных страниц)
   if (isChecking) {
     return (
-      <div className="min-h-screen flex items-center justify-center" style={{backgroundColor: '#114643'}}>
-        <div className="text-white text-xl">Загрузка...</div>
+      <div className={`min-h-screen flex items-center justify-center transition-colors duration-300 ${
+        isDark ? 'bg-[#1e2530]' : 'bg-[#daece2]'
+      }`}>
+        <div className="text-center">
+          <svg className={`animate-spin h-12 w-12 mx-auto mb-4 ${
+            isDark ? 'text-white' : 'text-[#0d5c4b]'
+          }`} xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+          </svg>
+          <p className={`text-lg ${isDark ? 'text-white' : 'text-[#0d5c4b]'}`}>
+            Загрузка...
+          </p>
+        </div>
       </div>
     )
   }
@@ -156,11 +211,12 @@ export default function ClientLayout({
 
   return (
     <ErrorBoundary>
-      {!isLoginPage && <Navigation />}
-      <main className={isLoginPage ? '' : 'lg:ml-64 pt-16 lg:pt-0'}>
+      {!isLoginPage && <CustomNavigation />}
+      <main className={`${isLoginPage ? '' : 'pt-16 md:pt-0 md:ml-56'} min-h-screen transition-colors duration-300 ${
+        isDark ? 'bg-[#1e2530]' : 'bg-white'
+      }`}>
         {children}
       </main>
     </ErrorBoundary>
   )
 }
-
