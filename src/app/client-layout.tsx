@@ -5,7 +5,20 @@ import { CustomNavigation } from '@/components/custom-navigation'
 import { ErrorBoundary } from '@/components/ErrorBoundary'
 import AuthGuard from '@/components/auth-guard'
 import { useDesignStore } from '@/store/design.store'
-import React, { useLayoutEffect, useEffect, useMemo, useRef } from 'react'
+import React, { useLayoutEffect, useEffect, useMemo, useRef, useState } from 'react'
+
+// Функция для синхронного получения темы из localStorage
+function getInitialTheme(): 'light' | 'dark' {
+  if (typeof window === 'undefined') return 'dark'
+  try {
+    const stored = localStorage.getItem('admin-design-storage')
+    if (stored) {
+      const parsed = JSON.parse(stored)
+      return parsed.state?.theme || 'dark'
+    }
+  } catch {}
+  return 'dark'
+}
 
 interface ClientLayoutProps {
   children: React.ReactNode
@@ -15,7 +28,12 @@ const ClientLayout = ({ children }: ClientLayoutProps) => {
   const pathname = usePathname()
   const prevPathname = useRef(pathname)
   
-  const theme = useDesignStore((state) => state.theme)
+  const storeTheme = useDesignStore((state) => state.theme)
+  const hasHydrated = useDesignStore((state) => state._hasHydrated)
+  const [initialTheme] = useState(getInitialTheme)
+  
+  // До гидратации используем значение из localStorage
+  const theme = hasHydrated ? storeTheme : initialTheme
   const isDark = theme === 'dark'
   
   const isPublicPage = useMemo(() => {

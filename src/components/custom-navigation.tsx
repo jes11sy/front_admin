@@ -1,12 +1,36 @@
 'use client'
 
-import { useState, useEffect, useCallback, memo } from 'react'
+import { useState, useEffect, useCallback, memo, useSyncExternalStore } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { useAuthStore } from '@/store/auth.store'
 import { useDesignStore } from '@/store/design.store'
 import { Sun, Moon, Bell, User, Menu, X } from 'lucide-react'
+
+// Функция для синхронного получения темы из localStorage (для SSR)
+function getInitialTheme(): 'light' | 'dark' {
+  if (typeof window === 'undefined') return 'dark' // SSR - возвращаем dark по умолчанию
+  try {
+    const stored = localStorage.getItem('admin-design-storage')
+    if (stored) {
+      const parsed = JSON.parse(stored)
+      return parsed.state?.theme || 'dark'
+    }
+  } catch {}
+  return 'dark'
+}
+
+// Хук для получения темы с поддержкой SSR без мерцания
+function useThemeWithoutFlash() {
+  const storeTheme = useDesignStore((state) => state.theme)
+  const hasHydrated = useDesignStore((state) => state._hasHydrated)
+  
+  // До гидратации используем значение из localStorage напрямую
+  const [initialTheme] = useState(getInitialTheme)
+  
+  return hasHydrated ? storeTheme : initialTheme
+}
 
 const navigationItems = [
   { name: 'Дашборд', href: '/', icon: '/navigate/dashboard.svg' },
@@ -174,8 +198,8 @@ export function CustomNavigation() {
   const router = useRouter()
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
   
-  // Тема
-  const theme = useDesignStore((state) => state.theme)
+  // Тема - используем хук без мерцания
+  const theme = useThemeWithoutFlash()
   const toggleTheme = useDesignStore((state) => state.toggleTheme)
   
   // Синхронизируем тему с документом
