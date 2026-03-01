@@ -4,9 +4,8 @@ import { useState, useEffect } from 'react'
 import { apiClient } from '@/lib/api'
 import { useDesignStore } from '@/store/design.store'
 import { toast } from 'sonner'
-import { logger } from '@/lib/logger'
 import { OptimizedPagination } from '@/components/ui/optimized-pagination'
-import { ExternalLink, X, Phone, MessageSquare } from 'lucide-react'
+import { ExternalLink, X, Phone } from 'lucide-react'
 
 interface Appeal {
   id: number
@@ -36,13 +35,6 @@ const CATEGORY_LABELS: Record<string, string> = {
   consultation: 'Консультация',
   callback: 'Перезвон',
 }
-const CATEGORY_COLORS: Record<string, string> = {
-  question: 'bg-blue-100 text-blue-700',
-  complaint: 'bg-red-100 text-red-700',
-  order: 'bg-green-100 text-green-700',
-  consultation: 'bg-purple-100 text-purple-700',
-  callback: 'bg-orange-100 text-orange-700',
-}
 
 const STATUS_LABELS: Record<string, string> = {
   new: 'Новое',
@@ -50,13 +42,6 @@ const STATUS_LABELS: Record<string, string> = {
   waiting: 'Ожидает',
   closed_solved: 'Решено',
   closed_rejected: 'Отклонено',
-}
-const STATUS_COLORS: Record<string, string> = {
-  new: 'bg-blue-100 text-blue-700',
-  in_progress: 'bg-yellow-100 text-yellow-700',
-  waiting: 'bg-purple-100 text-purple-700',
-  closed_solved: 'bg-green-100 text-green-700',
-  closed_rejected: 'bg-gray-100 text-gray-500',
 }
 
 const SOURCE_LABELS: Record<string, string> = {
@@ -66,8 +51,8 @@ const SOURCE_LABELS: Record<string, string> = {
   manual: 'Вручную',
 }
 
-const STATUS_OPTIONS = [
-  { value: '', label: 'Все статусы' },
+const STATUS_TABS = [
+  { value: '', label: 'Все' },
   { value: 'new', label: 'Новые' },
   { value: 'in_progress', label: 'В работе' },
   { value: 'waiting', label: 'Ожидает' },
@@ -84,8 +69,50 @@ const CATEGORY_OPTIONS = [
   { value: 'callback', label: 'Перезвон' },
 ]
 
+function getStatusStyle(status: string, isDark: boolean) {
+  if (isDark) {
+    switch (status) {
+      case 'new': return 'bg-blue-900/40 text-blue-300'
+      case 'in_progress': return 'bg-yellow-900/40 text-yellow-300'
+      case 'waiting': return 'bg-purple-900/40 text-purple-300'
+      case 'closed_solved': return 'bg-green-900/40 text-green-300'
+      case 'closed_rejected': return 'bg-gray-700 text-gray-400'
+      default: return 'bg-gray-700 text-gray-400'
+    }
+  }
+  switch (status) {
+    case 'new': return 'bg-blue-100 text-blue-700'
+    case 'in_progress': return 'bg-yellow-100 text-yellow-700'
+    case 'waiting': return 'bg-purple-100 text-purple-700'
+    case 'closed_solved': return 'bg-green-100 text-green-700'
+    case 'closed_rejected': return 'bg-gray-100 text-gray-500'
+    default: return 'bg-gray-100 text-gray-500'
+  }
+}
+
+function getCategoryStyle(category: string, isDark: boolean) {
+  if (isDark) {
+    switch (category) {
+      case 'question': return 'bg-blue-900/30 text-blue-300'
+      case 'complaint': return 'bg-red-900/40 text-red-300'
+      case 'order': return 'bg-green-900/30 text-green-300'
+      case 'consultation': return 'bg-purple-900/30 text-purple-300'
+      case 'callback': return 'bg-orange-900/30 text-orange-300'
+      default: return 'bg-gray-700 text-gray-400'
+    }
+  }
+  switch (category) {
+    case 'question': return 'bg-blue-100 text-blue-700'
+    case 'complaint': return 'bg-red-100 text-red-700'
+    case 'order': return 'bg-green-100 text-green-700'
+    case 'consultation': return 'bg-purple-100 text-purple-700'
+    case 'callback': return 'bg-orange-100 text-orange-700'
+    default: return 'bg-gray-100 text-gray-600'
+  }
+}
+
 export default function AppealsPage() {
-  const theme = useDesignStore((state) => state.theme)
+  const { theme } = useDesignStore()
   const isDark = theme === 'dark'
 
   const [items, setItems] = useState<Appeal[]>([])
@@ -93,13 +120,20 @@ export default function AppealsPage() {
   const [isLoading, setIsLoading] = useState(true)
   const [showFilters, setShowFilters] = useState(false)
 
-  const [search, setSearch] = useState('')
-  const [statusFilter, setStatusFilter] = useState('new')
+  const [statusTab, setStatusTab] = useState('new')
   const [categoryFilter, setCategoryFilter] = useState('')
   const [cityFilter, setCityFilter] = useState('')
   const [dateFrom, setDateFrom] = useState('')
   const [dateTo, setDateTo] = useState('')
+  const [search, setSearch] = useState('')
   const [cities, setCities] = useState<Array<{ id: number; name: string }>>([])
+
+  // Draft filters
+  const [draftCategory, setDraftCategory] = useState('')
+  const [draftCity, setDraftCity] = useState('')
+  const [draftDateFrom, setDraftDateFrom] = useState('')
+  const [draftDateTo, setDraftDateTo] = useState('')
+  const [draftSearch, setDraftSearch] = useState('')
 
   const [currentPage, setCurrentPage] = useState(1)
   const itemsPerPage = 20
@@ -118,7 +152,7 @@ export default function AppealsPage() {
       const res = await apiClient.getAppeals({
         page: currentPage,
         limit: itemsPerPage,
-        status: statusFilter || undefined,
+        status: statusTab || undefined,
         category: categoryFilter || undefined,
         cityId: cityFilter ? Number(cityFilter) : undefined,
         search: search || undefined,
@@ -130,8 +164,7 @@ export default function AppealsPage() {
         setItems(Array.isArray(data) ? data : (data?.items || data?.data || []))
         setTotal(data?.total || data?.pagination?.total || (Array.isArray(data) ? data.length : 0))
       }
-    } catch (e) {
-      logger.error('Error loading appeals', { error: String(e) })
+    } catch {
       toast.error('Не удалось загрузить обращения')
     } finally {
       setIsLoading(false)
@@ -142,8 +175,42 @@ export default function AppealsPage() {
     apiClient.getCities().then(c => setCities(c)).catch(() => {})
   }, [])
 
-  useEffect(() => { load() }, [currentPage, statusFilter, categoryFilter, cityFilter, dateFrom, dateTo])
-  useEffect(() => { setCurrentPage(1) }, [statusFilter, categoryFilter, cityFilter, dateFrom, dateTo])
+  useEffect(() => { load() }, [currentPage, statusTab, categoryFilter, cityFilter, dateFrom, dateTo, search])
+  useEffect(() => { setCurrentPage(1) }, [statusTab, categoryFilter, cityFilter, dateFrom, dateTo, search])
+
+  const openFilters = () => {
+    setDraftCategory(categoryFilter)
+    setDraftCity(cityFilter)
+    setDraftDateFrom(dateFrom)
+    setDraftDateTo(dateTo)
+    setDraftSearch(search)
+    setShowFilters(true)
+  }
+
+  const applyFilters = () => {
+    setCategoryFilter(draftCategory)
+    setCityFilter(draftCity)
+    setDateFrom(draftDateFrom)
+    setDateTo(draftDateTo)
+    setSearch(draftSearch)
+    setShowFilters(false)
+  }
+
+  const resetFilters = () => {
+    setDraftCategory('')
+    setDraftCity('')
+    setDraftDateFrom('')
+    setDraftDateTo('')
+    setDraftSearch('')
+  }
+
+  const clearAllFilters = () => {
+    setCategoryFilter('')
+    setCityFilter('')
+    setDateFrom('')
+    setDateTo('')
+    setSearch('')
+  }
 
   const openDetail = async (item: Appeal) => {
     setSelectedId(item.id)
@@ -183,269 +250,282 @@ export default function AppealsPage() {
   }
 
   const totalPages = Math.ceil(total / itemsPerPage)
-  const hasFilters = search || (statusFilter && statusFilter !== 'new') || categoryFilter || cityFilter || dateFrom || dateTo
+  const activeFiltersCount = (categoryFilter ? 1 : 0) + (cityFilter ? 1 : 0) + (dateFrom || dateTo ? 1 : 0) + (search ? 1 : 0)
 
-  const inputCls = `px-3 py-2 rounded-lg text-sm border focus:outline-none focus:ring-2 focus:ring-teal-500 ${isDark ? 'bg-[#1e2530] border-gray-600 text-gray-100' : 'bg-white border-gray-200 text-gray-800'}`
+  const inputCls = `w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent transition-all ${isDark ? 'bg-[#3a4451] border-gray-600 text-gray-100 placeholder-gray-500' : 'bg-gray-50 border-gray-200 text-gray-800 placeholder-gray-400'}`
 
   return (
-    <div className="flex gap-4">
-      {/* Main list */}
-      <div className="flex-1 min-w-0">
-        <div className="mb-6 flex items-center justify-between">
-          <div>
-            <h1 className={`text-xl font-semibold ${isDark ? 'text-gray-100' : 'text-gray-800'}`}>Обращения клиентов</h1>
-            <p className={`text-sm mt-1 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
-              Все контакты с клиентами {total > 0 && `— ${total}`}
-            </p>
-          </div>
-          <button
-            onClick={() => setShowFilters(!showFilters)}
-            className={`relative p-2 rounded-lg transition-all ${showFilters ? (isDark ? 'bg-teal-900/20 text-teal-400' : 'bg-teal-50 text-teal-600') : (isDark ? 'bg-[#2a3441] text-gray-400' : 'bg-gray-100 text-gray-600')}`}
-          >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
-            </svg>
-            {hasFilters && <span className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 bg-teal-500 rounded-full" />}
-          </button>
-        </div>
-
-        {/* Filters */}
-        {showFilters && (
-          <div className={`mb-5 p-4 rounded-xl border ${isDark ? 'bg-[#2a3441] border-teal-700/40' : 'bg-gray-50 border-gray-200'}`}>
-            <div className="flex flex-wrap gap-3">
-              <div className="flex-1 min-w-[180px]">
-                <label className={`block text-xs mb-1 ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>Поиск (телефон, описание)</label>
-                <input className={`${inputCls} w-full`} value={search} onChange={e => setSearch(e.target.value)} onKeyDown={e => e.key === 'Enter' && load()} placeholder="Телефон..." />
-              </div>
-              <div>
-                <label className={`block text-xs mb-1 ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>Статус</label>
-                <select className={inputCls} value={statusFilter} onChange={e => setStatusFilter(e.target.value)}>
-                  {STATUS_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
-                </select>
-              </div>
-              <div>
-                <label className={`block text-xs mb-1 ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>Категория</label>
-                <select className={inputCls} value={categoryFilter} onChange={e => setCategoryFilter(e.target.value)}>
-                  {CATEGORY_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
-                </select>
-              </div>
-              <div>
-                <label className={`block text-xs mb-1 ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>Город</label>
-                <select className={inputCls} value={cityFilter} onChange={e => setCityFilter(e.target.value)}>
-                  <option value="">Все</option>
-                  {cities.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                </select>
-              </div>
-              <div>
-                <label className={`block text-xs mb-1 ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>С</label>
-                <input type="date" className={inputCls} value={dateFrom} onChange={e => setDateFrom(e.target.value)} />
-              </div>
-              <div>
-                <label className={`block text-xs mb-1 ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>По</label>
-                <input type="date" className={inputCls} value={dateTo} onChange={e => setDateTo(e.target.value)} />
-              </div>
-              {hasFilters && (
-                <div className="flex items-end">
-                  <button onClick={() => { setSearch(''); setStatusFilter('new'); setCategoryFilter(''); setCityFilter(''); setDateFrom(''); setDateTo('') }} className={`px-4 py-2 rounded-lg text-sm ${isDark ? 'bg-[#1e2530] text-gray-300' : 'bg-gray-200 text-gray-700'}`}>
-                    Сбросить
+    <div className={`min-h-screen transition-colors duration-300 ${isDark ? 'bg-[#1e2530]' : 'bg-white'}`}>
+      <div className="px-4 py-6">
+        {/* Status tabs + filter button */}
+        <div className="mb-4">
+          <div className="flex items-center gap-2">
+            <div className="flex-1 min-w-0 overflow-x-auto scrollbar-hide">
+              <div className={`flex gap-1 p-1 rounded-lg w-max ${isDark ? 'bg-[#2a3441]' : 'bg-gray-100'}`}>
+                {STATUS_TABS.map((tab) => (
+                  <button
+                    key={tab.value}
+                    onClick={() => setStatusTab(tab.value)}
+                    className={`px-3 py-1.5 text-sm font-medium rounded-md transition-all duration-200 whitespace-nowrap ${
+                      statusTab === tab.value
+                        ? 'bg-[#0d5c4b] text-white shadow-sm'
+                        : isDark
+                          ? 'text-gray-400 hover:text-gray-200 hover:bg-[#3a4451]'
+                          : 'text-gray-600 hover:text-gray-800 hover:bg-gray-50'
+                    }`}
+                  >
+                    {tab.label}
                   </button>
-                </div>
-              )}
+                ))}
+              </div>
             </div>
-          </div>
-        )}
-
-        {/* Status quick-tabs */}
-        <div className="flex gap-2 mb-4 flex-wrap">
-          {STATUS_OPTIONS.map(o => (
             <button
-              key={o.value}
-              onClick={() => setStatusFilter(o.value)}
-              className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all ${
-                statusFilter === o.value
-                  ? 'bg-teal-600 text-white'
-                  : isDark ? 'bg-[#2a3441] text-gray-400 hover:text-gray-200' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+              onClick={openFilters}
+              className={`relative flex-shrink-0 p-2 rounded-lg transition-all duration-200 ${
+                isDark
+                  ? 'bg-[#2a3441] hover:bg-[#3a4451] text-gray-400 hover:text-teal-400'
+                  : 'bg-gray-100 hover:bg-gray-200 text-gray-600 hover:text-teal-600'
               }`}
+              title="Фильтры"
             >
-              {o.label}
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
+              </svg>
+              {activeFiltersCount > 0 && (
+                <span className={`absolute -top-0.5 -right-0.5 w-2.5 h-2.5 bg-teal-500 rounded-full border-2 ${isDark ? 'border-[#1e2530]' : 'border-white'}`} />
+              )}
             </button>
-          ))}
+          </div>
+          {activeFiltersCount > 0 && (
+            <div className="flex items-center gap-2 flex-wrap mt-2">
+              {search && (
+                <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium border ${isDark ? 'bg-teal-900/30 text-teal-300 border-teal-700' : 'bg-teal-50 text-teal-700 border-teal-200'}`}>
+                  Поиск: {search}
+                  <button onClick={() => setSearch('')} className="ml-1">×</button>
+                </span>
+              )}
+              {categoryFilter && (
+                <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium border ${isDark ? 'bg-teal-900/30 text-teal-300 border-teal-700' : 'bg-teal-50 text-teal-700 border-teal-200'}`}>
+                  {CATEGORY_OPTIONS.find(o => o.value === categoryFilter)?.label}
+                  <button onClick={() => setCategoryFilter('')} className="ml-1">×</button>
+                </span>
+              )}
+              <button onClick={clearAllFilters} className={`text-xs transition-colors ${isDark ? 'text-gray-400 hover:text-red-400' : 'text-gray-500 hover:text-red-500'}`}>
+                Сбросить всё
+              </button>
+            </div>
+          )}
         </div>
 
-        {isLoading ? (
-          <div className="text-center py-12"><div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-teal-600" /></div>
-        ) : (
+        {/* Filter drawer */}
+        {showFilters && (
           <>
-            <div className="space-y-2">
-              {items.length === 0 ? (
-                <div className={`text-center py-12 rounded-xl ${isDark ? 'bg-[#2a3441]' : 'bg-gray-50'}`}>
-                  <p className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>Обращений не найдено</p>
+            <div className={`fixed inset-0 z-40 transition-opacity duration-300 ${isDark ? 'bg-black/50' : 'bg-black/30'}`} onClick={() => setShowFilters(false)} />
+            <div className={`fixed top-0 right-0 h-full w-full sm:w-80 shadow-xl z-50 transform transition-transform duration-300 ease-out overflow-y-auto ${isDark ? 'bg-[#2a3441]' : 'bg-white'}`}>
+              <div className={`sticky top-0 border-b px-4 py-3 flex items-center justify-between z-10 ${isDark ? 'bg-[#2a3441] border-gray-700' : 'bg-white border-gray-200'}`}>
+                <h2 className={`text-lg font-semibold ${isDark ? 'text-gray-100' : 'text-gray-800'}`}>Фильтры</h2>
+                <button onClick={() => setShowFilters(false)} className={`p-2 rounded-lg transition-colors ${isDark ? 'text-gray-400 hover:text-gray-200 hover:bg-[#3a4451]' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'}`}>
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+                </button>
+              </div>
+              <div className="p-4 space-y-4">
+                <div className="space-y-3">
+                  <h3 className={`text-xs font-semibold uppercase tracking-wider ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>Поиск</h3>
+                  <input type="text" placeholder="Телефон..." value={draftSearch} onChange={e => setDraftSearch(e.target.value)} className={inputCls} />
                 </div>
-              ) : items.map(item => (
-                <div
-                  key={item.id}
-                  onClick={() => openDetail(item)}
-                  className={`rounded-xl border cursor-pointer transition-all ${
-                    selectedId === item.id
-                      ? isDark ? 'bg-teal-900/20 border-teal-600/50' : 'bg-teal-50 border-teal-300'
-                      : isDark ? 'bg-[#2a3441] border-gray-700/50 hover:border-gray-600' : 'bg-white border-gray-200 hover:border-gray-300 shadow-sm'
-                  }`}
-                >
-                  <div className="p-4">
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="flex-1 min-w-0">
-                        <div className="flex flex-wrap items-center gap-2 mb-1">
-                          <span className={`text-xs font-mono ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>#{item.id}</span>
-                          <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${STATUS_COLORS[item.status] || 'bg-gray-100 text-gray-600'}`}>
-                            {STATUS_LABELS[item.status] || item.status}
-                          </span>
-                          <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${CATEGORY_COLORS[item.category] || 'bg-gray-100 text-gray-600'}`}>
-                            {CATEGORY_LABELS[item.category] || item.category}
-                          </span>
-                          {item.city && (
-                            <span className={`text-xs px-2 py-0.5 rounded-full ${isDark ? 'bg-gray-700 text-gray-300' : 'bg-gray-100 text-gray-600'}`}>{item.city.name}</span>
-                          )}
-                        </div>
-                        <div className="flex flex-wrap gap-3 text-xs">
-                          <span className={`flex items-center gap-1 font-medium ${isDark ? 'text-gray-200' : 'text-gray-700'}`}>
-                            <Phone className="w-3 h-3" />{item.phone}
-                          </span>
-                          {item.operator && <span className={isDark ? 'text-gray-400' : 'text-gray-500'}>Оператор: {item.operator.name}</span>}
-                          <span className={isDark ? 'text-gray-500' : 'text-gray-400'}>{SOURCE_LABELS[item.sourceType] || item.sourceType}</span>
-                          <span className={isDark ? 'text-gray-500' : 'text-gray-400'}>{new Date(item.createdAt).toLocaleString('ru-RU')}</span>
-                        </div>
-                        {item.description && (
-                          <p className={`text-xs mt-1.5 line-clamp-2 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>{item.description}</p>
-                        )}
-                        <div className="flex gap-3 mt-1 text-xs">
-                          {item.orderId && (
-                            <a href={`/orders/${item.orderId}`} onClick={e => e.stopPropagation()} className="flex items-center gap-1 text-teal-600 hover:underline">
-                              <ExternalLink className="w-3 h-3" />Заказ #{item.orderId}
-                            </a>
-                          )}
-                          {item.callbackAt && (
-                            <span className={`flex items-center gap-1 ${isDark ? 'text-orange-400' : 'text-orange-600'}`}>
-                              Перезвон: {new Date(item.callbackAt).toLocaleString('ru-RU', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
-                            </span>
-                          )}
-                        </div>
-                      </div>
+                <hr className={isDark ? 'border-gray-700' : 'border-gray-200'} />
+                <div className="space-y-3">
+                  <h3 className={`text-xs font-semibold uppercase tracking-wider ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>Категория</h3>
+                  <div className="flex flex-col gap-2">
+                    {CATEGORY_OPTIONS.map(opt => (
+                      <button key={opt.value} onClick={() => setDraftCategory(opt.value)}
+                        className={`px-3 py-2 border rounded-lg text-sm font-medium transition-all duration-200 text-left ${
+                          draftCategory === opt.value
+                            ? isDark ? 'bg-teal-900/50 border-teal-600 text-teal-400' : 'bg-teal-50 border-teal-300 text-teal-700'
+                            : isDark ? 'bg-[#3a4451] hover:bg-teal-900/30 border-gray-600 hover:border-teal-600 text-gray-300 hover:text-teal-400' : 'bg-gray-50 hover:bg-teal-50 border-gray-200 hover:border-teal-300 text-gray-700 hover:text-teal-700'
+                        }`}
+                      >{opt.label}</button>
+                    ))}
+                  </div>
+                </div>
+                <hr className={isDark ? 'border-gray-700' : 'border-gray-200'} />
+                <div className="space-y-3">
+                  <h3 className={`text-xs font-semibold uppercase tracking-wider ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>Город</h3>
+                  <select value={draftCity} onChange={e => setDraftCity(e.target.value)} className={inputCls}>
+                    <option value="">Все города</option>
+                    {cities.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                  </select>
+                </div>
+                <hr className={isDark ? 'border-gray-700' : 'border-gray-200'} />
+                <div className="space-y-3">
+                  <h3 className={`text-xs font-semibold uppercase tracking-wider ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>Период</h3>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className={`block text-sm font-medium mb-1 ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>С</label>
+                      <input type="date" value={draftDateFrom} onChange={e => setDraftDateFrom(e.target.value)} className={inputCls} />
+                    </div>
+                    <div>
+                      <label className={`block text-sm font-medium mb-1 ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>По</label>
+                      <input type="date" value={draftDateTo} onChange={e => setDraftDateTo(e.target.value)} className={inputCls} />
                     </div>
                   </div>
                 </div>
-              ))}
-            </div>
-
-            {totalPages > 1 && (
-              <div className={`flex items-center justify-center mt-6 pt-4 border-t ${isDark ? 'border-gray-700' : 'border-gray-200'}`}>
-                <OptimizedPagination currentPage={currentPage} totalPages={totalPages} onPageChange={setCurrentPage} isDark={isDark} />
               </div>
-            )}
+              <div className={`sticky bottom-0 border-t px-4 py-3 flex gap-2 ${isDark ? 'bg-[#2a3441] border-gray-700' : 'bg-white border-gray-200'}`}>
+                <button onClick={resetFilters} className={`flex-1 px-4 py-2 rounded-lg transition-colors text-sm font-medium ${isDark ? 'bg-[#3a4451] hover:bg-[#4a5461] text-gray-300' : 'bg-gray-100 hover:bg-gray-200 text-gray-700'}`}>Сбросить</button>
+                <button onClick={applyFilters} className="flex-1 px-4 py-2 bg-teal-600 hover:bg-teal-700 text-white rounded-lg transition-colors text-sm font-medium">Применить</button>
+              </div>
+            </div>
           </>
         )}
+
+        {/* Detail drawer */}
+        {detail && (
+          <>
+            <div className={`fixed inset-0 z-40 transition-opacity duration-300 ${isDark ? 'bg-black/50' : 'bg-black/30'}`} onClick={() => { setSelectedId(null); setDetail(null) }} />
+            <div className={`fixed top-0 right-0 h-full w-full sm:w-96 shadow-xl z-50 overflow-y-auto ${isDark ? 'bg-[#2a3441]' : 'bg-white'}`}>
+              <div className={`sticky top-0 border-b px-4 py-3 flex items-center justify-between z-10 ${isDark ? 'bg-[#2a3441] border-gray-700' : 'bg-white border-gray-200'}`}>
+                <span className={`font-semibold text-sm ${isDark ? 'text-gray-100' : 'text-gray-800'}`}>Обращение #{detail.id}</span>
+                <button onClick={() => { setSelectedId(null); setDetail(null) }} className={`p-2 rounded-lg transition-colors ${isDark ? 'text-gray-400 hover:text-gray-200 hover:bg-[#3a4451]' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'}`}>
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+              <div className="p-4 space-y-4">
+                <div className={`rounded-lg p-3 space-y-2 text-sm border ${isDark ? 'bg-[#1e2530] border-gray-700' : 'bg-gray-50 border-gray-200'}`}>
+                  {[
+                    { label: 'Телефон', value: <span className="flex items-center gap-1"><Phone className="w-3 h-3" />{detail.phone}</span> },
+                    { label: 'Категория', value: <span className={`px-2 py-0.5 rounded text-xs font-medium ${getCategoryStyle(detail.category, isDark)}`}>{CATEGORY_LABELS[detail.category] || detail.category}</span> },
+                    { label: 'Источник', value: SOURCE_LABELS[detail.sourceType] || detail.sourceType },
+                    ...(detail.operator ? [{ label: 'Оператор', value: detail.operator.name }] : []),
+                    ...(detail.city ? [{ label: 'Город', value: detail.city.name }] : []),
+                    { label: 'Создано', value: new Date(detail.createdAt).toLocaleString('ru-RU') },
+                  ].map(row => (
+                    <div key={row.label} className="flex items-center justify-between gap-2">
+                      <span className={`text-xs ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>{row.label}</span>
+                      <span className={`text-xs font-medium ${isDark ? 'text-gray-200' : 'text-gray-800'}`}>{row.value}</span>
+                    </div>
+                  ))}
+                </div>
+
+                {detail.description && (
+                  <div>
+                    <div className={`text-xs font-semibold uppercase tracking-wider mb-1.5 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>Описание</div>
+                    <p className={`text-sm ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>{detail.description}</p>
+                  </div>
+                )}
+
+                {detail.orderId && (
+                  <a href={`/orders/${detail.orderId}`} className="flex items-center gap-1 text-sm text-teal-600 hover:underline">
+                    <ExternalLink className="w-4 h-4" />Перейти к заказу #{detail.orderId}
+                  </a>
+                )}
+
+                <hr className={isDark ? 'border-gray-700' : 'border-gray-200'} />
+
+                <div className="space-y-3">
+                  <div>
+                    <label className={`block text-sm font-medium mb-1 ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>Статус</label>
+                    <select value={editStatus} onChange={e => setEditStatus(e.target.value)} className={inputCls}>
+                      {STATUS_TABS.filter(o => o.value).map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <label className={`block text-sm font-medium mb-1 ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>Результат</label>
+                    <textarea
+                      rows={3}
+                      value={editResult}
+                      onChange={e => setEditResult(e.target.value)}
+                      placeholder="Результат обращения..."
+                      className={`${inputCls} resize-none`}
+                    />
+                  </div>
+                  <div>
+                    <label className={`block text-sm font-medium mb-1 ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>Перезвонить в</label>
+                    <input type="datetime-local" value={editCallback} onChange={e => setEditCallback(e.target.value)} className={inputCls} />
+                  </div>
+                </div>
+              </div>
+              <div className={`sticky bottom-0 border-t px-4 py-3 ${isDark ? 'bg-[#2a3441] border-gray-700' : 'bg-white border-gray-200'}`}>
+                <button onClick={saveDetail} disabled={saving} className="w-full px-4 py-2 bg-teal-600 hover:bg-teal-700 text-white rounded-lg text-sm font-medium disabled:opacity-50 transition-colors">
+                  {saving ? 'Сохранение...' : 'Сохранить изменения'}
+                </button>
+              </div>
+            </div>
+          </>
+        )}
+
+        {/* Loading */}
+        {isLoading && (
+          <div className="text-center py-8 animate-fade-in">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-teal-600 mx-auto mb-4" />
+            <p className={`font-medium ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>Загрузка обращений...</p>
+          </div>
+        )}
+
+        {/* Empty */}
+        {!isLoading && items.length === 0 && (
+          <div className={`text-center py-16 rounded-lg ${isDark ? 'bg-[#2a3441]' : 'bg-gray-50'}`}>
+            <p className={`text-lg mb-2 ${isDark ? 'text-gray-300' : 'text-gray-600'}`}>Обращений не найдено</p>
+            <p className={`text-sm ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>Попробуйте изменить параметры фильтра</p>
+          </div>
+        )}
+
+        {/* Table */}
+        {!isLoading && items.length > 0 && (
+          <div className="overflow-x-auto">
+            <table className={`w-full border-collapse text-[11px] rounded-lg shadow-lg ${isDark ? 'bg-[#2a3441]' : 'bg-white'}`}>
+              <thead>
+                <tr className={`border-b-2 ${isDark ? 'bg-[#3a4451]' : 'bg-gray-50'}`} style={{ borderColor: '#0d5c4b' }}>
+                  {['ID', 'Телефон', 'Категория', 'Статус', 'Источник', 'Оператор', 'Город', 'Перезвон', 'Создано'].map(h => (
+                    <th key={h} className={`text-left py-3 px-3 font-semibold ${isDark ? 'text-gray-200' : 'text-gray-700'}`}>{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {items.map(item => (
+                  <tr
+                    key={item.id}
+                    onClick={() => openDetail(item)}
+                    className={`border-b transition-colors cursor-pointer ${
+                      selectedId === item.id
+                        ? isDark ? 'bg-teal-900/20 border-gray-700' : 'bg-teal-50 border-gray-200'
+                        : isDark ? 'hover:bg-[#3a4451] border-gray-700' : 'hover:bg-teal-50 border-gray-200'
+                    }`}
+                  >
+                    <td className={`py-2.5 px-3 font-medium ${isDark ? 'text-gray-100' : 'text-gray-800'}`}>{item.id}</td>
+                    <td className={`py-2.5 px-3 font-mono ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>{item.phone}</td>
+                    <td className="py-2.5 px-3">
+                      <span className={`px-2 py-0.5 rounded text-xs font-medium ${getCategoryStyle(item.category, isDark)}`}>
+                        {CATEGORY_LABELS[item.category] || item.category}
+                      </span>
+                    </td>
+                    <td className="py-2.5 px-3">
+                      <span className={`px-2 py-0.5 rounded text-xs font-medium ${getStatusStyle(item.status, isDark)}`}>
+                        {STATUS_LABELS[item.status] || item.status}
+                      </span>
+                    </td>
+                    <td className={`py-2.5 px-3 ${isDark ? 'text-gray-300' : 'text-gray-600'}`}>{SOURCE_LABELS[item.sourceType] || item.sourceType}</td>
+                    <td className={`py-2.5 px-3 ${isDark ? 'text-gray-300' : 'text-gray-600'}`}>{item.operator?.name || '-'}</td>
+                    <td className={`py-2.5 px-3 ${isDark ? 'text-gray-300' : 'text-gray-600'}`}>{item.city?.name || '-'}</td>
+                    <td className={`py-2.5 px-3 ${item.callbackAt ? (isDark ? 'text-orange-400' : 'text-orange-600') : (isDark ? 'text-gray-500' : 'text-gray-400')}`}>
+                      {item.callbackAt ? new Date(item.callbackAt).toLocaleString('ru-RU', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : '—'}
+                    </td>
+                    <td className={`py-2.5 px-3 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
+                      {new Date(item.createdAt).toLocaleString('ru-RU', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+
+        {!isLoading && totalPages > 1 && (
+          <div className={`flex items-center justify-center mt-6 pt-4 border-t ${isDark ? 'border-gray-700' : 'border-gray-200'}`}>
+            <OptimizedPagination currentPage={currentPage} totalPages={totalPages} onPageChange={setCurrentPage} isDark={isDark} />
+          </div>
+        )}
       </div>
-
-      {/* Detail panel */}
-      {detail && (
-        <div className={`w-80 flex-shrink-0 rounded-xl border sticky top-4 self-start ${isDark ? 'bg-[#2a3441] border-gray-700/50' : 'bg-white border-gray-200 shadow-sm'}`}>
-          <div className={`flex items-center justify-between p-4 border-b ${isDark ? 'border-gray-700/50' : 'border-gray-100'}`}>
-            <span className={`font-medium text-sm ${isDark ? 'text-gray-200' : 'text-gray-800'}`}>Обращение #{detail.id}</span>
-            <button onClick={() => { setSelectedId(null); setDetail(null) }} className={`p-1 rounded-lg ${isDark ? 'text-gray-400 hover:text-gray-200' : 'text-gray-400 hover:text-gray-600'}`}>
-              <X className="w-4 h-4" />
-            </button>
-          </div>
-
-          <div className="p-4 space-y-4">
-            {/* Info */}
-            <div className="space-y-2 text-sm">
-              <div className="flex justify-between">
-                <span className={isDark ? 'text-gray-400' : 'text-gray-500'}>Телефон</span>
-                <span className={`font-medium ${isDark ? 'text-gray-200' : 'text-gray-800'}`}>{detail.phone}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className={isDark ? 'text-gray-400' : 'text-gray-500'}>Категория</span>
-                <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${CATEGORY_COLORS[detail.category] || ''}`}>{CATEGORY_LABELS[detail.category] || detail.category}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className={isDark ? 'text-gray-400' : 'text-gray-500'}>Источник</span>
-                <span className={isDark ? 'text-gray-300' : 'text-gray-700'}>{SOURCE_LABELS[detail.sourceType] || detail.sourceType}</span>
-              </div>
-              {detail.operator && (
-                <div className="flex justify-between">
-                  <span className={isDark ? 'text-gray-400' : 'text-gray-500'}>Оператор</span>
-                  <span className={isDark ? 'text-gray-300' : 'text-gray-700'}>{detail.operator.name}</span>
-                </div>
-              )}
-              {detail.city && (
-                <div className="flex justify-between">
-                  <span className={isDark ? 'text-gray-400' : 'text-gray-500'}>Город</span>
-                  <span className={isDark ? 'text-gray-300' : 'text-gray-700'}>{detail.city.name}</span>
-                </div>
-              )}
-              <div className="flex justify-between">
-                <span className={isDark ? 'text-gray-400' : 'text-gray-500'}>Создано</span>
-                <span className={`text-xs ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>{new Date(detail.createdAt).toLocaleString('ru-RU')}</span>
-              </div>
-            </div>
-
-            {detail.description && (
-              <div>
-                <div className={`text-xs font-medium mb-1 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>Описание</div>
-                <p className={`text-sm ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>{detail.description}</p>
-              </div>
-            )}
-
-            {/* Links */}
-            <div className="flex gap-2 flex-wrap">
-              {detail.orderId && (
-                <a href={`/orders/${detail.orderId}`} className="flex items-center gap-1 text-xs text-teal-600 underline hover:no-underline">
-                  <ExternalLink className="w-3 h-3" />Заказ #{detail.orderId}
-                </a>
-              )}
-            </div>
-
-            {/* Edit */}
-            <div className={`pt-3 border-t space-y-3 ${isDark ? 'border-gray-700/50' : 'border-gray-100'}`}>
-              <div>
-                <label className={`block text-xs mb-1 ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>Статус</label>
-                <select
-                  className={`w-full px-3 py-2 rounded-lg text-sm border focus:outline-none focus:ring-2 focus:ring-teal-500 ${isDark ? 'bg-[#1e2530] border-gray-600 text-gray-100' : 'bg-white border-gray-200 text-gray-800'}`}
-                  value={editStatus}
-                  onChange={e => setEditStatus(e.target.value)}
-                >
-                  {STATUS_OPTIONS.filter(o => o.value).map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
-                </select>
-              </div>
-              <div>
-                <label className={`block text-xs mb-1 ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>Итог / Результат</label>
-                <textarea
-                  rows={3}
-                  value={editResult}
-                  onChange={e => setEditResult(e.target.value)}
-                  placeholder="Результат обращения..."
-                  className={`w-full px-3 py-2 rounded-lg text-sm border focus:outline-none focus:ring-2 focus:ring-teal-500 resize-none ${isDark ? 'bg-[#1e2530] border-gray-600 text-gray-100 placeholder-gray-500' : 'bg-white border-gray-200 text-gray-800 placeholder-gray-400'}`}
-                />
-              </div>
-              <div>
-                <label className={`block text-xs mb-1 ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>Перезвонить в</label>
-                <input
-                  type="datetime-local"
-                  value={editCallback}
-                  onChange={e => setEditCallback(e.target.value)}
-                  className={`w-full px-3 py-2 rounded-lg text-sm border focus:outline-none focus:ring-2 focus:ring-teal-500 ${isDark ? 'bg-[#1e2530] border-gray-600 text-gray-100' : 'bg-white border-gray-200 text-gray-800'}`}
-                />
-              </div>
-              <button
-                onClick={saveDetail}
-                disabled={saving}
-                className="w-full px-4 py-2 bg-teal-600 hover:bg-teal-700 text-white rounded-lg text-sm font-medium disabled:opacity-50 transition-colors"
-              >
-                {saving ? 'Сохранение...' : 'Сохранить'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   )
 }

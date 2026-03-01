@@ -87,7 +87,7 @@ export default function AdminsPage() {
     catch (e: any) { toast.error(e.message || 'Ошибка удаления') }
   }
 
-  const inputCls = `w-full px-3 py-2 rounded-lg text-sm border focus:outline-none focus:ring-2 focus:ring-teal-500 ${isDark ? 'bg-[#1e2530] border-gray-600 text-gray-100' : 'bg-white border-gray-200 text-gray-800'}`
+  const inputCls = `w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent transition-all ${isDark ? 'bg-[#3a4451] border-gray-600 text-gray-100 placeholder-gray-500' : 'bg-gray-50 border-gray-200 text-gray-800 placeholder-gray-400'}`
 
   const FormFields = () => (
     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -125,7 +125,8 @@ export default function AdminsPage() {
   )
 
   return (
-    <div>
+    <div className={`min-h-screen transition-colors duration-300 ${isDark ? 'bg-[#1e2530]' : 'bg-white'}`}>
+    <div className="px-6 py-6">
       <div className="mb-6 flex items-center justify-between">
         <div>
           <h1 className={`text-xl font-semibold flex items-center gap-2 ${isDark ? 'text-gray-100' : 'text-gray-800'}`}>
@@ -140,7 +141,7 @@ export default function AdminsPage() {
       </div>
 
       {showAdd && (
-        <div className={`mb-6 p-5 rounded-xl border ${isDark ? 'bg-[#2a3441] border-teal-700/40' : 'bg-teal-50 border-teal-200'}`}>
+        <div className={`mb-6 p-5 rounded-lg border ${isDark ? 'bg-[#2a3441] border-gray-700' : 'bg-gray-50 border-gray-200'}`}>
           <div className={`font-medium text-sm mb-4 ${isDark ? 'text-gray-200' : 'text-gray-800'}`}>Новый администратор</div>
           <FormFields />
           <div className="flex gap-2 mt-4">
@@ -151,49 +152,56 @@ export default function AdminsPage() {
       )}
 
       {isLoading ? (
-        <div className="text-center py-12"><div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-teal-600" /></div>
+        <div className="text-center py-8">
+          <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-teal-600" />
+          <div className={`text-lg mt-4 ${isDark ? 'text-gray-200' : 'text-gray-700'}`}>Загрузка...</div>
+        </div>
       ) : (
         <div className="overflow-x-auto">
-          <table className="w-full border-collapse text-sm">
+          <table className={`w-full border-collapse text-[11px] rounded-lg shadow-lg ${isDark ? 'bg-[#2a3441]' : 'bg-white'}`}>
             <thead>
-              <tr className={`border-b-2 ${isDark ? 'border-teal-900/40 bg-[#2a3441]' : 'border-gray-200 bg-gray-50'}`}>
+              <tr className={`border-b-2 ${isDark ? 'bg-[#3a4451]' : 'bg-gray-50'}`} style={{ borderColor: '#0d5c4b' }}>
                 {['ID', 'Имя', 'Логин', 'Роль', 'Статус', 'Создан', 'Заметка', 'Действия'].map(h => (
-                  <th key={h} className={`text-left py-3 px-4 font-semibold ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>{h}</th>
+                  <th key={h} className={`text-left py-3 px-3 font-semibold ${isDark ? 'text-gray-200' : 'text-gray-700'}`}>{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody>
               {items.length === 0 ? (
-                <tr><td colSpan={8} className="py-8 text-center text-gray-400">Нет данных</td></tr>
+                <tr><td colSpan={8} className={`py-10 text-center ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>Нет данных</td></tr>
               ) : items.map(item => (
-                <tr key={item.id} className={`border-b ${isDark ? 'border-gray-700/50 hover:bg-[#2a3441]' : 'border-gray-100 hover:bg-gray-50'}`}>
+                <tr key={item.id} className={`border-b transition-colors ${isDark ? 'hover:bg-[#3a4451] border-gray-700' : 'hover:bg-teal-50 border-gray-200'}`}>
                   {editingId === item.id ? (
-                    <td colSpan={8} className="py-3 px-4">
+                    <td colSpan={8} className="py-4 px-3">
                       <FormFields />
                       <div className="flex gap-2 mt-4">
-                        <button onClick={save} disabled={saving} className="flex items-center gap-1 px-4 py-2 bg-teal-600 text-white rounded-lg text-sm disabled:opacity-50"><Check className="w-4 h-4" />{saving ? 'Сохранение...' : 'Сохранить'}</button>
-                        <button onClick={cancelEdit} className={`flex items-center gap-1 px-4 py-2 rounded-lg text-sm ${isDark ? 'bg-[#1e2530] text-gray-300' : 'bg-gray-200 text-gray-700'}`}><X className="w-4 h-4" />Отмена</button>
+                        <button onClick={save} disabled={saving} className="flex items-center gap-1 px-4 py-2 bg-teal-600 hover:bg-teal-700 text-white rounded-lg text-sm font-medium disabled:opacity-50 transition-colors"><Check className="w-4 h-4" />{saving ? 'Сохранение...' : 'Сохранить'}</button>
+                        <button onClick={cancelEdit} className={`flex items-center gap-1 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${isDark ? 'bg-[#3a4451] hover:bg-[#4a5461] text-gray-300' : 'bg-gray-100 hover:bg-gray-200 text-gray-700'}`}><X className="w-4 h-4" />Отмена</button>
                       </div>
                     </td>
                   ) : (
                     <>
-                      <td className={`py-3 px-4 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>{item.id}</td>
-                      <td className={`py-3 px-4 font-medium ${isDark ? 'text-gray-200' : 'text-gray-800'}`}>{item.name}</td>
-                      <td className={`py-3 px-4 font-mono text-xs ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>{item.login}</td>
-                      <td className="py-3 px-4">
-                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${isDark ? 'bg-teal-900/30 text-teal-400' : 'bg-teal-100 text-teal-700'}`}>{item.role || 'admin'}</span>
+                      <td className={`py-3 px-3 font-medium ${isDark ? 'text-gray-100' : 'text-gray-800'}`}>{item.id}</td>
+                      <td className={`py-3 px-3 font-medium ${isDark ? 'text-gray-100' : 'text-gray-800'}`}>{item.name}</td>
+                      <td className={`py-3 px-3 font-mono ${isDark ? 'text-gray-300' : 'text-gray-600'}`}>{item.login}</td>
+                      <td className="py-3 px-3">
+                        <span className={`px-2 py-0.5 rounded text-xs font-medium ${isDark ? 'bg-teal-900/30 text-teal-400' : 'bg-teal-100 text-teal-700'}`}>{item.role || 'admin'}</span>
                       </td>
-                      <td className="py-3 px-4">
-                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${item.status === 'active' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
+                      <td className="py-3 px-3">
+                        <span className={`px-2 py-0.5 rounded text-xs font-medium ${
+                          item.status === 'active'
+                            ? isDark ? 'bg-green-900/40 text-green-300' : 'bg-green-100 text-green-700'
+                            : isDark ? 'bg-gray-700 text-gray-400' : 'bg-gray-100 text-gray-500'
+                        }`}>
                           {item.status === 'active' ? 'Активен' : 'Неактивен'}
                         </span>
                       </td>
-                      <td className={`py-3 px-4 text-xs ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>{new Date(item.createdAt).toLocaleDateString('ru-RU')}</td>
-                      <td className={`py-3 px-4 text-xs max-w-[150px] truncate ${isDark ? 'text-gray-400' : 'text-gray-500'}`} title={item.note || ''}>{item.note || '—'}</td>
-                      <td className="py-3 px-4">
+                      <td className={`py-3 px-3 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>{new Date(item.createdAt).toLocaleDateString('ru-RU')}</td>
+                      <td className={`py-3 px-3 max-w-[150px] truncate ${isDark ? 'text-gray-400' : 'text-gray-500'}`} title={item.note || ''}>{item.note || '—'}</td>
+                      <td className="py-3 px-3">
                         <div className="flex gap-1">
-                          <button onClick={() => startEdit(item)} className={`p-2 rounded-lg ${isDark ? 'text-gray-400 hover:text-teal-400 hover:bg-teal-900/30' : 'text-gray-500 hover:text-teal-600 hover:bg-teal-50'}`}><Pencil className="w-4 h-4" /></button>
-                          <button onClick={() => remove(item.id)} className={`p-2 rounded-lg ${isDark ? 'text-gray-400 hover:text-red-400 hover:bg-red-900/30' : 'text-gray-500 hover:text-red-600 hover:bg-red-50'}`}><Trash2 className="w-4 h-4" /></button>
+                          <button onClick={() => startEdit(item)} className={`p-1.5 rounded-lg transition-colors ${isDark ? 'text-gray-400 hover:text-teal-400 hover:bg-teal-900/30' : 'text-gray-500 hover:text-teal-600 hover:bg-teal-50'}`}><Pencil className="w-4 h-4" /></button>
+                          <button onClick={() => remove(item.id)} className={`p-1.5 rounded-lg transition-colors ${isDark ? 'text-gray-400 hover:text-red-400 hover:bg-red-900/30' : 'text-gray-500 hover:text-red-600 hover:bg-red-50'}`}><Trash2 className="w-4 h-4" /></button>
                         </div>
                       </td>
                     </>
@@ -204,6 +212,7 @@ export default function AdminsPage() {
           </table>
         </div>
       )}
+    </div>
     </div>
   )
 }

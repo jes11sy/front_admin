@@ -61,10 +61,11 @@ export default function RkPage() {
     catch (e: any) { toast.error(e.message || 'Ошибка удаления') }
   }
 
-  const inputCls = `w-full px-3 py-2 rounded-lg text-sm border focus:outline-none focus:ring-2 focus:ring-teal-500 ${isDark ? 'bg-[#1e2530] border-gray-600 text-gray-100' : 'bg-white border-gray-200 text-gray-800'}`
+  const inputCls = `w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent transition-all ${isDark ? 'bg-[#3a4451] border-gray-600 text-gray-100 placeholder-gray-500' : 'bg-gray-50 border-gray-200 text-gray-800 placeholder-gray-400'}`
 
   return (
-    <div>
+    <div className={`min-h-screen transition-colors duration-300 ${isDark ? 'bg-[#1e2530]' : 'bg-white'}`}>
+    <div className="px-6 py-6">
       <div className="mb-6 flex items-center justify-between">
         <div>
           <button onClick={() => router.push('/references')} className={`flex items-center gap-1 text-sm mb-2 ${isDark ? 'text-gray-400 hover:text-gray-200' : 'text-gray-500 hover:text-gray-700'}`}>
@@ -78,7 +79,7 @@ export default function RkPage() {
       </div>
 
       {showAdd && (
-        <div className={`mb-6 p-4 rounded-xl border ${isDark ? 'bg-[#2a3441] border-teal-700/40' : 'bg-teal-50 border-teal-200'}`}>
+        <div className={`mb-6 p-4 rounded-lg border ${isDark ? 'bg-[#2a3441] border-gray-700' : 'bg-gray-50 border-gray-200'}`}>
           <div className="text-sm font-medium mb-3">Новый РК</div>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <input className={inputCls} placeholder="Название" value={form.name} onChange={e => setForm({...form, name: e.target.value})} />
@@ -103,9 +104,9 @@ export default function RkPage() {
         <div className="text-center py-12"><div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-teal-600" /></div>
       ) : (
         <div className="overflow-x-auto">
-          <table className="w-full border-collapse text-sm">
+          <table className={`w-full border-collapse text-[11px] rounded-lg shadow-lg ${isDark ? 'bg-[#2a3441]' : 'bg-white'}`}>
             <thead>
-              <tr className={`border-b-2 ${isDark ? 'border-teal-900/40 bg-[#2a3441]' : 'border-gray-200 bg-gray-50'}`}>
+              <tr className={`border-b-2 ${isDark ? 'bg-[#3a4451]' : 'bg-gray-50'}`} style={{ borderColor: '#0d5c4b' }}>
                 {['ID', 'Название', 'Код', 'Статус', 'Действия'].map(h => (
                   <th key={h} className={`text-left py-3 px-4 font-semibold ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>{h}</th>
                 ))}
@@ -115,7 +116,7 @@ export default function RkPage() {
               {items.length === 0 ? (
                 <tr><td colSpan={5} className="py-8 text-center text-gray-400">Нет данных</td></tr>
               ) : items.map(item => (
-                <tr key={item.id} className={`border-b ${isDark ? 'border-gray-700/50 hover:bg-[#2a3441]' : 'border-gray-100 hover:bg-gray-50'}`}>
+                <tr key={item.id} className={`border-b ${isDark ? 'hover:bg-[#3a4451] border-gray-700' : 'hover:bg-teal-50 border-gray-200'`}>
                   {editingId === item.id ? (
                     <>
                       <td className={`py-2 px-4 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>{item.id}</td>
@@ -139,6 +140,7 @@ export default function RkPage() {
           </table>
         </div>
       )}
+    </div>
     </div>
   )
 }

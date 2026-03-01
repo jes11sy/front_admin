@@ -65,7 +65,8 @@ export default function ReferencesPage() {
   const isDark = theme === 'dark'
 
   return (
-    <div>
+    <div className={`min-h-screen transition-colors duration-300 ${isDark ? 'bg-[#1e2530]' : 'bg-white'}`}>
+    <div className="px-6 py-6">
       <div className="mb-6">
         <h1 className={`text-xl font-semibold ${isDark ? 'text-gray-100' : 'text-gray-800'}`}>Справочники</h1>
         <p className={`text-sm mt-1 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
@@ -90,6 +91,7 @@ export default function ReferencesPage() {
           )
         })}
       </div>
+    </div>
     </div>
   )
 }

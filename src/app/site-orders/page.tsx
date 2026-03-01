@@ -1,12 +1,11 @@
 'use client'
 
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect } from 'react'
 import { apiClient } from '@/lib/api'
 import { useDesignStore } from '@/store/design.store'
 import { toast } from 'sonner'
-import { logger } from '@/lib/logger'
 import { OptimizedPagination } from '@/components/ui/optimized-pagination'
-import { X, ChevronDown, ChevronUp, ExternalLink } from 'lucide-react'
+import { ExternalLink } from 'lucide-react'
 
 interface SiteOrder {
   id: number
@@ -24,9 +23,9 @@ interface SiteOrder {
   updatedAt: string
 }
 
-const STATUS_OPTIONS = [
-  { value: '', label: 'Все статусы' },
-  { value: 'new', label: 'Новая' },
+const STATUS_TABS = [
+  { value: '', label: 'Все' },
+  { value: 'new', label: 'Новые' },
   { value: 'processing', label: 'В обработке' },
   { value: 'callback', label: 'Перезвонить' },
   { value: 'no_answer', label: 'Не отвечает' },
@@ -35,25 +34,36 @@ const STATUS_OPTIONS = [
 ]
 
 const STATUS_LABELS: Record<string, string> = {
-  new: 'Новая',
-  processing: 'В обработке',
-  callback: 'Перезвонить',
-  no_answer: 'Не отвечает',
-  rejected: 'Отказ',
-  order_created: 'Заказ создан',
+  new: 'Новая', processing: 'В обработке', callback: 'Перезвонить',
+  no_answer: 'Не отвечает', rejected: 'Отказ', order_created: 'Заказ создан',
 }
 
-const STATUS_COLORS: Record<string, string> = {
-  new: 'bg-blue-100 text-blue-700',
-  processing: 'bg-yellow-100 text-yellow-700',
-  callback: 'bg-purple-100 text-purple-700',
-  no_answer: 'bg-gray-100 text-gray-600',
-  rejected: 'bg-red-100 text-red-700',
-  order_created: 'bg-green-100 text-green-700',
+function getStatusStyle(status: string | null, isDark: boolean) {
+  const s = status || 'new'
+  if (isDark) {
+    switch (s) {
+      case 'new': return 'bg-blue-900/40 text-blue-300'
+      case 'processing': return 'bg-yellow-900/40 text-yellow-300'
+      case 'callback': return 'bg-purple-900/40 text-purple-300'
+      case 'no_answer': return 'bg-gray-700 text-gray-400'
+      case 'rejected': return 'bg-red-900/40 text-red-300'
+      case 'order_created': return 'bg-green-900/40 text-green-300'
+      default: return 'bg-gray-700 text-gray-400'
+    }
+  }
+  switch (s) {
+    case 'new': return 'bg-blue-100 text-blue-700'
+    case 'processing': return 'bg-yellow-100 text-yellow-700'
+    case 'callback': return 'bg-purple-100 text-purple-700'
+    case 'no_answer': return 'bg-gray-100 text-gray-600'
+    case 'rejected': return 'bg-red-100 text-red-700'
+    case 'order_created': return 'bg-green-100 text-green-700'
+    default: return 'bg-gray-100 text-gray-600'
+  }
 }
 
 export default function SiteOrdersPage() {
-  const theme = useDesignStore((state) => state.theme)
+  const { theme } = useDesignStore()
   const isDark = theme === 'dark'
 
   const [items, setItems] = useState<SiteOrder[]>([])
@@ -61,12 +71,15 @@ export default function SiteOrdersPage() {
   const [isLoading, setIsLoading] = useState(true)
 
   const [showFilters, setShowFilters] = useState(false)
+  const [statusTab, setStatusTab] = useState('')
   const [search, setSearch] = useState('')
-  const [statusFilter, setStatusFilter] = useState('')
   const [cityFilter, setCityFilter] = useState('')
   const [cities, setCities] = useState<Array<{ id: number; name: string }>>([])
   const [currentPage, setCurrentPage] = useState(1)
   const itemsPerPage = 20
+
+  const [draftSearch, setDraftSearch] = useState('')
+  const [draftCity, setDraftCity] = useState('')
 
   // Inline editor
   const [editingId, setEditingId] = useState<number | null>(null)
@@ -79,7 +92,7 @@ export default function SiteOrdersPage() {
       const res = await apiClient.getSiteOrders({
         page: currentPage,
         limit: itemsPerPage,
-        status: statusFilter || undefined,
+        status: statusTab || undefined,
         cityId: cityFilter ? Number(cityFilter) : undefined,
         search: search || undefined,
       })
@@ -88,8 +101,7 @@ export default function SiteOrdersPage() {
         setItems(Array.isArray(data) ? data : (data?.items || data?.data || []))
         setTotal(data?.total || data?.pagination?.total || (Array.isArray(data) ? data.length : 0))
       }
-    } catch (e) {
-      logger.error('Error loading site orders', { error: String(e) })
+    } catch {
       toast.error('Не удалось загрузить заявки')
     } finally {
       setIsLoading(false)
@@ -100,13 +112,25 @@ export default function SiteOrdersPage() {
     apiClient.getCities().then(c => setCities(c)).catch(() => {})
   }, [])
 
-  useEffect(() => { load() }, [currentPage, statusFilter, cityFilter])
+  useEffect(() => { load() }, [currentPage, statusTab, cityFilter, search])
+  useEffect(() => { setCurrentPage(1) }, [statusTab, cityFilter, search])
 
-  useEffect(() => {
-    setCurrentPage(1)
-  }, [search, statusFilter, cityFilter])
+  const openFilters = () => {
+    setDraftSearch(search)
+    setDraftCity(cityFilter)
+    setShowFilters(true)
+  }
 
-  const handleSearch = (e: React.FormEvent) => { e.preventDefault(); setCurrentPage(1); load() }
+  const applyFilters = () => {
+    setSearch(draftSearch)
+    setCityFilter(draftCity)
+    setShowFilters(false)
+  }
+
+  const resetFilters = () => {
+    setDraftSearch('')
+    setDraftCity('')
+  }
 
   const startEdit = (item: SiteOrder) => {
     setEditingId(item.id)
@@ -137,142 +161,223 @@ export default function SiteOrdersPage() {
   }
 
   const totalPages = Math.ceil(total / itemsPerPage)
-  const hasActiveFilters = search || statusFilter || cityFilter
+  const activeFiltersCount = (search ? 1 : 0) + (cityFilter ? 1 : 0)
 
-  const inputCls = `px-3 py-2 rounded-lg text-sm border focus:outline-none focus:ring-2 focus:ring-teal-500 ${isDark ? 'bg-[#1e2530] border-gray-600 text-gray-100' : 'bg-white border-gray-200 text-gray-800'}`
+  const inputCls = `w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent transition-all ${isDark ? 'bg-[#3a4451] border-gray-600 text-gray-100 placeholder-gray-500' : 'bg-gray-50 border-gray-200 text-gray-800 placeholder-gray-400'}`
 
   return (
-    <div>
-      <div className="mb-6 flex items-center justify-between">
-        <div>
-          <h1 className={`text-xl font-semibold ${isDark ? 'text-gray-100' : 'text-gray-800'}`}>Заявки с сайта</h1>
-          <p className={`text-sm mt-1 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
-            Лиды, пришедшие через сайты {total > 0 && `— всего ${total}`}
-          </p>
-        </div>
-        <button
-          onClick={() => setShowFilters(!showFilters)}
-          className={`relative p-2 rounded-lg transition-all ${showFilters ? (isDark ? 'bg-teal-900/20 text-teal-400' : 'bg-teal-50 text-teal-600') : (isDark ? 'bg-[#2a3441] text-gray-400' : 'bg-gray-100 text-gray-600')}`}
-        >
-          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
-          </svg>
-          {hasActiveFilters && <span className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 bg-teal-500 rounded-full" />}
-        </button>
-      </div>
+    <div className={`min-h-screen transition-colors duration-300 ${isDark ? 'bg-[#1e2530]' : 'bg-white'}`}>
+      <div className="px-4 py-6">
 
-      {showFilters && (
-        <form onSubmit={handleSearch} className={`mb-6 p-4 rounded-xl border ${isDark ? 'bg-[#2a3441] border-teal-700/40' : 'bg-gray-50 border-gray-200'}`}>
-          <div className="flex flex-wrap gap-3 items-end">
-            <div className="flex-1 min-w-[200px]">
-              <label className={`block text-xs mb-1 ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>Поиск (имя, телефон)</label>
-              <input className={`${inputCls} w-full`} value={search} onChange={e => setSearch(e.target.value)} placeholder="Введите имя или телефон..." />
-            </div>
-            <div>
-              <label className={`block text-xs mb-1 ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>Статус</label>
-              <select className={inputCls} value={statusFilter} onChange={e => setStatusFilter(e.target.value)}>
-                {STATUS_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
-              </select>
-            </div>
-            <div>
-              <label className={`block text-xs mb-1 ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>Город</label>
-              <select className={inputCls} value={cityFilter} onChange={e => setCityFilter(e.target.value)}>
-                <option value="">Все города</option>
-                {cities.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-              </select>
-            </div>
-            <button type="submit" className="px-4 py-2 bg-teal-600 hover:bg-teal-700 text-white rounded-lg text-sm">Найти</button>
-            {hasActiveFilters && (
-              <button type="button" onClick={() => { setSearch(''); setStatusFilter(''); setCityFilter('') }} className={`px-4 py-2 rounded-lg text-sm ${isDark ? 'bg-[#1e2530] text-gray-300' : 'bg-gray-200 text-gray-700'}`}>Сбросить</button>
-            )}
-          </div>
-        </form>
-      )}
-
-      {isLoading ? (
-        <div className="text-center py-12"><div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-teal-600" /></div>
-      ) : (
-        <>
-          <div className="space-y-3">
-            {items.length === 0 ? (
-              <div className={`text-center py-12 ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>Нет заявок</div>
-            ) : items.map(item => (
-              <div key={item.id} className={`rounded-xl border transition-all ${isDark ? 'bg-[#2a3441] border-gray-700/50' : 'bg-white border-gray-200 shadow-sm'}`}>
-                {/* Header */}
-                <div className="p-4 flex items-start justify-between gap-4">
-                  <div className="flex-1 min-w-0">
-                    <div className="flex flex-wrap items-center gap-2 mb-1">
-                      <span className={`text-xs font-mono ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>#{item.id}</span>
-                      <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${STATUS_COLORS[item.status || 'new'] || 'bg-gray-100 text-gray-600'}`}>
-                        {STATUS_LABELS[item.status || ''] || item.status || 'Новая'}
-                      </span>
-                      {item.city && <span className={`text-xs px-2 py-0.5 rounded-full ${isDark ? 'bg-gray-700 text-gray-300' : 'bg-gray-100 text-gray-600'}`}>{item.city.name}</span>}
-                    </div>
-                    <div className={`font-medium text-sm ${isDark ? 'text-gray-200' : 'text-gray-800'}`}>{item.clientName}</div>
-                    <div className="flex flex-wrap gap-3 mt-1 text-xs">
-                      <span className={isDark ? 'text-gray-400' : 'text-gray-600'}>{item.phone}</span>
-                      <span className={isDark ? 'text-gray-500' : 'text-gray-400'}>{item.site}</span>
-                      <span className={isDark ? 'text-gray-500' : 'text-gray-400'}>{new Date(item.createdAt).toLocaleString('ru-RU')}</span>
-                    </div>
-                    {item.comment && (
-                      <div className={`mt-2 text-xs italic ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>Клиент: {item.comment}</div>
-                    )}
-                    {item.commentOperator && (
-                      <div className={`mt-1 text-xs ${isDark ? 'text-teal-400' : 'text-teal-700'}`}>Оператор: {item.commentOperator}</div>
-                    )}
-                    {item.orderId && (
-                      <div className="mt-1 flex items-center gap-1 text-xs text-green-600">
-                        <ExternalLink className="w-3 h-3" />
-                        <a href={`/orders/${item.orderId}`} className="underline hover:no-underline">Заказ #{item.orderId}</a>
-                      </div>
-                    )}
-                  </div>
+        {/* Status tabs + filter button */}
+        <div className="mb-4">
+          <div className="flex items-center gap-2">
+            <div className="flex-1 min-w-0 overflow-x-auto scrollbar-hide">
+              <div className={`flex gap-1 p-1 rounded-lg w-max ${isDark ? 'bg-[#2a3441]' : 'bg-gray-100'}`}>
+                {STATUS_TABS.map(tab => (
                   <button
-                    onClick={() => editingId === item.id ? setEditingId(null) : startEdit(item)}
-                    className={`flex-shrink-0 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${isDark ? 'bg-[#1e2530] text-gray-300 hover:bg-[#3a4451]' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}
-                  >
-                    {editingId === item.id ? 'Свернуть' : 'Обработать'}
-                  </button>
-                </div>
-
-                {/* Edit panel */}
-                {editingId === item.id && (
-                  <div className={`border-t px-4 py-4 ${isDark ? 'border-gray-700/50' : 'border-gray-100'}`}>
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                      <div>
-                        <label className={`block text-xs mb-1 ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>Статус</label>
-                        <select className={`${inputCls} w-full`} value={editForm.status} onChange={e => setEditForm({...editForm, status: e.target.value})}>
-                          {STATUS_OPTIONS.filter(o => o.value).map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
-                        </select>
-                      </div>
-                      <div>
-                        <label className={`block text-xs mb-1 ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>Перезвонить в</label>
-                        <input type="datetime-local" className={`${inputCls} w-full`} value={editForm.callbackAt} onChange={e => setEditForm({...editForm, callbackAt: e.target.value})} />
-                      </div>
-                      <div>
-                        <label className={`block text-xs mb-1 ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>Комментарий оператора</label>
-                        <input className={`${inputCls} w-full`} value={editForm.commentOperator} onChange={e => setEditForm({...editForm, commentOperator: e.target.value})} placeholder="Добавить заметку..." />
-                      </div>
-                    </div>
-                    <div className="flex gap-2 mt-3">
-                      <button onClick={saveEdit} disabled={saving} className="px-4 py-2 bg-teal-600 hover:bg-teal-700 text-white rounded-lg text-sm disabled:opacity-50">
-                        {saving ? 'Сохранение...' : 'Сохранить'}
-                      </button>
-                      <button onClick={() => setEditingId(null)} className={`px-4 py-2 rounded-lg text-sm ${isDark ? 'bg-[#1e2530] text-gray-300' : 'bg-gray-200 text-gray-700'}`}>Отмена</button>
-                    </div>
-                  </div>
-                )}
+                    key={tab.value}
+                    onClick={() => setStatusTab(tab.value)}
+                    className={`px-3 py-1.5 text-sm font-medium rounded-md transition-all duration-200 whitespace-nowrap ${
+                      statusTab === tab.value
+                        ? 'bg-[#0d5c4b] text-white shadow-sm'
+                        : isDark ? 'text-gray-400 hover:text-gray-200 hover:bg-[#3a4451]' : 'text-gray-600 hover:text-gray-800 hover:bg-gray-50'
+                    }`}
+                  >{tab.label}</button>
+                ))}
               </div>
-            ))}
-          </div>
-
-          {totalPages > 1 && (
-            <div className={`flex items-center justify-center mt-6 pt-4 border-t ${isDark ? 'border-gray-700' : 'border-gray-200'}`}>
-              <OptimizedPagination currentPage={currentPage} totalPages={totalPages} onPageChange={setCurrentPage} isDark={isDark} />
             </div>
-          )}
-        </>
-      )}
+            <button
+              onClick={openFilters}
+              className={`relative flex-shrink-0 p-2 rounded-lg transition-all duration-200 ${isDark ? 'bg-[#2a3441] hover:bg-[#3a4451] text-gray-400 hover:text-teal-400' : 'bg-gray-100 hover:bg-gray-200 text-gray-600 hover:text-teal-600'}`}
+              title="Фильтры"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
+              </svg>
+              {activeFiltersCount > 0 && (
+                <span className={`absolute -top-0.5 -right-0.5 w-2.5 h-2.5 bg-teal-500 rounded-full border-2 ${isDark ? 'border-[#1e2530]' : 'border-white'}`} />
+              )}
+            </button>
+          </div>
+        </div>
+
+        {/* Filter drawer */}
+        {showFilters && (
+          <>
+            <div className={`fixed inset-0 z-40 ${isDark ? 'bg-black/50' : 'bg-black/30'}`} onClick={() => setShowFilters(false)} />
+            <div className={`fixed top-0 right-0 h-full w-full sm:w-80 shadow-xl z-50 overflow-y-auto ${isDark ? 'bg-[#2a3441]' : 'bg-white'}`}>
+              <div className={`sticky top-0 border-b px-4 py-3 flex items-center justify-between z-10 ${isDark ? 'bg-[#2a3441] border-gray-700' : 'bg-white border-gray-200'}`}>
+                <h2 className={`text-lg font-semibold ${isDark ? 'text-gray-100' : 'text-gray-800'}`}>Фильтры</h2>
+                <button onClick={() => setShowFilters(false)} className={`p-2 rounded-lg ${isDark ? 'text-gray-400 hover:text-gray-200 hover:bg-[#3a4451]' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'}`}>
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+                </button>
+              </div>
+              <div className="p-4 space-y-4">
+                <div className="space-y-3">
+                  <h3 className={`text-xs font-semibold uppercase tracking-wider ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>Поиск</h3>
+                  <input type="text" placeholder="Имя или телефон..." value={draftSearch} onChange={e => setDraftSearch(e.target.value)} className={inputCls} />
+                </div>
+                <hr className={isDark ? 'border-gray-700' : 'border-gray-200'} />
+                <div className="space-y-3">
+                  <h3 className={`text-xs font-semibold uppercase tracking-wider ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>Город</h3>
+                  <select value={draftCity} onChange={e => setDraftCity(e.target.value)} className={inputCls}>
+                    <option value="">Все города</option>
+                    {cities.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                  </select>
+                </div>
+              </div>
+              <div className={`sticky bottom-0 border-t px-4 py-3 flex gap-2 ${isDark ? 'bg-[#2a3441] border-gray-700' : 'bg-white border-gray-200'}`}>
+                <button onClick={resetFilters} className={`flex-1 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${isDark ? 'bg-[#3a4451] hover:bg-[#4a5461] text-gray-300' : 'bg-gray-100 hover:bg-gray-200 text-gray-700'}`}>Сбросить</button>
+                <button onClick={applyFilters} className="flex-1 px-4 py-2 bg-teal-600 hover:bg-teal-700 text-white rounded-lg text-sm font-medium transition-colors">Применить</button>
+              </div>
+            </div>
+          </>
+        )}
+
+        {/* Loading */}
+        {isLoading && (
+          <div className="text-center py-8 animate-fade-in">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-teal-600 mx-auto mb-4" />
+            <p className={`font-medium ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>Загрузка заявок...</p>
+          </div>
+        )}
+
+        {/* Empty */}
+        {!isLoading && items.length === 0 && (
+          <div className={`text-center py-16 rounded-lg ${isDark ? 'bg-[#2a3441]' : 'bg-gray-50'}`}>
+            <p className={`text-lg mb-2 ${isDark ? 'text-gray-300' : 'text-gray-600'}`}>Заявок не найдено</p>
+            <p className={`text-sm ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>Попробуйте изменить параметры фильтра</p>
+          </div>
+        )}
+
+        {/* Table desktop */}
+        {!isLoading && items.length > 0 && (
+          <>
+            <div className="hidden md:block overflow-x-auto">
+              <table className={`w-full border-collapse text-[11px] rounded-lg shadow-lg ${isDark ? 'bg-[#2a3441]' : 'bg-white'}`}>
+                <thead>
+                  <tr className={`border-b-2 ${isDark ? 'bg-[#3a4451]' : 'bg-gray-50'}`} style={{ borderColor: '#0d5c4b' }}>
+                    {['ID', 'Клиент', 'Телефон', 'Сайт', 'Город', 'Статус', 'Перезвон', 'Создано', ''].map(h => (
+                      <th key={h} className={`text-left py-3 px-3 font-semibold ${isDark ? 'text-gray-200' : 'text-gray-700'}`}>{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {items.map(item => (
+                    <>
+                      <tr
+                        key={item.id}
+                        className={`border-b transition-colors ${isDark ? 'hover:bg-[#3a4451] border-gray-700' : 'hover:bg-teal-50 border-gray-200'}`}
+                      >
+                        <td className={`py-2.5 px-3 font-medium ${isDark ? 'text-gray-100' : 'text-gray-800'}`}>{item.id}</td>
+                        <td className={`py-2.5 px-3 font-medium ${isDark ? 'text-gray-100' : 'text-gray-800'}`}>{item.clientName}</td>
+                        <td className={`py-2.5 px-3 font-mono ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>{item.phone}</td>
+                        <td className={`py-2.5 px-3 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>{item.site}</td>
+                        <td className={`py-2.5 px-3 ${isDark ? 'text-gray-300' : 'text-gray-600'}`}>{item.city?.name || '-'}</td>
+                        <td className="py-2.5 px-3">
+                          <span className={`px-2 py-0.5 rounded text-xs font-medium ${getStatusStyle(item.status, isDark)}`}>
+                            {STATUS_LABELS[item.status || ''] || 'Новая'}
+                          </span>
+                        </td>
+                        <td className={`py-2.5 px-3 ${item.callbackAt ? (isDark ? 'text-orange-400' : 'text-orange-600') : (isDark ? 'text-gray-500' : 'text-gray-400')}`}>
+                          {item.callbackAt ? new Date(item.callbackAt).toLocaleString('ru-RU', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : '—'}
+                        </td>
+                        <td className={`py-2.5 px-3 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
+                          {new Date(item.createdAt).toLocaleString('ru-RU', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
+                        </td>
+                        <td className="py-2.5 px-3" onClick={e => e.stopPropagation()}>
+                          <button
+                            onClick={() => editingId === item.id ? setEditingId(null) : startEdit(item)}
+                            className={`px-3 py-1 rounded-lg text-xs font-medium transition-colors ${
+                              editingId === item.id
+                                ? 'bg-teal-600 text-white'
+                                : isDark ? 'bg-[#3a4451] text-gray-300 hover:bg-[#4a5461]' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                            }`}
+                          >{editingId === item.id ? 'Свернуть' : 'Обработать'}</button>
+                        </td>
+                      </tr>
+                      {editingId === item.id && (
+                        <tr key={`${item.id}-edit`} className={isDark ? 'bg-[#1e2530]' : 'bg-gray-50'}>
+                          <td colSpan={9} className="px-4 py-4">
+                            {item.comment && (
+                              <div className={`text-xs mb-3 italic ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
+                                Комментарий клиента: {item.comment}
+                              </div>
+                            )}
+                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                              <div>
+                                <label className={`block text-sm font-medium mb-1 ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>Статус</label>
+                                <select className={inputCls} value={editForm.status} onChange={e => setEditForm({...editForm, status: e.target.value})}>
+                                  {STATUS_TABS.filter(o => o.value).map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+                                </select>
+                              </div>
+                              <div>
+                                <label className={`block text-sm font-medium mb-1 ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>Перезвонить в</label>
+                                <input type="datetime-local" className={inputCls} value={editForm.callbackAt} onChange={e => setEditForm({...editForm, callbackAt: e.target.value})} />
+                              </div>
+                              <div>
+                                <label className={`block text-sm font-medium mb-1 ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>Комментарий оператора</label>
+                                <input className={inputCls} value={editForm.commentOperator} onChange={e => setEditForm({...editForm, commentOperator: e.target.value})} placeholder="Заметка..." />
+                              </div>
+                            </div>
+                            <div className="flex gap-2 mt-3">
+                              <button onClick={saveEdit} disabled={saving} className="px-4 py-2 bg-teal-600 hover:bg-teal-700 text-white rounded-lg text-sm font-medium disabled:opacity-50 transition-colors">
+                                {saving ? 'Сохранение...' : 'Сохранить'}
+                              </button>
+                              <button onClick={() => setEditingId(null)} className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${isDark ? 'bg-[#3a4451] hover:bg-[#4a5461] text-gray-300' : 'bg-gray-100 hover:bg-gray-200 text-gray-700'}`}>Отмена</button>
+                              {item.orderId && (
+                                <a href={`/orders/${item.orderId}`} className="flex items-center gap-1 ml-auto text-sm text-teal-600 hover:underline">
+                                  <ExternalLink className="w-4 h-4" />Заказ #{item.orderId}
+                                </a>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      )}
+                    </>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Mobile cards */}
+            <div className="md:hidden space-y-3">
+              {items.map(item => (
+                <div key={item.id} className={`rounded-xl overflow-hidden border transition-all duration-200 shadow-sm ${isDark ? 'bg-[#2a3441] border-gray-700' : 'bg-white border-gray-200'}`}>
+                  <div className={`flex items-center justify-between px-3 py-2 border-b ${isDark ? 'bg-[#3a4451] border-gray-700' : 'bg-gray-50 border-gray-100'}`}>
+                    <div className="flex items-center gap-2">
+                      <span className={`font-bold text-sm ${isDark ? 'text-gray-100' : 'text-gray-800'}`}>#{item.id}</span>
+                      <span className={`px-2 py-0.5 rounded text-xs font-medium ${getStatusStyle(item.status, isDark)}`}>
+                        {STATUS_LABELS[item.status || ''] || 'Новая'}
+                      </span>
+                    </div>
+                    <span className={`text-xs ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>{new Date(item.createdAt).toLocaleDateString('ru-RU')}</span>
+                  </div>
+                  <div className="px-3 py-2.5">
+                    <div className={`font-medium text-sm mb-1 ${isDark ? 'text-gray-100' : 'text-gray-800'}`}>{item.clientName}</div>
+                    <div className={`text-xs mb-1 ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>{item.phone}</div>
+                    <div className={`text-xs ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>{item.city?.name} · {item.site}</div>
+                  </div>
+                  <div className={`flex items-center justify-between px-3 py-2 border-t ${isDark ? 'border-gray-700' : 'border-gray-100'}`}>
+                    <button onClick={() => editingId === item.id ? setEditingId(null) : startEdit(item)}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${isDark ? 'bg-[#3a4451] text-gray-300' : 'bg-gray-100 text-gray-700'}`}>
+                      Обработать
+                    </button>
+                    {item.orderId && <a href={`/orders/${item.orderId}`} className="text-xs text-teal-600 flex items-center gap-1"><ExternalLink className="w-3 h-3" />Заказ #{item.orderId}</a>}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </>
+        )}
+
+        {!isLoading && totalPages > 1 && (
+          <div className={`flex items-center justify-center mt-6 pt-4 border-t ${isDark ? 'border-gray-700' : 'border-gray-200'}`}>
+            <OptimizedPagination currentPage={currentPage} totalPages={totalPages} onPageChange={setCurrentPage} isDark={isDark} />
+          </div>
+        )}
+      </div>
     </div>
   )
 }

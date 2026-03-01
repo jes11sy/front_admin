@@ -128,14 +128,11 @@ export default function SchedulePage() {
 
   const selectedMasterObj = masters.find(m => m.id === selectedMaster)
 
-  const selectCls = `px-3 py-2 rounded-lg text-sm border focus:outline-none focus:ring-2 focus:ring-teal-500 ${isDark ? 'bg-[#1e2530] border-gray-600 text-gray-100' : 'bg-white border-gray-200 text-gray-800'}`
+  const selectCls = `px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent transition-all ${isDark ? 'bg-[#3a4451] border-gray-600 text-gray-100' : 'bg-gray-50 border-gray-200 text-gray-800'}`
 
   return (
-    <div>
-      <div className="mb-6">
-        <h1 className={`text-xl font-semibold ${isDark ? 'text-gray-100' : 'text-gray-800'}`}>Расписание мастеров</h1>
-        <p className={`text-sm mt-1 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>Управление рабочим графиком: выходные, отпуска</p>
-      </div>
+    <div className={`min-h-screen transition-colors duration-300 ${isDark ? 'bg-[#1e2530]' : 'bg-white'}`}>
+    <div className="px-6 py-6">
 
       {/* Controls */}
       <div className="flex flex-wrap gap-3 mb-6">
@@ -245,6 +242,7 @@ export default function SchedulePage() {
           )}
         </div>
       )}
+    </div>
     </div>
   )
 }

@@ -77,7 +77,7 @@ export default function OrderStatusesPage() {
     catch (e: any) { toast.error(e.message || 'Ошибка удаления') }
   }
 
-  const inputCls = `w-full px-3 py-2 rounded-lg text-sm border focus:outline-none focus:ring-2 focus:ring-teal-500 ${isDark ? 'bg-[#1e2530] border-gray-600 text-gray-100' : 'bg-white border-gray-200 text-gray-800'}`
+  const inputCls = `w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent transition-all ${isDark ? 'bg-[#3a4451] border-gray-600 text-gray-100 placeholder-gray-500' : 'bg-gray-50 border-gray-200 text-gray-800 placeholder-gray-400'}`
 
   const FormFields = ({ inline = false }: { inline?: boolean }) => (
     <div className={`${inline ? 'flex gap-3 flex-wrap items-end' : 'grid grid-cols-2 sm:grid-cols-3 gap-3'}`}>
@@ -108,7 +108,8 @@ export default function OrderStatusesPage() {
   )
 
   return (
-    <div>
+    <div className={`min-h-screen transition-colors duration-300 ${isDark ? 'bg-[#1e2530]' : 'bg-white'}`}>
+    <div className="px-6 py-6">
       <div className="mb-6 flex items-center justify-between">
         <div>
           <button onClick={() => router.push('/references')} className={`flex items-center gap-1 text-sm mb-2 ${isDark ? 'text-gray-400 hover:text-gray-200' : 'text-gray-500 hover:text-gray-700'}`}>
@@ -122,7 +123,7 @@ export default function OrderStatusesPage() {
       </div>
 
       {showAdd && (
-        <div className={`mb-6 p-4 rounded-xl border ${isDark ? 'bg-[#2a3441] border-teal-700/40' : 'bg-teal-50 border-teal-200'}`}>
+        <div className={`mb-6 p-4 rounded-lg border ${isDark ? 'bg-[#2a3441] border-gray-700' : 'bg-gray-50 border-gray-200'}`}>
           <div className={`text-sm font-medium mb-3 ${isDark ? 'text-gray-200' : 'text-gray-800'}`}>Новый статус</div>
           <FormFields />
           <div className="flex gap-2 mt-4">
@@ -136,9 +137,9 @@ export default function OrderStatusesPage() {
         <div className="text-center py-12"><div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-teal-600" /></div>
       ) : (
         <div className="overflow-x-auto">
-          <table className="w-full border-collapse text-sm">
+          <table className={`w-full border-collapse text-[11px] rounded-lg shadow-lg ${isDark ? 'bg-[#2a3441]' : 'bg-white'}`}>
             <thead>
-              <tr className={`border-b-2 ${isDark ? 'border-teal-900/40 bg-[#2a3441]' : 'border-gray-200 bg-gray-50'}`}>
+              <tr className={`border-b-2 ${isDark ? 'bg-[#3a4451]' : 'bg-gray-50'}`} style={{ borderColor: '#0d5c4b' }}>
                 {['ID', 'Название', 'Код', 'Цвет', 'Порядок', 'Статус', 'Действия'].map(h => (
                   <th key={h} className={`text-left py-3 px-4 font-semibold ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>{h}</th>
                 ))}
@@ -148,7 +149,7 @@ export default function OrderStatusesPage() {
               {items.length === 0 ? (
                 <tr><td colSpan={7} className="py-8 text-center text-gray-400">Нет данных</td></tr>
               ) : items.map(item => (
-                <tr key={item.id} className={`border-b ${isDark ? 'border-gray-700/50 hover:bg-[#2a3441]' : 'border-gray-100 hover:bg-gray-50'}`}>
+                <tr key={item.id} className={`border-b ${isDark ? 'hover:bg-[#3a4451] border-gray-700' : 'hover:bg-teal-50 border-gray-200'`}>
                   {editingId === item.id ? (
                     <td colSpan={7} className="py-3 px-4">
                       <FormFields />
@@ -188,6 +189,7 @@ export default function OrderStatusesPage() {
           </table>
         </div>
       )}
+    </div>
     </div>
   )
 }
