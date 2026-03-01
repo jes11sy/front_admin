@@ -6,6 +6,8 @@ import { useDesignStore } from '@/store/design.store'
 
 const tabs = [
   { name: 'Активные сессии', href: '/admin/sessions' },
+  { name: 'Рабочие сессии', href: '/admin/work-sessions' },
+  { name: 'Логи уведомлений', href: '/admin/notifications' },
   { name: 'Логирование', href: '/admin/user-logs' },
   { name: 'Ошибки', href: '/admin/errors' },
 ]

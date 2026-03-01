@@ -144,8 +144,7 @@ export default function OperatorSalaryPage() {
   const inputCls = `w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent transition-all ${isDark ? 'bg-[#3a4451] border-gray-600 text-gray-100 placeholder-gray-500' : 'bg-gray-50 border-gray-200 text-gray-800 placeholder-gray-400'}`
 
   return (
-    <div className={`min-h-screen transition-colors duration-300 ${isDark ? 'bg-[#1e2530]' : 'bg-white'}`}>
-      <div className="px-4 py-6">
+    <div>
 
         {/* Tabs + add button */}
         <div className="mb-4 flex items-center justify-between gap-4">
@@ -301,7 +300,6 @@ export default function OperatorSalaryPage() {
             <OptimizedPagination currentPage={currentPage} totalPages={totalPages} onPageChange={setCurrentPage} isDark={isDark} />
           </div>
         )}
-      </div>
     </div>
   )
 }

@@ -1,18 +1,16 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
 import { apiClient } from '@/lib/api'
 import { useDesignStore } from '@/store/design.store'
 import { toast } from 'sonner'
-import { ArrowLeft, Plus, Pencil, Trash2, Check, X } from 'lucide-react'
+import { Plus, Pencil, Trash2, Check, X } from 'lucide-react'
 
 interface OrderType { id: number; name: string; isActive: boolean; createdAt: string }
 interface FormState { name: string; isActive: boolean }
 const emptyForm: FormState = { name: '', isActive: true }
 
 export default function OrderTypesPage() {
-  const router = useRouter()
   const theme = useDesignStore((state) => state.theme)
   const isDark = theme === 'dark'
 
@@ -57,13 +55,9 @@ export default function OrderTypesPage() {
   const inputCls = `w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent transition-all ${isDark ? 'bg-[#3a4451] border-gray-600 text-gray-100 placeholder-gray-500' : 'bg-gray-50 border-gray-200 text-gray-800 placeholder-gray-400'}`
 
   return (
-    <div className={`min-h-screen transition-colors duration-300 ${isDark ? 'bg-[#1e2530]' : 'bg-white'}`}>
-    <div className="px-6 py-6">
+    <>
       <div className="mb-6 flex items-center justify-between">
         <div>
-          <button onClick={() => router.push('/references')} className={`flex items-center gap-1 text-sm mb-2 ${isDark ? 'text-gray-400 hover:text-gray-200' : 'text-gray-500 hover:text-gray-700'}`}>
-            <ArrowLeft className="w-4 h-4" /> Справочники
-          </button>
           <h1 className={`text-xl font-semibold ${isDark ? 'text-gray-100' : 'text-gray-800'}`}>Типы заказов</h1>
         </div>
         <button onClick={() => { setShowAdd(true); setEditingId(null); setForm(emptyForm) }} className="flex items-center gap-2 px-4 py-2 bg-teal-600 hover:bg-teal-700 text-white rounded-lg text-sm font-medium">
@@ -124,7 +118,6 @@ export default function OrderTypesPage() {
           </table>
         </div>
       )}
-    </div>
-    </div>
+    </>
   )
 }

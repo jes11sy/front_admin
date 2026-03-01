@@ -249,8 +249,7 @@ export default function SalaryPage() {
   }
 
   return (
-    <div className={`min-h-screen transition-colors duration-300 ${isDark ? 'bg-[#1e2530]' : 'bg-white'}`}>
-      <div className="px-4 py-6">
+    <div>
         
         {/* Статистика - минималистичные карточки */}
         <div className="grid grid-cols-3 gap-3 mb-6">
@@ -619,7 +618,6 @@ export default function SalaryPage() {
             </div>
           </div>
         )}
-      </div>
     </div>
   )
 }
