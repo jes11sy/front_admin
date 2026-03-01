@@ -28,6 +28,14 @@ import {
   Activity,
   FileCode,
   AlertCircle,
+  Globe,
+  BookOpen,
+  Calendar,
+  Shield,
+  Banknote,
+  MessageSquare,
+  Clock,
+  Bell,
 } from 'lucide-react'
 
 const navigationItems = [
@@ -41,11 +49,27 @@ const navigationItems = [
       { name: 'Мастера', href: '/employees/masters', icon: Wrench },
     ]
   },
+  { name: 'Расписание', href: '/schedule', icon: Calendar },
   { name: 'Телефония', href: '/telephony', icon: PhoneCall },
   // { name: 'Авито', href: '/avito', icon: Tag }, // Временно скрыто
+  { name: 'Заявки с сайта', href: '/site-orders', icon: Globe },
   { name: 'Заказы', href: '/orders', icon: ShoppingCart },
-  { name: 'Касса', href: '/cashbox', icon: Wallet },
-  { name: 'Зарплата', href: '/salary', icon: DollarSign },
+  {
+    name: 'Касса',
+    icon: Wallet,
+    dropdown: [
+      { name: 'По городам', href: '/cashbox', icon: Wallet },
+      { name: 'Сдача кассы', href: '/cashbox/submissions', icon: Banknote },
+    ]
+  },
+  {
+    name: 'Зарплата',
+    icon: DollarSign,
+    dropdown: [
+      { name: 'Директора', href: '/salary', icon: Briefcase },
+      { name: 'Операторы', href: '/salary/operators', icon: Phone },
+    ]
+  },
   {
     name: 'Отчеты',
     icon: FileText,
@@ -55,11 +79,16 @@ const navigationItems = [
       { name: 'Отчет по РК', href: '/reports/campaigns', icon: TrendingUp },
     ]
   },
+  { name: 'Обращения', href: '/appeals', icon: MessageSquare },
+  { name: 'Справочники', href: '/references', icon: BookOpen },
   {
     name: 'Администрирование',
     icon: Settings,
     dropdown: [
+      { name: 'Администраторы', href: '/admin/admins', icon: Shield },
       { name: 'Активные сессии', href: '/admin/sessions', icon: Activity },
+      { name: 'Рабочие сессии', href: '/admin/work-sessions', icon: Clock },
+      { name: 'Логи уведомлений', href: '/admin/notifications', icon: Bell },
       { name: 'Логирование пользователей', href: '/admin/user-logs', icon: FileCode },
       { name: 'Ошибки', href: '/admin/errors', icon: AlertCircle },
     ]
@@ -70,12 +99,26 @@ export function Navigation() {
   const pathname = usePathname()
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [expandedItem, setExpandedItem] = useState<string | null>(null)
+  const [isDark, setIsDark] = useState(false)
+
+  useEffect(() => {
+    const stored = localStorage.getItem('design-store')
+    if (stored) {
+      try { const parsed = JSON.parse(stored); setIsDark(parsed?.state?.theme === 'dark') } catch {}
+    }
+    const handler = () => {
+      const s = localStorage.getItem('design-store')
+      if (s) { try { const p = JSON.parse(s); setIsDark(p?.state?.theme === 'dark') } catch {} }
+    }
+    window.addEventListener('storage', handler)
+    return () => window.removeEventListener('storage', handler)
+  }, [])
 
   // Автоматически раскрываем dropdown если находимся на дочерней странице
   const checkAndExpandParent = useCallback(() => {
     navigationItems.forEach(item => {
       if (item.dropdown) {
-        const isChildActive = item.dropdown.some(child => pathname === child.href)
+        const isChildActive = item.dropdown.some(child => pathname === child.href || pathname.startsWith(child.href + '/'))
         if (isChildActive) {
           setExpandedItem(item.name)
         }
@@ -138,7 +181,7 @@ export function Navigation() {
               const isActive = item.href ? pathname === item.href : false
               const hasDropdown = !!item.dropdown
               const isExpanded = expandedItem === item.name
-              const isAnyChildActive = item.dropdown?.some(child => pathname === child.href)
+              const isAnyChildActive = item.dropdown?.some(child => pathname === child.href || pathname.startsWith(child.href + '/'))
               
               return (
                 <div key={item.name}>
@@ -183,7 +226,7 @@ export function Navigation() {
                   {hasDropdown && isExpanded && (
                     <div className="mt-2 ml-4 space-y-1 animate-slide-down">
                       {item.dropdown!.map((subItem) => {
-                        const isSubActive = pathname === subItem.href
+                        const isSubActive = pathname === subItem.href || pathname.startsWith(subItem.href + '/')
                         
                         return (
                           <Link
@@ -193,9 +236,11 @@ export function Navigation() {
                             className={`
                               flex items-center gap-3 px-4 py-2 rounded-lg text-sm font-medium
                               transition-all duration-200
-                              ${isSubActive 
+                              ${isSubActive
                                 ? 'bg-gradient-to-r from-teal-600 to-emerald-600 text-white shadow-md' 
-                                : 'text-gray-600 hover:bg-gray-50 hover:text-teal-600'
+                                : isDark
+                                  ? 'text-gray-400 hover:bg-gray-700/30 hover:text-teal-400'
+                                  : 'text-gray-600 hover:bg-gray-50 hover:text-teal-600'
                               }
                             `}
                           >

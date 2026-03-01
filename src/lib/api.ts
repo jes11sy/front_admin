@@ -564,6 +564,13 @@ class ApiClient {
     return this.request<any>(`/masters${query ? `?${query}` : ''}`)
   }
 
+  async createMaster(data: any) {
+    return this.request<any>('/masters', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    })
+  }
+
   async updateMaster(id: string, data: any) {
     return this.request<any>(`/masters/${id}`, {
       method: 'PUT',
@@ -1539,6 +1546,366 @@ class ApiClient {
       logger.error('Error fetching orders by phone', { error: String(error) })
       return { success: true, data: [] }
     }
+  }
+
+  // ==================== APPEALS ====================
+
+  async getAppeals(params?: {
+    page?: number
+    limit?: number
+    status?: string
+    category?: string
+    cityId?: number
+    operatorId?: number
+    search?: string
+    startDate?: string
+    endDate?: string
+  }) {
+    const searchParams = new URLSearchParams()
+    if (params?.page) searchParams.append('page', params.page.toString())
+    if (params?.limit) searchParams.append('limit', params.limit.toString())
+    if (params?.status) searchParams.append('status', params.status)
+    if (params?.category) searchParams.append('category', params.category)
+    if (params?.cityId) searchParams.append('cityId', params.cityId.toString())
+    if (params?.operatorId) searchParams.append('operatorId', params.operatorId.toString())
+    if (params?.search) searchParams.append('search', params.search)
+    if (params?.startDate) searchParams.append('startDate', params.startDate)
+    if (params?.endDate) searchParams.append('endDate', params.endDate)
+    const query = searchParams.toString()
+    return this.request<any>(`/appeals${query ? `?${query}` : ''}`)
+  }
+
+  async getAppeal(id: number) {
+    return this.request<any>(`/appeals/${id}`)
+  }
+
+  async updateAppeal(id: number, data: {
+    status?: string
+    result?: string
+    callbackAt?: string | null
+  }) {
+    return this.request<any>(`/appeals/${id}`, { method: 'PUT', body: JSON.stringify(data) })
+  }
+
+  async closeAppeal(id: number, result?: string) {
+    return this.request<any>(`/appeals/${id}/close`, { method: 'PATCH', body: JSON.stringify({ result }) })
+  }
+
+  // ==================== OPERATOR WORK SESSIONS ====================
+
+  async getOperatorWorkSessions(params?: {
+    page?: number
+    limit?: number
+    operatorId?: number
+    status?: string
+    startDate?: string
+    endDate?: string
+  }) {
+    const searchParams = new URLSearchParams()
+    if (params?.page) searchParams.append('page', params.page.toString())
+    if (params?.limit) searchParams.append('limit', params.limit.toString())
+    if (params?.operatorId) searchParams.append('operatorId', params.operatorId.toString())
+    if (params?.status) searchParams.append('status', params.status)
+    if (params?.startDate) searchParams.append('startDate', params.startDate)
+    if (params?.endDate) searchParams.append('endDate', params.endDate)
+    const query = searchParams.toString()
+    return this.request<any>(`/operator-work-sessions${query ? `?${query}` : ''}`)
+  }
+
+  // ==================== NOTIFICATION LOGS ====================
+
+  async getNotificationLogs(params?: {
+    page?: number
+    limit?: number
+    userId?: number
+    userType?: string
+    channel?: string
+    status?: string
+    startDate?: string
+    endDate?: string
+  }) {
+    const searchParams = new URLSearchParams()
+    if (params?.page) searchParams.append('page', params.page.toString())
+    if (params?.limit) searchParams.append('limit', params.limit.toString())
+    if (params?.userId) searchParams.append('userId', params.userId.toString())
+    if (params?.userType) searchParams.append('userType', params.userType)
+    if (params?.channel) searchParams.append('channel', params.channel)
+    if (params?.status) searchParams.append('status', params.status)
+    if (params?.startDate) searchParams.append('startDate', params.startDate)
+    if (params?.endDate) searchParams.append('endDate', params.endDate)
+    const query = searchParams.toString()
+    return this.request<any>(`/notification-logs${query ? `?${query}` : ''}`)
+  }
+
+  // ==================== REFERENCES ====================
+
+  async getCitiesList(params?: { isActive?: boolean }) {
+    const searchParams = new URLSearchParams()
+    if (params?.isActive !== undefined) searchParams.append('isActive', String(params.isActive))
+    const query = searchParams.toString()
+    return this.request<any[]>(`/references/cities${query ? `?${query}` : ''}`)
+  }
+
+  async createCity(data: { name: string; code: string; isActive?: boolean }) {
+    return this.request<any>('/references/cities', { method: 'POST', body: JSON.stringify(data) })
+  }
+
+  async updateCity(id: number, data: { name?: string; code?: string; isActive?: boolean }) {
+    return this.request<any>(`/references/cities/${id}`, { method: 'PUT', body: JSON.stringify(data) })
+  }
+
+  async deleteCity(id: number) {
+    return this.request<any>(`/references/cities/${id}`, { method: 'DELETE' })
+  }
+
+  async getRkList(params?: { isActive?: boolean }) {
+    const searchParams = new URLSearchParams()
+    if (params?.isActive !== undefined) searchParams.append('isActive', String(params.isActive))
+    const query = searchParams.toString()
+    return this.request<any[]>(`/references/rk${query ? `?${query}` : ''}`)
+  }
+
+  async createRk(data: { name: string; code: string; isActive?: boolean }) {
+    return this.request<any>('/references/rk', { method: 'POST', body: JSON.stringify(data) })
+  }
+
+  async updateRk(id: number, data: { name?: string; code?: string; isActive?: boolean }) {
+    return this.request<any>(`/references/rk/${id}`, { method: 'PUT', body: JSON.stringify(data) })
+  }
+
+  async deleteRk(id: number) {
+    return this.request<any>(`/references/rk/${id}`, { method: 'DELETE' })
+  }
+
+  async getOrderTypesList() {
+    return this.request<any[]>('/references/order-types')
+  }
+
+  async createOrderType(data: { name: string; isActive?: boolean }) {
+    return this.request<any>('/references/order-types', { method: 'POST', body: JSON.stringify(data) })
+  }
+
+  async updateOrderType(id: number, data: { name?: string; isActive?: boolean }) {
+    return this.request<any>(`/references/order-types/${id}`, { method: 'PUT', body: JSON.stringify(data) })
+  }
+
+  async deleteOrderType(id: number) {
+    return this.request<any>(`/references/order-types/${id}`, { method: 'DELETE' })
+  }
+
+  async getEquipmentTypesList() {
+    return this.request<any[]>('/references/equipment-types')
+  }
+
+  async createEquipmentType(data: { name: string; isActive?: boolean }) {
+    return this.request<any>('/references/equipment-types', { method: 'POST', body: JSON.stringify(data) })
+  }
+
+  async updateEquipmentType(id: number, data: { name?: string; isActive?: boolean }) {
+    return this.request<any>(`/references/equipment-types/${id}`, { method: 'PUT', body: JSON.stringify(data) })
+  }
+
+  async deleteEquipmentType(id: number) {
+    return this.request<any>(`/references/equipment-types/${id}`, { method: 'DELETE' })
+  }
+
+  async getOrderStatusesList() {
+    return this.request<any[]>('/references/order-statuses')
+  }
+
+  async createOrderStatus(data: { name: string; code: string; color?: string; sortOrder?: number; isActive?: boolean }) {
+    return this.request<any>('/references/order-statuses', { method: 'POST', body: JSON.stringify(data) })
+  }
+
+  async updateOrderStatus(id: number, data: { name?: string; code?: string; color?: string; sortOrder?: number; isActive?: boolean }) {
+    return this.request<any>(`/references/order-statuses/${id}`, { method: 'PUT', body: JSON.stringify(data) })
+  }
+
+  async deleteOrderStatus(id: number) {
+    return this.request<any>(`/references/order-statuses/${id}`, { method: 'DELETE' })
+  }
+
+  // ==================== SITE ORDERS ====================
+
+  async getSiteOrders(params?: {
+    page?: number
+    limit?: number
+    status?: string
+    cityId?: number
+    search?: string
+    startDate?: string
+    endDate?: string
+  }) {
+    const searchParams = new URLSearchParams()
+    if (params?.page) searchParams.append('page', params.page.toString())
+    if (params?.limit) searchParams.append('limit', params.limit.toString())
+    if (params?.status) searchParams.append('status', params.status)
+    if (params?.cityId) searchParams.append('cityId', params.cityId.toString())
+    if (params?.search) searchParams.append('search', params.search)
+    if (params?.startDate) searchParams.append('startDate', params.startDate)
+    if (params?.endDate) searchParams.append('endDate', params.endDate)
+    const query = searchParams.toString()
+    return this.request<any>(`/site-orders${query ? `?${query}` : ''}`)
+  }
+
+  async getSiteOrder(id: number) {
+    return this.request<any>(`/site-orders/${id}`)
+  }
+
+  async updateSiteOrder(id: number, data: {
+    status?: string
+    commentOperator?: string
+    callbackAt?: string
+    orderId?: number
+  }) {
+    return this.request<any>(`/site-orders/${id}`, { method: 'PUT', body: JSON.stringify(data) })
+  }
+
+  async deleteSiteOrder(id: number) {
+    return this.request<any>(`/site-orders/${id}`, { method: 'DELETE' })
+  }
+
+  // ==================== CASH SUBMISSIONS ====================
+
+  async getCashSubmissions(params?: {
+    page?: number
+    limit?: number
+    status?: string
+    startDate?: string
+    endDate?: string
+  }) {
+    const searchParams = new URLSearchParams()
+    if (params?.page) searchParams.append('page', params.page.toString())
+    if (params?.limit) searchParams.append('limit', params.limit.toString())
+    if (params?.status) searchParams.append('status', params.status)
+    if (params?.startDate) searchParams.append('startDate', params.startDate)
+    if (params?.endDate) searchParams.append('endDate', params.endDate)
+    const query = searchParams.toString()
+    return this.request<any>(`/cash-submissions${query ? `?${query}` : ''}`)
+  }
+
+  async approveCashSubmission(id: number, approve: boolean) {
+    return this.request<any>(`/cash-submissions/${id}/approve`, {
+      method: 'PATCH',
+      body: JSON.stringify({ approve }),
+    })
+  }
+
+  // ==================== OPERATOR SALARY ====================
+
+  async getOperatorSalaries(params?: {
+    page?: number
+    limit?: number
+    status?: string
+    operatorId?: number
+    startDate?: string
+    endDate?: string
+  }) {
+    const searchParams = new URLSearchParams()
+    if (params?.page) searchParams.append('page', params.page.toString())
+    if (params?.limit) searchParams.append('limit', params.limit.toString())
+    if (params?.status) searchParams.append('status', params.status)
+    if (params?.operatorId) searchParams.append('operatorId', params.operatorId.toString())
+    if (params?.startDate) searchParams.append('startDate', params.startDate)
+    if (params?.endDate) searchParams.append('endDate', params.endDate)
+    const query = searchParams.toString()
+    return this.request<any>(`/operator-salary${query ? `?${query}` : ''}`)
+  }
+
+  async createOperatorSalary(data: {
+    operatorId: number
+    periodStart: string
+    periodEnd: string
+    ordersCount?: number
+    callsCount?: number
+    baseAmount: number
+    bonusAmount?: number
+    penaltyAmount?: number
+    note?: string
+  }) {
+    return this.request<any>('/operator-salary', { method: 'POST', body: JSON.stringify(data) })
+  }
+
+  async updateOperatorSalary(id: number, data: {
+    baseAmount?: number
+    bonusAmount?: number
+    penaltyAmount?: number
+    status?: string
+    note?: string
+  }) {
+    return this.request<any>(`/operator-salary/${id}`, { method: 'PUT', body: JSON.stringify(data) })
+  }
+
+  async approveOperatorSalary(id: number) {
+    return this.request<any>(`/operator-salary/${id}/approve`, { method: 'PATCH', body: JSON.stringify({}) })
+  }
+
+  async markOperatorSalaryPaid(id: number) {
+    return this.request<any>(`/operator-salary/${id}/paid`, { method: 'PATCH', body: JSON.stringify({}) })
+  }
+
+  // ==================== MASTER SCHEDULES ====================
+
+  async getMasterSchedules(params?: {
+    masterId?: number
+    dateFrom?: string
+    dateTo?: string
+    status?: string
+  }) {
+    const searchParams = new URLSearchParams()
+    if (params?.masterId) searchParams.append('masterId', params.masterId.toString())
+    if (params?.dateFrom) searchParams.append('dateFrom', params.dateFrom)
+    if (params?.dateTo) searchParams.append('dateTo', params.dateTo)
+    if (params?.status) searchParams.append('status', params.status)
+    const query = searchParams.toString()
+    return this.request<any>(`/master-schedules${query ? `?${query}` : ''}`)
+  }
+
+  async upsertMasterSchedule(data: {
+    masterId: number
+    date: string
+    status: 'working' | 'day_off' | 'vacation'
+    note?: string
+  }) {
+    return this.request<any>('/master-schedules', { method: 'POST', body: JSON.stringify(data) })
+  }
+
+  async deleteMasterSchedule(id: number) {
+    return this.request<any>(`/master-schedules/${id}`, { method: 'DELETE' })
+  }
+
+  // ==================== ADMINS ====================
+
+  async getAdmins() {
+    return this.request<any[]>('/admins')
+  }
+
+  async getAdmin(id: number) {
+    return this.request<any>(`/admins/${id}`)
+  }
+
+  async createAdmin(data: {
+    name: string
+    login: string
+    password: string
+    role?: string
+    note?: string
+  }) {
+    return this.request<any>('/admins', { method: 'POST', body: JSON.stringify(data) })
+  }
+
+  async updateAdmin(id: number, data: {
+    name?: string
+    login?: string
+    password?: string
+    status?: string
+    note?: string
+  }) {
+    return this.request<any>(`/admins/${id}`, { method: 'PUT', body: JSON.stringify(data) })
+  }
+
+  async deleteAdmin(id: number) {
+    return this.request<any>(`/admins/${id}`, { method: 'DELETE' })
   }
 
   // Orders History API - получить историю изменений заказа
