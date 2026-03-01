@@ -1,12 +1,16 @@
 'use client'
 
-import { useState, useEffect, useCallback, memo, useSyncExternalStore } from 'react'
+import React, { useState, useEffect, useCallback, memo } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { useAuthStore } from '@/store/auth.store'
 import { useDesignStore } from '@/store/design.store'
-import { Sun, Moon, Bell, User, Menu, X } from 'lucide-react'
+import {
+  Sun, Moon, Bell, User, Menu, X,
+  Globe, MessageSquare, BookOpen, Calendar,
+  Banknote, Phone, ChevronDown, ChevronRight,
+} from 'lucide-react'
 
 // Функция для синхронного получения темы из DOM/localStorage
 function getThemeFromDOM(): 'light' | 'dark' {
@@ -52,14 +56,37 @@ function useThemeWithoutFlash() {
   return isMounted ? clientTheme : 'light'
 }
 
-const navigationItems = [
+type NavItem =
+  | { name: string; href: string; icon: string; lucideIcon?: undefined; children?: undefined }
+  | { name: string; href?: undefined; icon: string; lucideIcon?: undefined; children: { name: string; href: string }[] }
+  | { name: string; href: string; lucideIcon: React.ElementType; icon?: undefined; children?: undefined }
+
+const navigationItems: NavItem[] = [
   { name: 'Дашборд', href: '/', icon: '/navigate/dashboard.svg' },
   { name: 'Сотрудники', href: '/employees', icon: '/navigate/employees.svg' },
+  { name: 'Расписание', href: '/schedule', lucideIcon: Calendar },
   { name: 'Телефония', href: '/telephony', icon: '/navigate/telephony.svg' },
+  { name: 'Заявки с сайта', href: '/site-orders', lucideIcon: Globe },
   { name: 'Заказы', href: '/orders', icon: '/navigate/orders.svg' },
-  { name: 'Касса', href: '/cashbox', icon: '/navigate/cash.svg' },
-  { name: 'Зарплата', href: '/salary', icon: '/navigate/stats.svg' },
+  { name: 'Обращения', href: '/appeals', lucideIcon: MessageSquare },
+  {
+    name: 'Касса',
+    icon: '/navigate/cash.svg',
+    children: [
+      { name: 'По городам', href: '/cashbox' },
+      { name: 'Сдача кассы', href: '/cashbox/submissions' },
+    ],
+  },
+  {
+    name: 'Зарплата',
+    icon: '/navigate/stats.svg',
+    children: [
+      { name: 'Директора', href: '/salary' },
+      { name: 'Операторы', href: '/salary/operators' },
+    ],
+  },
   { name: 'Отчеты', href: '/reports', icon: '/navigate/reports.svg' },
+  { name: 'Справочники', href: '/references', lucideIcon: BookOpen },
   { name: 'Администрирование', href: '/admin', icon: '/navigate/admin.svg' },
 ]
 
@@ -72,6 +99,24 @@ interface MenuContentProps {
   onCloseMobileMenu: () => void
 }
 
+const ActiveIndicator = ({ active, isMobile }: { active: boolean; isMobile: boolean }) => (
+  <span
+    className={`absolute left-0 top-1/2 -translate-y-1/2 w-[6px] ${
+      active ? 'opacity-100' : 'opacity-0'
+    } ${isMobile ? 'h-12' : 'h-10'}`}
+  >
+    <svg viewBox="0 0 6 40" fill="none" className="w-full h-full">
+      <path
+        d="M5 1C2.5 1 1 4.5 1 10v20c0 5.5 1.5 9 4 9"
+        stroke="#0d5c4b"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+        fill="none"
+      />
+    </svg>
+  </span>
+)
+
 const MenuContent = memo(function MenuContent({
   isMobile = false,
   pathname,
@@ -81,8 +126,8 @@ const MenuContent = memo(function MenuContent({
   onCloseMobileMenu,
 }: MenuContentProps) {
   const isDark = theme === 'dark'
-  
-  // Проверка активности с учетом подстраниц
+  const [expandedItem, setExpandedItem] = useState<string | null>(null)
+
   const isActive = (href: string) => {
     if (pathname === href) return true
     if (href !== '/' && pathname.startsWith(href + '/')) return true
@@ -90,44 +135,116 @@ const MenuContent = memo(function MenuContent({
     return false
   }
 
+  const isAnyChildActive = (children: { name: string; href: string }[]) =>
+    children.some((c) => isActive(c.href))
+
+  useEffect(() => {
+    navigationItems.forEach((item) => {
+      if ('children' in item && item.children && isAnyChildActive(item.children)) {
+        setExpandedItem(item.name)
+      }
+    })
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pathname])
+
+  const iconSize = isMobile ? 'w-6 h-6' : 'w-5 h-5'
+  const rowPy = isMobile ? 'py-3.5 text-base' : 'py-2.5 text-sm'
+
   return (
     <>
-      {/* Navigation - используем dark: классы для текста */}
+      {/* Navigation */}
       <nav className={`flex-1 px-5 ${isMobile ? 'space-y-2' : 'space-y-1'} overflow-y-auto`}>
         {navigationItems.map((item) => {
-          const active = isActive(item.href)
-          
+          if ('children' in item && item.children) {
+            const anyChild = isAnyChildActive(item.children)
+            const isOpen = expandedItem === item.name
+
+            return (
+              <div key={item.name}>
+                <button
+                  onClick={() => setExpandedItem(isOpen ? null : item.name)}
+                  className={`nav-icon-hover relative flex items-center gap-3 px-3 font-normal group w-full ${rowPy}`}
+                >
+                  <ActiveIndicator active={anyChild} isMobile={isMobile} />
+                  <Image
+                    src={item.icon}
+                    alt={item.name}
+                    width={isMobile ? 24 : 20}
+                    height={isMobile ? 24 : 20}
+                    className={`nav-icon ${anyChild ? 'nav-icon-active' : ''} ${iconSize}`}
+                  />
+                  <span className={`flex-1 text-left ${anyChild ? 'text-[#0d5c4b]' : 'text-gray-800 dark:text-gray-200'} group-hover:text-[#0d5c4b]`}>
+                    {item.name}
+                  </span>
+                  {isOpen ? (
+                    <ChevronDown className="w-4 h-4 text-gray-400" />
+                  ) : (
+                    <ChevronRight className="w-4 h-4 text-gray-400" />
+                  )}
+                </button>
+                {isOpen && (
+                  <div className="ml-8 mt-1 space-y-1">
+                    {item.children.map((child) => {
+                      const childActive = isActive(child.href)
+                      return (
+                        <Link
+                          key={child.href}
+                          href={child.href}
+                          onClick={onCloseMobileMenu}
+                          className={`block px-3 py-2 rounded-lg text-sm transition-colors ${
+                            childActive
+                              ? 'text-[#0d5c4b] font-medium bg-teal-50 dark:bg-teal-900/20'
+                              : 'text-gray-600 dark:text-gray-400 hover:text-[#0d5c4b] hover:bg-gray-50 dark:hover:bg-gray-700/30'
+                          }`}
+                        >
+                          {child.name}
+                        </Link>
+                      )
+                    })}
+                  </div>
+                )}
+              </div>
+            )
+          }
+
+          if ('lucideIcon' in item && item.lucideIcon) {
+            const LucideIcon = item.lucideIcon
+            const active = isActive(item.href)
+            return (
+              <Link
+                key={item.name}
+                href={item.href}
+                className={`nav-icon-hover relative flex items-center gap-3 px-3 font-normal group ${rowPy}`}
+                onClick={onCloseMobileMenu}
+              >
+                <ActiveIndicator active={active} isMobile={isMobile} />
+                <LucideIcon
+                  className={`${iconSize} flex-shrink-0 ${
+                    active ? 'text-[#0d5c4b]' : 'text-gray-500 dark:text-gray-400'
+                  } group-hover:text-[#0d5c4b] transition-colors`}
+                />
+                <span className="text-gray-800 dark:text-gray-200 group-hover:text-[#0d5c4b]">
+                  {item.name}
+                </span>
+              </Link>
+            )
+          }
+
+          const active = isActive((item as { href: string }).href)
           return (
             <Link
               key={item.name}
-              href={item.href}
-              className={`nav-icon-hover relative flex items-center gap-3 px-3 font-normal group ${
-                isMobile ? 'py-3.5 text-base' : 'py-2.5 text-sm'
-              }`}
+              href={(item as { href: string }).href}
+              className={`nav-icon-hover relative flex items-center gap-3 px-3 font-normal group ${rowPy}`}
               onClick={onCloseMobileMenu}
             >
-              {/* Индикатор активной вкладки */}
-              <span 
-                className={`absolute left-0 top-1/2 -translate-y-1/2 w-[6px] ${
-                  active ? 'opacity-100' : 'opacity-0'
-                } ${isMobile ? 'h-12' : 'h-10'}`}
-              >
-                <svg viewBox="0 0 6 40" fill="none" className="w-full h-full">
-                  <path 
-                    d="M5 1C2.5 1 1 4.5 1 10v20c0 5.5 1.5 9 4 9" 
-                    stroke="#0d5c4b" 
-                    strokeWidth="1.5" 
-                    strokeLinecap="round"
-                    fill="none"
-                  />
-                </svg>
-              </span>
-              <Image 
-                src={item.icon} 
-                alt={item.name} 
-                width={isMobile ? 24 : 20} 
-                height={isMobile ? 24 : 20} 
-                className={`nav-icon ${active ? 'nav-icon-active' : ''} ${isMobile ? 'w-6 h-6' : 'w-5 h-5'}`}
+              <ActiveIndicator active={active} isMobile={isMobile} />
+              <Image
+                src={(item as { icon: string }).icon}
+                alt={item.name}
+                width={isMobile ? 24 : 20}
+                height={isMobile ? 24 : 20}
+                className={`nav-icon ${active ? 'nav-icon-active' : ''} ${iconSize}`}
               />
               <span className="text-gray-800 dark:text-gray-200 group-hover:text-[#0d5c4b]">
                 {item.name}
