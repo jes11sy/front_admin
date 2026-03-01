@@ -90,15 +90,16 @@ export default function OrderDetailPage() {
   useEffect(() => {
     if (order) {
       const loadDocuments = async () => {
-        setOrderStatus(order.statusOrder || '')
-        setResult(order.result?.toString() || '')
-        setExpenditure(order.expenditure?.toString() || '')
-        setClean(order.clean?.toString() || '')
-        setMasterChange(order.masterChange?.toString() || '')
-        setComment(order.comment || '')
-        setPrepayment(order.prepayment?.toString() || '')
-        try {
-          setDateClosmod(order.dateClosmod ? new Date(order.dateClosmod).toISOString().split('T')[0] : '')
+      setOrderStatus(order.status?.name || '')
+      setResult(order.result?.toString() || '')
+      setExpenditure(order.expenditure?.toString() || '')
+      setClean(order.clean?.toString() || '')
+      setMasterChange(order.masterChange?.toString() || '')
+      setComment(order.comment || '')
+      setPrepayment(order.prepayment?.toString() || '')
+      try {
+        const closeMod = order.dateCloseMod || order.dateClosmod
+        setDateClosmod(closeMod ? new Date(closeMod).toISOString().split('T')[0] : '')
         } catch {
           setDateClosmod('')
         }
@@ -210,8 +211,8 @@ export default function OrderDetailPage() {
           .map(f => f.preview)
       }
       
-      const updateData: Partial<Order> = {
-        statusOrder: orderStatus,
+      const updateData: any = {
+        status: orderStatus,
         masterId: selectedMaster ? Number(selectedMaster) : undefined,
         result: result && result.trim() !== '' ? Number(result) : undefined,
         expenditure: expenditure && expenditure.trim() !== '' ? Number(expenditure) : undefined,
@@ -219,7 +220,7 @@ export default function OrderDetailPage() {
         masterChange: masterChange && masterChange.trim() !== '' ? Number(masterChange) : undefined,
         comment: comment && comment.trim() !== '' ? comment : undefined,
         prepayment: prepayment && prepayment.trim() !== '' ? Number(prepayment) : undefined,
-        dateClosmod: dateClosmod && dateClosmod.trim() !== '' ? (() => {
+        dateCloseMod: dateClosmod && dateClosmod.trim() !== '' ? (() => {
           try {
             return new Date(dateClosmod).toISOString()
           } catch {
@@ -366,15 +367,11 @@ export default function OrderDetailPage() {
                   </div>
                   <div className="p-4">
                     <div className={`text-xs mb-1 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>РК</div>
-                    <div className={`text-sm font-medium ${isDark ? 'text-gray-100' : 'text-gray-800'}`}>{order.rk || '-'}</div>
-                  </div>
-                  <div className="p-4">
-                    <div className={`text-xs mb-1 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>Источник</div>
-                    <div className={`text-sm font-medium ${isDark ? 'text-gray-100' : 'text-gray-800'}`}>{order.avitoName || '-'}</div>
+                    <div className={`text-sm font-medium ${isDark ? 'text-gray-100' : 'text-gray-800'}`}>{order.rk?.name || '-'}</div>
                   </div>
                   <div className="p-4">
                     <div className={`text-xs mb-1 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>Направление</div>
-                    <div className={`text-sm font-medium ${isDark ? 'text-gray-100' : 'text-gray-800'}`}>{order.typeEquipment || '-'}</div>
+                    <div className={`text-sm font-medium ${isDark ? 'text-gray-100' : 'text-gray-800'}`}>{order.equipmentType?.name || '-'}</div>
                   </div>
                 </div>
               </div>
@@ -387,7 +384,7 @@ export default function OrderDetailPage() {
                 <div className={`grid grid-cols-2 sm:grid-cols-4 divide-y sm:divide-y-0 sm:divide-x ${isDark ? 'divide-gray-700' : 'divide-gray-100'}`}>
                   <div className="p-4">
                     <div className={`text-xs mb-1 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>Город</div>
-                    <div className={`text-sm font-medium ${isDark ? 'text-gray-100' : 'text-gray-800'}`}>{order.city || '-'}</div>
+                    <div className={`text-sm font-medium ${isDark ? 'text-gray-100' : 'text-gray-800'}`}>{order.city?.name || '-'}</div>
                   </div>
                   <div className="p-4">
                     <div className={`text-xs mb-1 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>Адрес</div>
@@ -417,8 +414,8 @@ export default function OrderDetailPage() {
                     </div>
                   </div>
                   <div className="p-4">
-                    <div className={`text-xs mb-1 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>Проблема</div>
-                    <div className={`text-sm ${isDark ? 'text-gray-100' : 'text-gray-800'}`}>{order.problem || '-'}</div>
+                    <div className={`text-xs mb-1 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>Мастер</div>
+                    <div className={`text-sm ${isDark ? 'text-gray-100' : 'text-gray-800'}`}>{order.master?.name || '-'}</div>
                   </div>
                 </div>
               </div>

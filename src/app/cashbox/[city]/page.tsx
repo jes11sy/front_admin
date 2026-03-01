@@ -11,7 +11,8 @@ interface Transaction {
   id: number
   name: string
   amount: number
-  city: string
+  cityId: number
+  city?: { id: number; name: string }
   note?: string
   createdAt: string
   paymentPurpose?: string
@@ -28,7 +29,8 @@ type DateFilter = 'day' | 'week' | 'month' | 'custom' | 'all'
 export default function CityTransactionsPage() {
   const router = useRouter()
   const params = useParams()
-  const cityName = decodeURIComponent(params.city as string)
+  const cityId = Number(params.city)
+  const [cityName, setCityName] = useState('')
   const { theme } = useDesignStore()
   const isDark = theme === 'dark'
 
@@ -177,6 +179,14 @@ export default function CityTransactionsPage() {
     }
   }
 
+  // Загрузка названия города по ID
+  useEffect(() => {
+    apiClient.getCities().then(cities => {
+      const found = cities.find((c: { id: number; name: string }) => c.id === cityId)
+      if (found) setCityName(found.name)
+    }).catch(() => {})
+  }, [cityId])
+
   // Загрузка данных
   useEffect(() => {
     const loadData = async () => {
@@ -186,12 +196,12 @@ export default function CityTransactionsPage() {
         
         const [statsResp, transResp] = await Promise.all([
           apiClient.getCashStats({ 
-            city: cityName,
-            type: typeFilter !== 'all' ? typeFilter as 'приход' | 'расход' : undefined,
+            cityId,
+            type: typeFilter !== 'all' ? typeFilter as 'income' | 'expense' : undefined,
             startDate: dateRange.startDate || undefined,
             endDate: dateRange.endDate || undefined
           }),
-          apiClient.getCashByCity(cityName, { 
+          apiClient.getCashByCityId(cityId, { 
             page: currentPage, 
             limit: itemsPerPage,
             type: typeFilter !== 'all' ? typeFilter : undefined,
@@ -210,13 +220,17 @@ export default function CityTransactionsPage() {
         
         if (transResp.success && transResp.data) {
           const data = transResp.data.data || transResp.data
-          setTransactions(Array.isArray(data) ? data : [])
+          const transactions = Array.isArray(data) ? data : []
+          setTransactions(transactions)
+          if (!cityName && transactions.length > 0 && transactions[0].city?.name) {
+            setCityName(transactions[0].city.name)
+          }
           
           if (transResp.data.pagination) {
             setTotalTransactions(transResp.data.pagination.total)
             setTotalPages(transResp.data.pagination.totalPages)
           } else {
-            setTotalTransactions(Array.isArray(data) ? data.length : 0)
+            setTotalTransactions(transactions.length)
             setTotalPages(1)
           }
         }
@@ -230,7 +244,7 @@ export default function CityTransactionsPage() {
     }
 
     loadData()
-  }, [cityName, currentPage, itemsPerPage, typeFilter, dateFilter, startDate, endDate, getDateRange])
+  }, [cityId, currentPage, itemsPerPage, typeFilter, dateFilter, startDate, endDate, getDateRange])
 
   const handlePageChange = (page: number) => {
     setCurrentPage(page)
@@ -276,8 +290,8 @@ export default function CityTransactionsPage() {
         // Обновляем статистику
         const dateRange = getDateRange()
         const statsResp = await apiClient.getCashStats({ 
-          city: cityName,
-          type: typeFilter !== 'all' ? typeFilter as 'приход' | 'расход' : undefined,
+          cityId,
+          type: typeFilter !== 'all' ? typeFilter as 'income' | 'expense' : undefined,
           startDate: dateRange.startDate || undefined,
           endDate: dateRange.endDate || undefined
         })
@@ -572,7 +586,7 @@ export default function CityTransactionsPage() {
                         {transaction.paymentPurpose || '-'}
                       </td>
                       <td className={`py-3 px-3 ${isDark ? 'text-gray-300' : 'text-gray-800'}`}>
-                        {transaction.city}
+                        {transaction.city?.name || cityName || '-'}
                       </td>
                       <td className={`py-3 px-3 text-right font-semibold ${
                         transaction.name === 'приход' 

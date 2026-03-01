@@ -12,8 +12,8 @@ interface Operator {
   id: number
   name: string
   login: string
-  statusWork: string
-  dateCreate: string
+  status: string
+  createdAt: string
   sipAddress?: string
   note?: string
 }
@@ -30,7 +30,7 @@ export default function CallCenterPage() {
   // Фильтры
   const [showFilters, setShowFilters] = useState(false)
   const [searchName, setSearchName] = useState('')
-  const [statusFilter, setStatusFilter] = useState<'working' | 'fired' | 'all'>('working')
+  const [statusFilter, setStatusFilter] = useState<'active' | 'inactive' | 'all'>('active')
   
   // Пагинация
   const [currentPage, setCurrentPage] = useState(1)
@@ -61,14 +61,12 @@ export default function CallCenterPage() {
   // Проверка статуса работы
   const isWorking = (status: string | undefined) => {
     if (!status) return false
-    const statusLower = status.toLowerCase()
-    return statusLower.includes('работает') || statusLower.includes('работающий') || statusLower === 'active'
+    return status === 'active' || status.toLowerCase().includes('работает')
   }
 
   const isFired = (status: string | undefined) => {
     if (!status) return false
-    const statusLower = status.toLowerCase()
-    return statusLower.includes('уволен') || statusLower.includes('уволенный') || statusLower === 'fired' || statusLower === 'inactive'
+    return status === 'inactive' || status.toLowerCase().includes('уволен')
   }
 
   // Фильтрация и сортировка данных
@@ -77,8 +75,8 @@ export default function CallCenterPage() {
     
     // Фильтруем по статусу
     let filtered = safeOperators.filter(operator => {
-      if (statusFilter === 'working') return isWorking(operator.statusWork)
-      if (statusFilter === 'fired') return isFired(operator.statusWork)
+      if (statusFilter === 'active') return isWorking(operator.status)
+      if (statusFilter === 'inactive') return isFired(operator.status)
       return true // 'all'
     })
     
@@ -93,14 +91,14 @@ export default function CallCenterPage() {
     
     // Сортируем: работающие первыми, затем по дате создания
     const sorted = filtered.sort((a, b) => {
-      const aIsWorking = isWorking(a.statusWork)
-      const bIsWorking = isWorking(b.statusWork)
+      const aIsWorking = isWorking(a.status)
+      const bIsWorking = isWorking(b.status)
       
       if (aIsWorking && !bIsWorking) return -1
       if (!aIsWorking && bIsWorking) return 1
       
-      const aDate = new Date(a.dateCreate || 0).getTime()
-      const bDate = new Date(b.dateCreate || 0).getTime()
+      const aDate = new Date(a.createdAt || 0).getTime()
+      const bDate = new Date(b.createdAt || 0).getTime()
       return bDate - aDate
     })
     
@@ -118,7 +116,7 @@ export default function CallCenterPage() {
   }, [searchName, statusFilter])
 
   // Проверка есть ли активные фильтры (кроме дефолтного)
-  const hasActiveFilters = searchName.trim() !== '' || statusFilter !== 'working'
+  const hasActiveFilters = searchName.trim() !== '' || statusFilter !== 'active'
 
   const formatDate = (dateString: string) => {
     if (!dateString) return 'Не указана'
@@ -127,25 +125,13 @@ export default function CallCenterPage() {
 
   const getStatusColor = (status: string | undefined) => {
     if (!status) return '#6b7280'
-    const statusLower = status.toLowerCase()
-    if (statusLower.includes('работает') || statusLower.includes('работающий') || statusLower === 'active') {
-      return '#0d5c4b'
-    }
-    if (statusLower.includes('уволен') || statusLower.includes('уволенный') || statusLower === 'fired' || statusLower === 'inactive') {
-      return '#6b7280'
-    }
-    return '#6b7280'
+    return isWorking(status) ? '#0d5c4b' : '#6b7280'
   }
 
   const getStatusLabel = (status: string | undefined) => {
     if (!status) return 'Не указан'
-    const statusLower = status.toLowerCase()
-    if (statusLower.includes('работает') || statusLower.includes('работающий') || statusLower === 'active') {
-      return 'Работает'
-    }
-    if (statusLower.includes('уволен') || statusLower.includes('уволенный') || statusLower === 'fired' || statusLower === 'inactive') {
-      return 'Уволен'
-    }
+    if (status === 'active') return 'Работает'
+    if (status === 'inactive') return 'Уволен'
     return status
   }
 
@@ -246,15 +232,15 @@ export default function CallCenterPage() {
               <label className={`block text-sm font-medium mb-1 ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>Статус</label>
               <select
                 value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value as 'working' | 'fired' | 'all')}
+                onChange={(e) => setStatusFilter(e.target.value as 'active' | 'inactive' | 'all')}
                 className={`w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#0d5c4b] focus:border-transparent transition-all ${
                   isDark 
                     ? 'bg-[#1e2530] border-[#0d5c4b]/30 text-gray-200'
                     : 'bg-white border-gray-200 text-gray-800'
                 }`}
               >
-                <option value="working">Работает</option>
-                <option value="fired">Уволен</option>
+                <option value="active">Работает</option>
+                <option value="inactive">Уволен</option>
                 <option value="all">Все</option>
               </select>
             </div>
@@ -263,7 +249,7 @@ export default function CallCenterPage() {
             <button
               onClick={() => {
                 setSearchName('')
-                setStatusFilter('working')
+                setStatusFilter('active')
               }}
               className={`px-4 py-2 rounded-lg text-sm transition-colors font-medium ${
                 isDark 
@@ -319,11 +305,11 @@ export default function CallCenterPage() {
                   <td className={`py-3 px-4 ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>{operator.login || '-'}</td>
                   <td className={`py-3 px-4 font-mono text-xs ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>{operator.sipAddress || '-'}</td>
                   <td className="py-3 px-4">
-                    <span className="px-2 py-1 rounded-full text-xs font-medium text-white" style={{backgroundColor: getStatusColor(operator.statusWork)}}>
-                      {getStatusLabel(operator.statusWork)}
+                    <span className="px-2 py-1 rounded-full text-xs font-medium text-white" style={{backgroundColor: getStatusColor(operator.status)}}>
+                      {getStatusLabel(operator.status)}
                     </span>
                   </td>
-                  <td className={`py-3 px-4 ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>{formatDate(operator.dateCreate)}</td>
+                  <td className={`py-3 px-4 ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>{formatDate(operator.createdAt)}</td>
                   <td className="py-3 px-4">
                     <div className="flex items-center gap-1">
                       <button
@@ -380,3 +366,4 @@ export default function CallCenterPage() {
     </div>
   )
 }
+

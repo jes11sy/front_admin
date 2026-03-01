@@ -44,10 +44,10 @@ export default function EditCallCenterEmployeePage() {
             password: '',
             sipAddress: operator.sipAddress || '',
             note: operator.note || '',
-            status: operator.statusWork || 'active'
+            status: operator.status || 'active'
           })
-          setExistingPassport(operator.passportDoc || null)
-          setExistingContract(operator.contractDoc || null)
+          setExistingPassport(operator.passport || null)
+          setExistingContract(operator.contract || null)
         } else {
           toast.error('Не удалось загрузить данные оператора')
         }
@@ -105,7 +105,7 @@ export default function EditCallCenterEmployeePage() {
         login: formData.login,
         sipAddress: formData.sipAddress,
         note: formData.note,
-        statusWork: formData.status,
+        status: formData.status,
       }
 
       if (formData.password) {

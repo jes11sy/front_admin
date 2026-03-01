@@ -12,43 +12,44 @@ import { logger } from '@/lib/logger';
 // Типы для заказа
 export interface Order {
   id: number;
-  rk: string;
-  city: string;
-  avitoName: string | null;
+  rkId: number;
+  rk?: { id: number; name: string };
+  cityId: number;
+  city?: { id: number; name: string };
   phone: string;
   typeOrder: string;
   clientName: string;
   address: string;
   dateMeeting: string;
-  closingData: string | null;
-  createDate: string;
-  typeEquipment: string;
-  statusOrder: string;
+  closingAt: string | null;
+  createdAt: string;
+  equipmentTypeId: number;
+  equipmentType?: { id: number; name: string };
+  statusId: number;
+  status?: { id: number; name: string; code: string };
   masterId: number | null;
   result: number | null;
   expenditure: number | null;
   clean: number | null;
   masterChange: number | null;
   prepayment: number | null;
-  dateClosmod: string | null;
-  operatorNameId: number;
+  dateCloseMod: string | null;
+  operatorId: number;
   master?: { id: number; name: string };
   operator?: { id: number; name: string; login: string };
-  problem?: string;
   comment?: string;
   bsoDoc?: string[] | null;
   expenditureDoc?: string[] | null;
   partner?: boolean;
   partnerPercent?: number | null;
-  avitoChatId?: string | null;
   callId?: string | null;
 }
 
 export interface Master {
   id: number;
   name: string;
-  statusWork?: string;
-  city?: string;
+  status?: string;
+  cityIds?: number[];
 }
 
 export interface Call {
@@ -93,10 +94,10 @@ export function useOrder(orderId: string) {
   const order = orderResponse?.data || orderResponse;
   const mastersData = mastersResponse?.data || mastersResponse || [];
 
-  // Фильтруем мастеров только со статусом "работает"
+  // Фильтруем мастеров только с активным статусом
   const masters = (Array.isArray(mastersData) ? mastersData : []).filter((master: Master) => {
-    const status = (master.statusWork || '').toLowerCase();
-    return status.includes('работает') || status.includes('работающий') || status === 'active';
+    const status = (master.status || '').toLowerCase();
+    return status === 'active' || status.includes('работает') || status.includes('работающий');
   });
 
   // Обновление заказа

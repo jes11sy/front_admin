@@ -2,7 +2,7 @@
 
 import { RefreshCw, Upload, X, ArrowLeft } from 'lucide-react'
 import { useRouter } from 'next/navigation'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { apiClient } from '@/lib/api'
 import { toast } from 'sonner'
 import { useDesignStore } from '@/store/design.store'
@@ -15,7 +15,7 @@ export default function AddDirectorPage() {
   const isDark = theme === 'dark'
 
   const [formData, setFormData] = useState({
-    cities: [] as string[],
+    cityIds: [] as number[],
     name: '',
     login: '',
     password: '',
@@ -24,16 +24,15 @@ export default function AddDirectorPage() {
   })
   const [passportFile, setPassportFile] = useState<File | null>(null)
   const [contractFile, setContractFile] = useState<File | null>(null)
-  const [errors, setErrors] = useState<{ cities?: string }>({})
+  const [errors, setErrors] = useState<{ cityIds?: string }>({})
   const [citySearch, setCitySearch] = useState('')
   const [showCityDropdown, setShowCityDropdown] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
-
-  const availableCities = ['Саратов', 'Энгельс', 'Ульяновск', 'Пенза', 'Тольятти', 'Омск', 'Ярославль']
+  const [availableCities, setAvailableCities] = useState<Array<{ id: number; name: string }>>([])
 
   const filteredCities = availableCities.filter(city =>
-    city.toLowerCase().includes(citySearch.toLowerCase()) &&
-    !formData.cities.includes(city)
+    city.name.toLowerCase().includes(citySearch.toLowerCase()) &&
+    !formData.cityIds.includes(city.id)
   )
 
   const generateLogin = () => {
@@ -67,27 +66,32 @@ export default function AddDirectorPage() {
     setFormData({ ...formData, password })
   }
 
-  const addCity = (city: string) => {
-    if (!formData.cities.includes(city)) {
-      setFormData({ ...formData, cities: [...formData.cities, city] })
-      setErrors({ ...errors, cities: undefined })
+  // Загрузка городов при монтировании
+  useEffect(() => {
+    apiClient.getCities().then(cities => setAvailableCities(cities)).catch(console.error)
+  }, [])
+
+  const addCity = (city: { id: number; name: string }) => {
+    if (!formData.cityIds.includes(city.id)) {
+      setFormData({ ...formData, cityIds: [...formData.cityIds, city.id] })
+      setErrors({ ...errors, cityIds: undefined })
     }
     setCitySearch('')
     setShowCityDropdown(false)
   }
 
-  const removeCity = (cityToRemove: string) => {
+  const removeCity = (cityId: number) => {
     setFormData({
       ...formData,
-      cities: formData.cities.filter(city => city !== cityToRemove)
+      cityIds: formData.cityIds.filter(id => id !== cityId)
     })
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     
-    if (formData.cities.length === 0) {
-      setErrors({ cities: 'Выберите хотя бы один город' })
+    if (formData.cityIds.length === 0) {
+      setErrors({ cityIds: 'Выберите хотя бы один город' })
       return
     }
     
@@ -122,10 +126,10 @@ export default function AddDirectorPage() {
         name: formData.name,
         login: formData.login,
         password: formData.password,
-        cities: formData.cities,
+        cityIds: formData.cityIds,
         tgId: formData.tgId || undefined,
-        passportDoc: passportDocUrl,
-        contractDoc: contractDocUrl,
+        passport: passportDocUrl,
+        contract: contractDocUrl,
         note: formData.note || undefined
       })
 
@@ -171,27 +175,30 @@ export default function AddDirectorPage() {
             </h2>
             
             {/* Выбранные города */}
-            {formData.cities.length > 0 && (
+            {formData.cityIds.length > 0 && (
               <div className="flex flex-wrap gap-2 mb-3">
-                {formData.cities.map((city) => (
-                  <div
-                    key={city}
-                    className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-sm ${
-                      isDark ? 'bg-gray-600 text-gray-100' : 'bg-gray-200 text-gray-700'
-                    }`}
-                  >
-                    <span>{city}</span>
-                    <button
-                      type="button"
-                      onClick={() => removeCity(city)}
-                      className={`p-0.5 rounded transition-colors ${
-                        isDark ? 'hover:bg-gray-500' : 'hover:bg-gray-300'
+                {formData.cityIds.map((cityId) => {
+                  const city = availableCities.find(c => c.id === cityId)
+                  return (
+                    <div
+                      key={cityId}
+                      className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-sm ${
+                        isDark ? 'bg-gray-600 text-gray-100' : 'bg-gray-200 text-gray-700'
                       }`}
                     >
-                      <X className="h-3 w-3" />
-                    </button>
-                  </div>
-                ))}
+                      <span>{city?.name || cityId}</span>
+                      <button
+                        type="button"
+                        onClick={() => removeCity(cityId)}
+                        className={`p-0.5 rounded transition-colors ${
+                          isDark ? 'hover:bg-gray-500' : 'hover:bg-gray-300'
+                        }`}
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    </div>
+                  )
+                })}
               </div>
             )}
 
@@ -219,7 +226,7 @@ export default function AddDirectorPage() {
                 }`}>
                   {filteredCities.map((city) => (
                     <button
-                      key={city}
+                      key={city.id}
                       type="button"
                       onClick={() => addCity(city)}
                       className={`w-full text-left px-3 py-2 text-sm transition-colors ${
@@ -228,14 +235,14 @@ export default function AddDirectorPage() {
                           : 'text-gray-700 hover:bg-gray-100'
                       }`}
                     >
-                      {city}
+                      {city.name}
                     </button>
                   ))}
                 </div>
               )}
             </div>
-            {errors.cities && (
-              <p className="text-sm text-red-500 mt-2">{errors.cities}</p>
+            {errors.cityIds && (
+              <p className="text-sm text-red-500 mt-2">{errors.cityIds}</p>
             )}
           </div>
 

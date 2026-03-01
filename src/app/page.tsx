@@ -35,15 +35,12 @@ const ALL_PURPOSES = [
   ...PAYMENT_PURPOSES.income.filter(p => !PAYMENT_PURPOSES.expense.find(e => e.value === p.value))
 ]
 
-// Все доступные города (хардкод из системы + "Не указан" для транзакций без города)
-const ALL_CITIES = ['Саратов', 'Энгельс', 'Ульяновск', 'Пенза', 'Тольятти', 'Омск', 'Ярославль', 'Не указан']
-
 // Интерфейс данных отчёта
 interface ReportData {
   type: ReportType
   generatedAt: string
   period: { from: string; to: string }
-  cities: string[]
+  cityIds: number[]
   data: any
   purposes?: string[]
 }
@@ -55,8 +52,8 @@ export default function ReportsPage() {
   
   // Состояние выбора
   const [selectedReport, setSelectedReport] = useState<ReportType>('cash')
-  const [availableCities, setAvailableCities] = useState<string[]>([])
-  const [selectedCities, setSelectedCities] = useState<string[]>([])
+  const [availableCities, setAvailableCities] = useState<Array<{ id: number; name: string }>>([])
+  const [selectedCityIds, setSelectedCityIds] = useState<number[]>([])
   
   // Период
   const [dateFrom, setDateFrom] = useState(() => {
@@ -76,7 +73,7 @@ export default function ReportsPage() {
   const [showFilters, setShowFilters] = useState(false)
   
   // Черновики фильтров
-  const [draftSelectedCities, setDraftSelectedCities] = useState<string[]>([])
+  const [draftSelectedCityIds, setDraftSelectedCityIds] = useState<number[]>([])
   const [draftDateFrom, setDraftDateFrom] = useState('')
   const [draftDateTo, setDraftDateTo] = useState('')
   const [draftFilterByPurpose, setDraftFilterByPurpose] = useState(false)
@@ -89,15 +86,17 @@ export default function ReportsPage() {
   
   // Загрузка списка городов
   useEffect(() => {
-    setAvailableCities(ALL_CITIES)
-    setSelectedCities(ALL_CITIES)
-    setDraftSelectedCities(ALL_CITIES)
-    setIsLoadingCities(false)
+    apiClient.getCities().then((cities: Array<{ id: number; name: string }>) => {
+      setAvailableCities(cities)
+      const ids = cities.map(c => c.id)
+      setSelectedCityIds(ids)
+      setDraftSelectedCityIds(ids)
+    }).catch(() => {}).finally(() => setIsLoadingCities(false))
   }, [])
   
   // Открытие панели фильтров
   const openFiltersPanel = () => {
-    setDraftSelectedCities(selectedCities)
+    setDraftSelectedCityIds(selectedCityIds)
     setDraftDateFrom(dateFrom)
     setDraftDateTo(dateTo)
     setDraftFilterByPurpose(filterByPurpose)
@@ -107,7 +106,7 @@ export default function ReportsPage() {
   
   // Применение фильтров
   const applyFilters = () => {
-    setSelectedCities(draftSelectedCities)
+    setSelectedCityIds(draftSelectedCityIds)
     setDateFrom(draftDateFrom)
     setDateTo(draftDateTo)
     setFilterByPurpose(draftFilterByPurpose)
@@ -117,7 +116,7 @@ export default function ReportsPage() {
   
   // Сброс фильтров
   const resetFilters = () => {
-    setDraftSelectedCities(ALL_CITIES)
+    setDraftSelectedCityIds(availableCities.map(c => c.id))
     setDraftDateFrom(() => {
       const date = new Date()
       date.setDate(1)
@@ -150,7 +149,7 @@ export default function ReportsPage() {
   
   // Генерация отчёта
   const generateReport = useCallback(async () => {
-    if (selectedCities.length === 0) {
+    if (selectedCityIds.length === 0) {
       toast.error('Выберите город')
       return
     }
@@ -168,7 +167,7 @@ export default function ReportsPage() {
             const cashResponse = await apiClient.getCashByPurpose({
               startDate: dateFrom,
               endDate: dateTo,
-              city: selectedCities.length === 1 ? selectedCities[0] : undefined,
+              cityId: selectedCityIds.length === 1 ? selectedCityIds[0] : undefined,
               purposes: selectedPurposes.length > 0 ? selectedPurposes : undefined
             })
             
@@ -177,8 +176,8 @@ export default function ReportsPage() {
               let totals = cashResponse.data.totals
               
               // Фильтруем по выбранным городам только если выбраны не все
-              if (selectedCities.length < availableCities.length) {
-                cashResults = cashResults.filter((c: any) => selectedCities.includes(c.city))
+              if (selectedCityIds.length < availableCities.length) {
+                cashResults = cashResults.filter((c: any) => selectedCityIds.includes(c.cityId))
                 // Пересчитываем totals для отфильтрованных городов
                 totals = cashResults.reduce((acc: any, curr: any) => ({
                   income: acc.income + (curr.totalIncome || 0),
@@ -194,7 +193,7 @@ export default function ReportsPage() {
             const cashResponse = await apiClient.getCashByPurpose({
               startDate: dateFrom,
               endDate: dateTo,
-              city: selectedCities.length === 1 ? selectedCities[0] : undefined
+              cityId: selectedCityIds.length === 1 ? selectedCityIds[0] : undefined
             })
             
             if (cashResponse.success && cashResponse.data) {
@@ -202,8 +201,8 @@ export default function ReportsPage() {
               let totals = cashResponse.data.totals
               
               // Фильтруем по выбранным городам только если выбраны не все
-              if (selectedCities.length < availableCities.length) {
-                cityStats = cityStats.filter((c: any) => selectedCities.includes(c.city))
+              if (selectedCityIds.length < availableCities.length) {
+                cityStats = cityStats.filter((c: any) => selectedCityIds.includes(c.cityId))
                 // Пересчитываем totals только для отфильтрованных городов
                 totals = cityStats.reduce((acc: any, curr: any) => ({
                   income: acc.income + (curr.totalIncome || 0),
@@ -214,7 +213,8 @@ export default function ReportsPage() {
               
               // Преобразуем в простой формат (без breakdown по назначениям)
               const cashResults = cityStats.map((city: any) => ({
-                city: city.city,
+                cityId: city.cityId,
+                cityName: city.cityName || city.city,
                 income: city.totalIncome || 0,
                 expense: city.totalExpense || 0,
                 balance: city.balance || 0
@@ -230,19 +230,20 @@ export default function ReportsPage() {
           const ordersReportResponse = await apiClient.getCitiesReport({
             startDate: dateFrom,
             endDate: dateTo,
-            city: selectedCities.length === 1 ? selectedCities[0] : undefined
+            cityId: selectedCityIds.length === 1 ? selectedCityIds[0] : undefined
           })
           
           if (ordersReportResponse.success && ordersReportResponse.data) {
             const cityStats = ordersReportResponse.data
             
             // Фильтруем по выбранным городам
-            const filteredStats = selectedCities.length === availableCities.length 
+            const filteredStats = selectedCityIds.length === availableCities.length 
               ? cityStats 
-              : cityStats.filter((c: any) => selectedCities.includes(c.city))
+              : cityStats.filter((c: any) => selectedCityIds.includes(c.cityId))
             
             const ordersResults = filteredStats.map((city: any) => ({
-              city: city.city,
+              cityId: city.cityId,
+              cityName: city.cityName || city.city,
               totalOrders: city.stats?.totalOrders || 0,
               notOrders: city.stats?.notOrders || 0,
               zeroOrders: city.stats?.zeroOrders || 0,
@@ -285,28 +286,28 @@ export default function ReportsPage() {
           const campaignsResponse = await apiClient.getCampaignsReport({
             startDate: dateFrom,
             endDate: dateTo,
-            city: selectedCities.length === 1 ? selectedCities[0] : undefined
+            cityId: selectedCityIds.length === 1 ? selectedCityIds[0] : undefined
           })
           
           if (campaignsResponse.success && campaignsResponse.data) {
             let cityData = campaignsResponse.data
             
             // Фильтруем по выбранным городам
-            if (selectedCities.length < availableCities.length) {
-              cityData = cityData.filter((c: any) => selectedCities.includes(c.city))
+            if (selectedCityIds.length < availableCities.length) {
+              cityData = cityData.filter((c: any) => selectedCityIds.includes(c.cityId))
             }
             
             // Группируем кампании по типу (rk) внутри каждого города
             const campaignTotals = { ordersCount: 0, revenue: 0, profit: 0 }
             
             const citiesWithGroupedCampaigns = cityData.map((cityReport: any) => {
-              // Группируем кампании по avitoName (тип рекламы: Газета, Сайт и т.д.)
-              const typeMap = new Map<string, { ordersCount: number; revenue: number; profit: number; rk: string }>()
+              // Группируем кампании по rk.name
+              const typeMap = new Map<string, { ordersCount: number; revenue: number; profit: number; rkId: number }>()
               
               cityReport.campaigns?.forEach((campaign: any) => {
-                const typeName = campaign.avitoName || 'Неизвестно'
+                const typeName = campaign.rk?.name || 'Неизвестно'
                 if (!typeMap.has(typeName)) {
-                  typeMap.set(typeName, { ordersCount: 0, revenue: 0, profit: 0, rk: campaign.rk || '-' })
+                  typeMap.set(typeName, { ordersCount: 0, revenue: 0, profit: 0, rkId: campaign.rkId || 0 })
                 }
                 const typeData = typeMap.get(typeName)!
                 typeData.ordersCount += campaign.ordersCount
@@ -318,7 +319,7 @@ export default function ReportsPage() {
               const groupedCampaigns = Array.from(typeMap.entries())
                 .map(([typeName, data]) => ({
                   typeName,
-                  rk: data.rk,
+                  rkId: data.rkId,
                   ordersCount: data.ordersCount,
                   revenue: data.revenue,
                   profit: data.profit
@@ -338,7 +339,8 @@ export default function ReportsPage() {
               campaignTotals.profit += cityTotals.profit
               
               return {
-                city: cityReport.city,
+                cityId: cityReport.cityId,
+                cityName: cityReport.cityName || cityReport.city,
                 campaigns: groupedCampaigns,
                 totals: cityTotals
               }
@@ -360,7 +362,7 @@ export default function ReportsPage() {
         type: selectedReport,
         generatedAt: new Date().toISOString(),
         period: { from: dateFrom, to: dateTo },
-        cities: selectedCities,
+        cityIds: selectedCityIds,
         data,
         purposes: filterByPurpose && selectedPurposes.length > 0 ? selectedPurposes : undefined
       } as ReportData)
@@ -373,7 +375,7 @@ export default function ReportsPage() {
     } finally {
       setIsGenerating(false)
     }
-  }, [selectedReport, selectedCities, dateFrom, dateTo, availableCities.length, filterByPurpose, selectedPurposes])
+  }, [selectedReport, selectedCityIds, dateFrom, dateTo, availableCities.length, filterByPurpose, selectedPurposes])
   
   // Форматирование валюты
   const formatCurrency = (amount: number) => {
@@ -440,7 +442,7 @@ export default function ReportsPage() {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
                 </svg>
                 {/* Индикатор активных фильтров */}
-                {(selectedCities.length < availableCities.length || filterByPurpose) && (
+                {(selectedCityIds.length < availableCities.length || filterByPurpose) && (
                   <span className={`absolute -top-0.5 -right-0.5 w-2.5 h-2.5 bg-teal-500 rounded-full border-2 ${
                     isDark ? 'border-[#1e2530]' : 'border-white'
                   }`}></span>
@@ -608,12 +610,12 @@ export default function ReportsPage() {
                     
                     <div>
                       <Select 
-                        value={draftSelectedCities.length === availableCities.length ? 'all' : draftSelectedCities[0] || 'all'}
+                        value={draftSelectedCityIds.length === availableCities.length ? 'all' : (draftSelectedCityIds[0]?.toString() || 'all')}
                         onValueChange={(value) => {
                           if (value === 'all') {
-                            setDraftSelectedCities([...availableCities])
+                            setDraftSelectedCityIds(availableCities.map(c => c.id))
                           } else {
-                            setDraftSelectedCities([value])
+                            setDraftSelectedCityIds([Number(value)])
                           }
                         }}
                       >
@@ -623,7 +625,7 @@ export default function ReportsPage() {
                         <SelectContent className={isDark ? 'bg-[#2a3441] border-gray-600' : 'bg-white border-gray-200'}>
                           <SelectItem value="all" className={isDark ? 'text-gray-100 focus:bg-[#3a4451] focus:text-teal-400' : 'text-gray-800 focus:bg-teal-50 focus:text-teal-700'}>Все города</SelectItem>
                           {availableCities.map(city => (
-                            <SelectItem key={city} value={city} className={isDark ? 'text-gray-100 focus:bg-[#3a4451] focus:text-teal-400' : 'text-gray-800 focus:bg-teal-50 focus:text-teal-700'}>{city}</SelectItem>
+                            <SelectItem key={city.id} value={city.id.toString()} className={isDark ? 'text-gray-100 focus:bg-[#3a4451] focus:text-teal-400' : 'text-gray-800 focus:bg-teal-50 focus:text-teal-700'}>{city.name}</SelectItem>
                           ))}
                         </SelectContent>
                       </Select>
@@ -714,9 +716,9 @@ export default function ReportsPage() {
             <div className={`mb-4 flex items-center justify-between text-sm ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
               <div className="flex items-center gap-2 flex-wrap">
                 <span>
-                  {reportData.cities.length === availableCities.length 
+                  {reportData.cityIds.length === availableCities.length 
                     ? 'Все города' 
-                    : `Город: ${reportData.cities.join(', ')}`
+                    : `Город: ${reportData.cityIds.map(id => availableCities.find(c => c.id === id)?.name || id).join(', ')}`
                   }
                 </span>
                 <span>•</span>
@@ -788,8 +790,8 @@ export default function ReportsPage() {
                     </thead>
                     <tbody>
                       {reportData.data.cities.map((city: any) => (
-                        <tr key={city.city} className={`border-b transition-colors ${isDark ? 'border-gray-700 hover:bg-[#3a4451]' : 'border-gray-200 hover:bg-gray-50'}`}>
-                          <td className={`py-3 px-4 font-medium ${isDark ? 'text-gray-100' : 'text-gray-800'}`}>{city.city}</td>
+                        <tr key={city.cityId || city.city} className={`border-b transition-colors ${isDark ? 'border-gray-700 hover:bg-[#3a4451]' : 'border-gray-200 hover:bg-gray-50'}`}>
+                          <td className={`py-3 px-4 font-medium ${isDark ? 'text-gray-100' : 'text-gray-800'}`}>{city.cityName || city.city}</td>
                           <td className={`py-3 px-4 text-right font-medium ${isDark ? 'text-gray-100' : 'text-gray-800'}`}>{formatCurrency(city.income)}</td>
                           <td className={`py-3 px-4 text-right font-medium ${isDark ? 'text-gray-100' : 'text-gray-800'}`}>{formatCurrency(city.expense)}</td>
                           <td className={`py-3 px-4 text-right font-bold ${isDark ? 'text-gray-100' : 'text-gray-800'}`}>{formatCurrency(city.balance)}</td>
@@ -820,15 +822,15 @@ export default function ReportsPage() {
                     </thead>
                     <tbody>
                       {reportData.data.cities.map((city: any) => (
-                        <React.Fragment key={city.city}>
+                        <React.Fragment key={city.cityId || city.city}>
                           <tr className={isDark ? 'bg-[#3a4451]' : 'bg-gray-50'}>
-                            <td className={`py-3 px-4 font-bold ${isDark ? 'text-gray-100' : 'text-gray-800'}`}>{city.city}</td>
+                            <td className={`py-3 px-4 font-bold ${isDark ? 'text-gray-100' : 'text-gray-800'}`}>{city.cityName || city.city}</td>
                             <td className={`py-3 px-4 text-right font-bold ${isDark ? 'text-gray-100' : 'text-gray-800'}`}>{formatCurrency(city.totalIncome)}</td>
                             <td className={`py-3 px-4 text-right font-bold ${isDark ? 'text-gray-100' : 'text-gray-800'}`}>{formatCurrency(city.totalExpense)}</td>
                             <td className={`py-3 px-4 text-right font-bold ${isDark ? 'text-gray-100' : 'text-gray-800'}`}>{formatCurrency(city.balance)}</td>
                           </tr>
                           {city.purposes?.map((purpose: any) => (
-                            <tr key={`${city.city}-${purpose.purpose}`} className={`border-b transition-colors ${isDark ? 'border-gray-700 hover:bg-[#3a4451]' : 'border-gray-100 hover:bg-gray-50'}`}>
+                            <tr key={`${city.cityId || city.city}-${purpose.purpose}`} className={`border-b transition-colors ${isDark ? 'border-gray-700 hover:bg-[#3a4451]' : 'border-gray-100 hover:bg-gray-50'}`}>
                               <td className={`py-2 px-4 pl-8 ${isDark ? 'text-gray-300' : 'text-gray-600'}`}>{purpose.purpose}</td>
                               <td className={`py-2 px-4 text-right ${isDark ? 'text-gray-100' : 'text-gray-800'}`}>{purpose.income > 0 ? formatCurrency(purpose.income) : '-'}</td>
                               <td className={`py-2 px-4 text-right ${isDark ? 'text-gray-100' : 'text-gray-800'}`}>{purpose.expense > 0 ? formatCurrency(purpose.expense) : '-'}</td>
@@ -867,8 +869,8 @@ export default function ReportsPage() {
                     </thead>
                     <tbody>
                       {reportData.data.cities.map((city: any) => (
-                        <tr key={city.city} className={`border-b transition-colors ${isDark ? 'border-gray-700 hover:bg-[#3a4451]' : 'border-gray-200 hover:bg-gray-50'}`}>
-                          <td className={`py-3 px-3 font-medium ${isDark ? 'text-gray-100' : 'text-gray-800'}`}>{city.city}</td>
+                        <tr key={city.cityId || city.city} className={`border-b transition-colors ${isDark ? 'border-gray-700 hover:bg-[#3a4451]' : 'border-gray-200 hover:bg-gray-50'}`}>
+                          <td className={`py-3 px-3 font-medium ${isDark ? 'text-gray-100' : 'text-gray-800'}`}>{city.cityName || city.city}</td>
                           <td className={`py-3 px-3 text-right ${isDark ? 'text-gray-100' : 'text-gray-800'}`}>{city.totalOrders}</td>
                           <td className={`py-3 px-3 text-right ${isDark ? 'text-gray-100' : 'text-gray-800'}`}>{city.notOrders}</td>
                           <td className={`py-3 px-3 text-right ${isDark ? 'text-gray-100' : 'text-gray-800'}`}>{city.zeroOrders}</td>
@@ -910,18 +912,18 @@ export default function ReportsPage() {
                     </thead>
                     <tbody>
                       {reportData.data.cities.map((cityData: any) => (
-                        <React.Fragment key={cityData.city}>
+                        <React.Fragment key={cityData.cityId || cityData.city}>
                           <tr className={isDark ? 'bg-[#3a4451]' : 'bg-gray-50'}>
-                            <td className={`py-3 px-4 font-bold ${isDark ? 'text-gray-100' : 'text-gray-800'}`}>{cityData.city}</td>
+                            <td className={`py-3 px-4 font-bold ${isDark ? 'text-gray-100' : 'text-gray-800'}`}>{cityData.cityName || cityData.city}</td>
                             <td></td>
                             <td className={`py-3 px-4 text-right font-bold ${isDark ? 'text-gray-100' : 'text-gray-800'}`}>{cityData.totals.ordersCount}</td>
                             <td className={`py-3 px-4 text-right font-bold ${isDark ? 'text-gray-100' : 'text-gray-800'}`}>{formatCurrency(cityData.totals.revenue)}</td>
                             <td className={`py-3 px-4 text-right font-bold ${isDark ? 'text-gray-100' : 'text-gray-800'}`}>{formatCurrency(cityData.totals.profit)}</td>
                           </tr>
                           {cityData.campaigns?.map((campaign: any, idx: number) => (
-                            <tr key={`${cityData.city}-${campaign.typeName}-${idx}`} className={`border-b transition-colors ${isDark ? 'border-gray-700 hover:bg-[#3a4451]' : 'border-gray-100 hover:bg-gray-50'}`}>
+                            <tr key={`${cityData.cityId || cityData.city}-${campaign.typeName}-${idx}`} className={`border-b transition-colors ${isDark ? 'border-gray-700 hover:bg-[#3a4451]' : 'border-gray-100 hover:bg-gray-50'}`}>
                               <td className={`py-2 px-4 pl-8 ${isDark ? 'text-gray-300' : 'text-gray-600'}`}>{campaign.typeName}</td>
-                              <td className={`py-2 px-4 text-sm ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>{campaign.rk}</td>
+                              <td className={`py-2 px-4 text-sm ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>{campaign.rkId || '-'}</td>
                               <td className={`py-2 px-4 text-right ${isDark ? 'text-gray-100' : 'text-gray-800'}`}>{campaign.ordersCount}</td>
                               <td className={`py-2 px-4 text-right font-medium ${isDark ? 'text-gray-100' : 'text-gray-800'}`}>{formatCurrency(campaign.revenue)}</td>
                               <td className={`py-2 px-4 text-right font-medium ${isDark ? 'text-gray-100' : 'text-gray-800'}`}>{formatCurrency(campaign.profit)}</td>

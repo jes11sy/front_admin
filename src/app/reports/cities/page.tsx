@@ -7,7 +7,8 @@ import { useDesignStore } from '@/store/design.store'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 
 interface ApiCityReport {
-  city: string
+  cityId: number
+  cityName: string
   orders: {
     closedOrders: number
     refusals: number
@@ -22,7 +23,8 @@ interface ApiCityReport {
 }
 
 interface CityReport {
-  city: string
+  cityId: number
+  cityName: string
   completedOrders: number
   revenue: number
   companyIncome: number
@@ -46,7 +48,7 @@ export default function CitiesReportPage() {
   
   const [showFilterDrawer, setShowFilterDrawer] = useState(false)
   const [citiesData, setCitiesData] = useState<CityReport[]>([])
-  const [allCities, setAllCities] = useState<string[]>([])
+  const [allCities, setAllCities] = useState<Array<{ id: number; name: string }>>([])
   const [isLoading, setIsLoading] = useState(true)
 
   // Быстрые периоды для фильтра
@@ -102,32 +104,25 @@ export default function CitiesReportPage() {
   }
 
   // Загрузка данных
-  const loadData = async (filterStartDate?: string, filterEndDate?: string, filterCity?: string) => {
+  const loadData = async (filterStartDate?: string, filterEndDate?: string, filterCityId?: string) => {
     setIsLoading(true)
     try {
       const dateRange = getDateRange(filterStartDate, filterEndDate)
       const response = await apiClient.getCitiesReport({
         startDate: dateRange.start,
-        endDate: dateRange.end
+        endDate: dateRange.end,
+        cityId: filterCityId ? Number(filterCityId) : undefined
       })
       if (response.success && response.data) {
-        let mappedData: CityReport[] = response.data.map((item: ApiCityReport) => ({
-          city: item.city,
+        const mappedData: CityReport[] = response.data.map((item: ApiCityReport) => ({
+          cityId: item.cityId,
+          cityName: item.cityName,
           completedOrders: item.orders.closedOrders,
           revenue: item.orders.totalClean,
           companyIncome: item.orders.totalMasterChange,
           balance: item.cash.totalAmount,
           avgCheck: item.orders.avgCheck
         }))
-        
-        // Получаем уникальные города для фильтра
-        const cities = [...new Set(mappedData.map(d => d.city))]
-        setAllCities(cities)
-        
-        // Применяем фильтр по городу
-        if (filterCity) {
-          mappedData = mappedData.filter(d => d.city === filterCity)
-        }
         
         setCitiesData(mappedData)
       } else {
@@ -143,6 +138,9 @@ export default function CitiesReportPage() {
   }
 
   useEffect(() => {
+    apiClient.getCities().then((cities: Array<{ id: number; name: string }>) => {
+      setAllCities(cities)
+    }).catch(() => {})
     loadData()
   }, [])
 
@@ -167,7 +165,7 @@ export default function CitiesReportPage() {
     setEndDate(draftEndDate)
     setCityFilter(draftCityFilter)
     setShowFilterDrawer(false)
-    loadData(draftStartDate, draftEndDate, draftCityFilter)
+    loadData(draftStartDate, draftEndDate, draftCityFilter || undefined)
   }
 
   // Сброс основных фильтров
@@ -251,8 +249,8 @@ export default function CitiesReportPage() {
                     )}
                     {cityFilter && (
                       <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium border ${isDark ? 'bg-teal-900/30 text-teal-300 border-teal-700' : 'bg-teal-50 text-teal-700 border-teal-200'}`}>
-                        {cityFilter}
-                        <button onClick={() => { setCityFilter(''); loadData(startDate, endDate, '') }} className={`ml-1 ${isDark ? 'hover:text-teal-100' : 'hover:text-teal-900'}`}>×</button>
+                        {allCities.find(c => c.id === Number(cityFilter))?.name || cityFilter}
+                        <button onClick={() => { setCityFilter(''); loadData(startDate, endDate) }} className={`ml-1 ${isDark ? 'hover:text-teal-100' : 'hover:text-teal-900'}`}>×</button>
                       </span>
                     )}
                     <button
@@ -348,7 +346,7 @@ export default function CitiesReportPage() {
                       <SelectContent className={isDark ? 'bg-[#2a3441] border-gray-600' : 'bg-white border-gray-200'}>
                         <SelectItem value="all" className={isDark ? 'text-gray-100 focus:bg-[#3a4451] focus:text-teal-400' : 'text-gray-800 focus:bg-teal-50 focus:text-teal-700'}>Все города</SelectItem>
                         {allCities.map(city => (
-                          <SelectItem key={city} value={city} className={isDark ? 'text-gray-100 focus:bg-[#3a4451] focus:text-teal-400' : 'text-gray-800 focus:bg-teal-50 focus:text-teal-700'}>{city}</SelectItem>
+                          <SelectItem key={city.id} value={city.id.toString()} className={isDark ? 'text-gray-100 focus:bg-[#3a4451] focus:text-teal-400' : 'text-gray-800 focus:bg-teal-50 focus:text-teal-700'}>{city.name}</SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
@@ -448,10 +446,10 @@ export default function CitiesReportPage() {
                   <tbody>
                     {sortedData.map((city) => (
                       <tr 
-                        key={city.city} 
+                        key={city.cityId} 
                         className={`border-b transition-colors ${isDark ? 'border-gray-700 hover:bg-[#3a4451]' : 'hover:bg-teal-50'}`}
                       >
-                        <td className={`py-3 px-4 font-medium ${isDark ? 'text-gray-200' : 'text-gray-800'}`}>{city.city}</td>
+                        <td className={`py-3 px-4 font-medium ${isDark ? 'text-gray-200' : 'text-gray-800'}`}>{city.cityName}</td>
                         <td className={`py-3 px-4 text-center ${isDark ? 'text-gray-300' : 'text-gray-600'}`}>{city.completedOrders}</td>
                         <td className={`py-3 px-4 text-right ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
                           {formatCurrency(city.avgCheck)}

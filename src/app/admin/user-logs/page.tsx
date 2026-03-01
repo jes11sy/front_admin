@@ -41,7 +41,6 @@ const ROLE_LABELS: Record<string, string> = {
   director: 'Директор',
   master: 'Мастер',
   operator: 'Оператор',
-  callcentre_operator: 'Оператор КЦ',
 }
 
 export default function UserLogsPage() {
@@ -82,7 +81,6 @@ export default function UserLogsPage() {
     { value: 'director', label: 'Директор' },
     { value: 'master', label: 'Мастер' },
     { value: 'operator', label: 'Оператор' },
-    { value: 'callcentre_operator', label: 'Оператор КЦ' },
   ]
 
   const EVENT_TYPES = [

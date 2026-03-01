@@ -7,15 +7,16 @@ import { useDesignStore } from '@/store/design.store'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 
 interface CampaignReport {
-  rk: string
-  avitoName: string | null
+  rkId: number
+  rk?: { id: number; name: string }
   ordersCount: number
   revenue: number
   profit: number
 }
 
 interface CityReport {
-  city: string
+  cityId: number
+  cityName: string
   campaigns: CampaignReport[]
 }
 
@@ -35,7 +36,7 @@ export default function CampaignsReportPage() {
   
   const [showFilterDrawer, setShowFilterDrawer] = useState(false)
   const [citiesData, setCitiesData] = useState<CityReport[]>([])
-  const [allCities, setAllCities] = useState<string[]>([])
+  const [allCities, setAllCities] = useState<Array<{ id: number; name: string }>>([])
   const [isLoading, setIsLoading] = useState(true)
 
   // Быстрые периоды для фильтра
@@ -90,29 +91,19 @@ export default function CampaignsReportPage() {
   }
 
   // Загрузка данных
-  const loadData = async (filterStartDate?: string, filterEndDate?: string, filterCity?: string) => {
+  const loadData = async (filterStartDate?: string, filterEndDate?: string, filterCityId?: string) => {
     setIsLoading(true)
     try {
       const dateRange = getDateRange(filterStartDate, filterEndDate)
       
       const response = await apiClient.getCampaignsReport({
         startDate: dateRange.start,
-        endDate: dateRange.end
+        endDate: dateRange.end,
+        cityId: filterCityId ? Number(filterCityId) : undefined
       })
       
       if (response.success && response.data) {
-        let data = response.data as CityReport[]
-        
-        // Получаем уникальные города
-        const cities = data.map(d => d.city)
-        setAllCities(cities)
-        
-        // Применяем фильтр по городу
-        if (filterCity) {
-          data = data.filter(d => d.city === filterCity)
-        }
-        
-        setCitiesData(data)
+        setCitiesData(response.data as CityReport[])
       } else {
         toast.error('Не удалось загрузить отчет по РК')
       }
@@ -126,6 +117,9 @@ export default function CampaignsReportPage() {
   }
 
   useEffect(() => {
+    apiClient.getCities().then((cities: Array<{ id: number; name: string }>) => {
+      setAllCities(cities)
+    }).catch(() => {})
     loadData()
   }, [])
 
@@ -150,7 +144,7 @@ export default function CampaignsReportPage() {
     setEndDate(draftEndDate)
     setCityFilter(draftCityFilter)
     setShowFilterDrawer(false)
-    loadData(draftStartDate, draftEndDate, draftCityFilter)
+    loadData(draftStartDate, draftEndDate, draftCityFilter || undefined)
   }
 
   // Сброс основных фильтров
@@ -230,8 +224,8 @@ export default function CampaignsReportPage() {
                     )}
                     {cityFilter && (
                       <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium border ${isDark ? 'bg-teal-900/30 text-teal-300 border-teal-700' : 'bg-teal-50 text-teal-700 border-teal-200'}`}>
-                        {cityFilter}
-                        <button onClick={() => { setCityFilter(''); loadData(startDate, endDate, '') }} className={`ml-1 ${isDark ? 'hover:text-teal-100' : 'hover:text-teal-900'}`}>×</button>
+                        {allCities.find(c => c.id === Number(cityFilter))?.name || cityFilter}
+                        <button onClick={() => { setCityFilter(''); loadData(startDate, endDate) }} className={`ml-1 ${isDark ? 'hover:text-teal-100' : 'hover:text-teal-900'}`}>×</button>
                       </span>
                     )}
                     <button
@@ -327,7 +321,7 @@ export default function CampaignsReportPage() {
                       <SelectContent className={isDark ? 'bg-[#2a3441] border-gray-600' : 'bg-white border-gray-200'}>
                         <SelectItem value="all" className={isDark ? 'text-gray-100 focus:bg-[#3a4451] focus:text-teal-400' : 'text-gray-800 focus:bg-teal-50 focus:text-teal-700'}>Все города</SelectItem>
                         {allCities.map(city => (
-                          <SelectItem key={city} value={city} className={isDark ? 'text-gray-100 focus:bg-[#3a4451] focus:text-teal-400' : 'text-gray-800 focus:bg-teal-50 focus:text-teal-700'}>{city}</SelectItem>
+                          <SelectItem key={city.id} value={city.id.toString()} className={isDark ? 'text-gray-100 focus:bg-[#3a4451] focus:text-teal-400' : 'text-gray-800 focus:bg-teal-50 focus:text-teal-700'}>{city.name}</SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
@@ -388,10 +382,10 @@ export default function CampaignsReportPage() {
           ) : (
             <div className="space-y-8">
               {citiesData.map((cityData) => (
-                <div key={cityData.city} className="mb-8">
+                <div key={cityData.cityId} className="mb-8">
                   {/* Заголовок города */}
                   <h3 className={`text-xl font-semibold mb-4 flex items-center gap-2 ${isDark ? 'text-gray-200' : 'text-gray-700'}`}>
-                    {cityData.city}
+                    {cityData.cityName}
                     <span className={`text-sm font-normal ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
                       ({cityData.campaigns.length} {cityData.campaigns.length === 1 ? 'кампания' : cityData.campaigns.length < 5 ? 'кампании' : 'кампаний'})
                     </span>
@@ -404,7 +398,6 @@ export default function CampaignsReportPage() {
                       <thead>
                         <tr className={`border-b ${isDark ? 'bg-[#3a4451] border-gray-700' : 'bg-gray-50 border-gray-200'}`}>
                           <th className={`text-left py-3 px-4 font-semibold ${isDark ? 'text-gray-200' : 'text-gray-700'}`}>РК</th>
-                          <th className={`text-left py-3 px-4 font-semibold ${isDark ? 'text-gray-200' : 'text-gray-700'}`}>Имя мастера</th>
                           <th className={`text-center py-3 px-4 font-semibold ${isDark ? 'text-gray-200' : 'text-gray-700'}`}>Кол-во заказов</th>
                           <th className={`text-right py-3 px-4 font-semibold ${isDark ? 'text-gray-200' : 'text-gray-700'}`}>Оборот</th>
                           <th className={`text-right py-3 px-4 font-semibold ${isDark ? 'text-gray-200' : 'text-gray-700'}`}>Выручка</th>
@@ -413,20 +406,17 @@ export default function CampaignsReportPage() {
                       <tbody>
                         {cityData.campaigns.length === 0 ? (
                           <tr>
-                            <td colSpan={5} className={`text-center py-8 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
+                            <td colSpan={4} className={`text-center py-8 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
                               Нет данных по кампаниям
                             </td>
                           </tr>
                         ) : (
                           cityData.campaigns.map((campaign, index) => (
                             <tr 
-                              key={`${cityData.city}-${campaign.rk}-${campaign.avitoName}-${index}`}
+                              key={`${cityData.cityId}-${campaign.rkId}-${index}`}
                               className={`border-b transition-colors ${isDark ? 'border-gray-700 hover:bg-[#3a4451]' : 'hover:bg-teal-50'}`}
                             >
-                              <td className={`py-3 px-4 font-medium ${isDark ? 'text-gray-200' : 'text-gray-900'}`}>{campaign.rk}</td>
-                              <td className={`py-3 px-4 ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
-                                {campaign.avitoName || <span className={`italic ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>Не указано</span>}
-                              </td>
+                              <td className={`py-3 px-4 font-medium ${isDark ? 'text-gray-200' : 'text-gray-900'}`}>{campaign.rk?.name || '-'}</td>
                               <td className={`py-3 px-4 text-center ${isDark ? 'text-gray-300' : 'text-gray-600'}`}>{campaign.ordersCount}</td>
                               <td className={`py-3 px-4 text-right font-semibold ${isDark ? 'text-teal-400' : 'text-green-600'}`}>
                                 {formatCurrency(campaign.revenue)}

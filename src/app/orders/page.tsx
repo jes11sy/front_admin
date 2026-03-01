@@ -16,21 +16,23 @@ const SCROLL_POSITION_KEY = 'admin_orders_scroll_position'
 
 interface Order {
   id: number
-  rk: string
-  city: string
-  avitoName: string
+  rkId: number
+  rk?: { id: number; name: string }
+  cityId: number
+  city?: { id: number; name: string }
   phone: string
   typeOrder: string
   clientName: string
   address: string
   dateMeeting: string
-  closingData: string | null
-  typeEquipment: string
-  statusOrder: string
+  closingAt: string | null
+  equipmentTypeId: number
+  equipmentType?: { id: number; name: string }
+  statusId: number
+  status?: { id: number; name: string; code: string }
   masterId: number
   result: number
-  operatorNameId: number
-  problem?: string
+  operatorId: number
   master?: { name: string }
   operator?: { login: string }
 }
@@ -62,14 +64,14 @@ function OrdersContent() {
   const [masterFilter, setMasterFilter] = useState(() => searchParams.get('master') || '')
   const [showFilters, setShowFilters] = useState(() => {
     return !!(searchParams.get('status') || searchParams.get('city') || searchParams.get('master') || 
-              searchParams.get('rk') || searchParams.get('typeEquipment') || 
+              searchParams.get('rk') || searchParams.get('equipmentTypeId') || 
               searchParams.get('dateFrom') || searchParams.get('dateTo') ||
               searchParams.get('searchId') || searchParams.get('searchPhone') || searchParams.get('searchAddress'))
   })
   
   // Дополнительные фильтры
   const [rkFilter, setRkFilter] = useState(() => searchParams.get('rk') || '')
-  const [typeEquipmentFilter, setTypeEquipmentFilter] = useState(() => searchParams.get('typeEquipment') || '')
+  const [typeEquipmentFilter, setTypeEquipmentFilter] = useState(() => searchParams.get('equipmentTypeId') || '')
   const [dateType, setDateType] = useState<'create' | 'close' | 'meeting'>(() => {
     const dt = searchParams.get('dateType')
     return (dt === 'create' || dt === 'close' || dt === 'meeting') ? dt : 'create'
@@ -93,9 +95,9 @@ function OrdersContent() {
   // Состояние для данных
   const [orders, setOrders] = useState<Order[]>([])
   const [allStatuses] = useState<string[]>(['Ожидает', 'Принял', 'В пути', 'В работе', 'Готово', 'Отказ', 'Модерн', 'Незаказ'])
-  const [allCities, setAllCities] = useState<string[]>([])
-  const [allRks, setAllRks] = useState<string[]>([])
-  const [allTypeEquipments, setAllTypeEquipments] = useState<string[]>([])
+  const [allCities, setAllCities] = useState<Array<{ id: number; name: string }>>([])
+  const [allRks, setAllRks] = useState<Array<{ id: number; name: string }>>([])
+  const [allEquipmentTypes, setAllEquipmentTypes] = useState<Array<{ id: number; name: string }>>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [pagination, setPagination] = useState({
@@ -142,7 +144,7 @@ function OrdersContent() {
         const response = await apiClient.getFilterOptions()
         if (response.success && response.data) {
           setAllRks(response.data.rks || [])
-          setAllTypeEquipments(response.data.typeEquipments || [])
+          setAllEquipmentTypes(response.data.equipmentTypes || [])
           setAllCities(response.data.cities || [])
         }
       } catch (error) {
@@ -165,7 +167,7 @@ function OrdersContent() {
     if (cityFilter) params.set('city', cityFilter)
     if (masterFilter) params.set('master', masterFilter)
     if (rkFilter) params.set('rk', rkFilter)
-    if (typeEquipmentFilter) params.set('typeEquipment', typeEquipmentFilter)
+    if (typeEquipmentFilter) params.set('equipmentTypeId', typeEquipmentFilter)
     if (dateType !== 'create') params.set('dateType', dateType)
     if (dateFrom) params.set('dateFrom', dateFrom)
     if (dateTo) params.set('dateTo', dateTo)
@@ -224,11 +226,11 @@ function OrdersContent() {
         page: currentPage,
         limit: itemsPerPage,
         status: effectiveStatus,
-        city: cityFilter?.trim() || undefined,
+        cityId: cityFilter?.trim() ? Number(cityFilter.trim()) : undefined,
         search: searchId?.trim() || searchPhone?.trim() || searchAddress?.trim() || undefined,
         master: masterFilter?.trim() || undefined,
-        rk: rkFilter?.trim() || undefined,
-        typeEquipment: typeEquipmentFilter?.trim() || undefined,
+        rkId: rkFilter?.trim() ? Number(rkFilter.trim()) : undefined,
+        equipmentTypeId: typeEquipmentFilter?.trim() ? Number(typeEquipmentFilter.trim()) : undefined,
         dateType: (dateFrom?.trim() || dateTo?.trim()) ? dateType : undefined,
         dateFrom: dateFrom?.trim() || undefined,
         dateTo: dateTo?.trim() || undefined,
@@ -657,7 +659,7 @@ function OrdersContent() {
                           <SelectContent className={isDark ? 'bg-[#2a3441] border-gray-600' : 'bg-white border-gray-200'}>
                             <SelectItem value="all" className={isDark ? 'text-gray-100 focus:bg-[#3a4451] focus:text-teal-400' : 'text-gray-800 focus:bg-teal-50 focus:text-teal-700'}>Все города</SelectItem>
                             {allCities.map(city => (
-                              <SelectItem key={city} value={city} className={isDark ? 'text-gray-100 focus:bg-[#3a4451] focus:text-teal-400' : 'text-gray-800 focus:bg-teal-50 focus:text-teal-700'}>{city}</SelectItem>
+                              <SelectItem key={city.id} value={String(city.id)} className={isDark ? 'text-gray-100 focus:bg-[#3a4451] focus:text-teal-400' : 'text-gray-800 focus:bg-teal-50 focus:text-teal-700'}>{city.name}</SelectItem>
                             ))}
                           </SelectContent>
                         </Select>
@@ -694,7 +696,7 @@ function OrdersContent() {
                           <SelectContent className={isDark ? 'bg-[#2a3441] border-gray-600' : 'bg-white border-gray-200'}>
                             <SelectItem value="all" className={isDark ? 'text-gray-100 focus:bg-[#3a4451] focus:text-teal-400' : 'text-gray-800 focus:bg-teal-50 focus:text-teal-700'}>Все РК</SelectItem>
                             {allRks.map(rk => (
-                              <SelectItem key={rk} value={rk} className={isDark ? 'text-gray-100 focus:bg-[#3a4451] focus:text-teal-400' : 'text-gray-800 focus:bg-teal-50 focus:text-teal-700'}>{rk}</SelectItem>
+                              <SelectItem key={rk.id} value={String(rk.id)} className={isDark ? 'text-gray-100 focus:bg-[#3a4451] focus:text-teal-400' : 'text-gray-800 focus:bg-teal-50 focus:text-teal-700'}>{rk.name}</SelectItem>
                             ))}
                           </SelectContent>
                         </Select>
@@ -708,8 +710,8 @@ function OrdersContent() {
                           </SelectTrigger>
                           <SelectContent className={isDark ? 'bg-[#2a3441] border-gray-600' : 'bg-white border-gray-200'}>
                             <SelectItem value="all" className={isDark ? 'text-gray-100 focus:bg-[#3a4451] focus:text-teal-400' : 'text-gray-800 focus:bg-teal-50 focus:text-teal-700'}>Все направления</SelectItem>
-                            {allTypeEquipments.map(type => (
-                              <SelectItem key={type} value={type} className={isDark ? 'text-gray-100 focus:bg-[#3a4451] focus:text-teal-400' : 'text-gray-800 focus:bg-teal-50 focus:text-teal-700'}>{type}</SelectItem>
+                            {allEquipmentTypes.map(type => (
+                              <SelectItem key={type.id} value={String(type.id)} className={isDark ? 'text-gray-100 focus:bg-[#3a4451] focus:text-teal-400' : 'text-gray-800 focus:bg-teal-50 focus:text-teal-700'}>{type.name}</SelectItem>
                             ))}
                           </SelectContent>
                         </Select>
@@ -812,7 +814,6 @@ function OrdersContent() {
                     <th className={`text-left py-2 px-2 font-semibold ${isDark ? 'text-gray-200' : 'text-gray-700'}`}>Тип</th>
                     <th className={`text-left py-2 px-2 font-semibold ${isDark ? 'text-gray-200' : 'text-gray-700'}`}>РК</th>
                     <th className={`text-left py-2 px-2 font-semibold ${isDark ? 'text-gray-200' : 'text-gray-700'}`}>Город</th>
-                    <th className={`text-left py-2 px-2 font-semibold ${isDark ? 'text-gray-200' : 'text-gray-700'}`}>Аккаунт</th>
                     <th className={`text-left py-2 px-2 font-semibold ${isDark ? 'text-gray-200' : 'text-gray-700'}`}>Телефон</th>
                     <th className={`text-left py-2 px-2 font-semibold ${isDark ? 'text-gray-200' : 'text-gray-700'}`}>Клиент</th>
                     <th className={`text-left py-2 px-2 font-semibold ${isDark ? 'text-gray-200' : 'text-gray-700'}`}>Адрес</th>
@@ -842,20 +843,19 @@ function OrdersContent() {
                           {order.typeOrder}
                         </span>
                       </td>
-                      <td className={`py-2 px-2 ${isDark ? 'text-gray-300' : 'text-gray-800'}`}>{order.rk}</td>
-                      <td className={`py-2 px-2 ${isDark ? 'text-gray-300' : 'text-gray-800'}`}>{order.city}</td>
-                      <td className={`py-2 px-2 max-w-[90px] truncate ${isDark ? 'text-gray-300' : 'text-gray-800'}`}>{order.avitoName || '-'}</td>
+                      <td className={`py-2 px-2 ${isDark ? 'text-gray-300' : 'text-gray-800'}`}>{order.rk?.name || '-'}</td>
+                      <td className={`py-2 px-2 ${isDark ? 'text-gray-300' : 'text-gray-800'}`}>{order.city?.name || '-'}</td>
                       <td className={`py-2 px-2 font-mono text-[10px] ${isDark ? 'text-gray-300' : 'text-gray-800'}`}>{order.phone}</td>
                       <td className={`py-2 px-2 font-medium ${isDark ? 'text-gray-100' : 'text-gray-800'}`}>{order.clientName}</td>
                       <td className={`py-2 px-2 max-w-[100px] truncate ${isDark ? 'text-gray-300' : 'text-gray-800'}`} title={order.address}>{order.address}</td>
                       <td className={`py-2 px-2 whitespace-nowrap ${isDark ? 'text-gray-300' : 'text-gray-800'}`}>{formatDate(order.dateMeeting)}</td>
                       <td className={`py-2 px-2 whitespace-nowrap ${isDark ? 'text-gray-300' : 'text-gray-800'}`}>
-                        {order.closingData ? formatDate(order.closingData) : '-'}
+                        {order.closingAt ? formatDate(order.closingAt) : '-'}
                       </td>
-                      <td className={`py-2 px-2 ${isDark ? 'text-gray-300' : 'text-gray-800'}`}>{order.typeEquipment}</td>
+                      <td className={`py-2 px-2 ${isDark ? 'text-gray-300' : 'text-gray-800'}`}>{order.equipmentType?.name || '-'}</td>
                       <td className="py-2 px-2 text-center">
-                        <span className={`inline-block px-2 py-0.5 rounded text-xs font-medium ${getStatusStyle(order.statusOrder)}`}>
-                          {order.statusOrder}
+                        <span className={`inline-block px-2 py-0.5 rounded text-xs font-medium ${getStatusStyle(order.status?.name || '')}`}>
+                          {order.status?.name || '-'}
                         </span>
                       </td>
                       <td className={`py-2 px-2 ${isDark ? 'text-gray-300' : 'text-gray-800'}`}>{order.master?.name || '-'}</td>
@@ -901,7 +901,7 @@ function OrdersContent() {
                     {/* Клиент и город */}
                     <div className="flex items-center justify-between mb-1.5">
                       <span className={`font-medium text-sm ${isDark ? 'text-gray-100' : 'text-gray-800'}`}>{order.clientName || 'Без имени'}</span>
-                      <span className={`text-xs ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>{order.city}</span>
+                      <span className={`text-xs ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>{order.city?.name || '-'}</span>
                     </div>
                     
                     {/* Адрес */}
@@ -909,7 +909,7 @@ function OrdersContent() {
                     
                     {/* Направление */}
                     <div className="flex items-start gap-1.5 mb-2">
-                      <span className={`text-xs shrink-0 ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>{order.typeEquipment}</span>
+                      <span className={`text-xs shrink-0 ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>{order.equipmentType?.name || '-'}</span>
                     </div>
                   </div>
                   
@@ -919,8 +919,8 @@ function OrdersContent() {
                   }`}>
                     <span className={`text-xs ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>{order.master?.name || 'Не назначен'}</span>
                     <div className="flex items-center gap-2">
-                      <span className={`px-2 py-0.5 rounded text-xs font-medium ${getStatusStyle(order.statusOrder)}`}>
-                        {order.statusOrder}
+                      <span className={`px-2 py-0.5 rounded text-xs font-medium ${getStatusStyle(order.status?.name || '')}`}>
+                        {order.status?.name || '-'}
                       </span>
                       {order.result && (
                         <span className={`font-bold text-sm ${isDark ? 'text-teal-400' : 'text-teal-600'}`}>

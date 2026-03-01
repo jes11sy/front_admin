@@ -8,7 +8,8 @@ import { logger } from '@/lib/logger'
 import { useDesignStore } from '@/store/design.store'
 
 interface CityBalance {
-  city: string
+  cityId: number
+  cityName: string
   income: number
   expenses: number
   balance: number
@@ -142,7 +143,7 @@ export default function CashboxPage() {
   }, [dateFilter, startDate, endDate, getDateRange])
 
   const filteredCities = cityBalances.filter(city =>
-    city.city.toLowerCase().includes(searchQuery.toLowerCase())
+    city.cityName.toLowerCase().includes(searchQuery.toLowerCase())
   )
 
   // Подсчёт активных фильтров
@@ -409,11 +410,11 @@ export default function CashboxPage() {
               ) : (
                 filteredCities.map((city) => (
                   <tr 
-                    key={city.city}
+                    key={city.cityId}
                     className={`border-b transition-colors cursor-pointer ${isDark ? 'hover:bg-[#3a4451] border-gray-700' : 'hover:bg-teal-50 border-gray-200'}`}
-                    onClick={() => router.push(`/cashbox/${encodeURIComponent(city.city)}`)}
+                    onClick={() => router.push(`/cashbox/${city.cityId}`)}
                   >
-                    <td className={`py-3 px-3 font-medium ${isDark ? 'text-gray-200' : 'text-gray-800'}`}>{city.city}</td>
+                    <td className={`py-3 px-3 font-medium ${isDark ? 'text-gray-200' : 'text-gray-800'}`}>{city.cityName}</td>
                     <td className={`py-3 px-3 text-right font-semibold ${isDark ? 'text-white' : 'text-[#0d5c4b]'}`}>
                       {formatCurrency(city.income)}
                     </td>

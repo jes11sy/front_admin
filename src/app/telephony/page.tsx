@@ -13,7 +13,8 @@ interface PhoneNumber {
   id: number
   phoneNumber: string
   campaign: string
-  city: string
+  cityId: number
+  city?: { id: number; name: string }
   accountName: string
   callsCount: number
   createdAt: string
@@ -93,7 +94,12 @@ export default function TelephonyPage() {
   }
 
   // Получаем уникальные города и РК
-  const uniqueCities = [...new Set(phoneNumbers.map(p => p.city).filter(Boolean))]
+  const uniqueCities = phoneNumbers.reduce((acc: Array<{ id: number; name: string }>, p) => {
+    if (p.city && !acc.find(c => c.id === p.cityId)) {
+      acc.push({ id: p.cityId, name: p.city.name })
+    }
+    return acc
+  }, [])
   const uniqueCampaigns = [...new Set(phoneNumbers.map(p => p.campaign).filter(Boolean))]
 
   // Фильтрация и пагинация
@@ -102,7 +108,7 @@ export default function TelephonyPage() {
       const matchesSearch = !searchQuery || 
         phone.phoneNumber.includes(searchQuery) || 
         phone.accountName?.toLowerCase().includes(searchQuery.toLowerCase())
-      const matchesCity = !cityFilter || phone.city === cityFilter
+      const matchesCity = !cityFilter || phone.cityId === Number(cityFilter)
       const matchesCampaign = !campaignFilter || phone.campaign === campaignFilter
       return matchesSearch && matchesCity && matchesCampaign
     })
@@ -303,7 +309,7 @@ export default function TelephonyPage() {
                       <SelectContent className={isDark ? 'bg-[#2a3441] border-gray-600' : 'bg-white border-gray-200'}>
                         <SelectItem value="all" className={isDark ? 'text-gray-100' : 'text-gray-800'}>Все города</SelectItem>
                         {uniqueCities.map(city => (
-                          <SelectItem key={city} value={city} className={isDark ? 'text-gray-100' : 'text-gray-800'}>{city}</SelectItem>
+                          <SelectItem key={city.id} value={city.id.toString()} className={isDark ? 'text-gray-100' : 'text-gray-800'}>{city.name}</SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
@@ -396,7 +402,7 @@ export default function TelephonyPage() {
                     >
                       <td className={`py-3 px-4 font-mono ${isDark ? 'text-gray-100' : 'text-gray-900'}`}>{phone.phoneNumber}</td>
                       <td className={`py-3 px-4 ${isDark ? 'text-gray-300' : 'text-gray-600'}`}>{phone.campaign}</td>
-                      <td className={`py-3 px-4 ${isDark ? 'text-gray-300' : 'text-gray-600'}`}>{phone.city}</td>
+                      <td className={`py-3 px-4 ${isDark ? 'text-gray-300' : 'text-gray-600'}`}>{phone.city?.name || '-'}</td>
                       <td className={`py-3 px-4 font-medium ${isDark ? 'text-gray-100' : 'text-gray-900'}`}>{phone.accountName}</td>
                       <td className="py-3 px-4 text-center">
                         <span className={`px-3 py-1 rounded-full text-sm font-medium ${isDark ? 'bg-teal-900/50 text-teal-300' : 'bg-teal-100 text-teal-800'}`}>
@@ -453,7 +459,7 @@ export default function TelephonyPage() {
                     </div>
                     <div>
                       <span className={`text-xs ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>Город</span>
-                      <p className={isDark ? 'text-gray-200' : 'text-gray-700'}>{phone.city}</p>
+                      <p className={isDark ? 'text-gray-200' : 'text-gray-700'}>{phone.city?.name || '-'}</p>
                     </div>
                     <div className="col-span-2">
                       <span className={`text-xs ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>Аккаунт</span>

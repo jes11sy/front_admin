@@ -8,13 +8,12 @@ import { useDesignStore } from '@/store/design.store'
 import { toast } from 'sonner'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 
-const ALL_CITIES = ['Саратов', 'Энгельс', 'Ульяновск', 'Пенза', 'Тольятти', 'Омск', 'Ярославль']
-
 interface PhoneData {
   id: string
   phoneNumber: string
   campaign: string
-  city: string
+  cityId: number
+  city?: { id: number; name: string }
   accountName?: string
 }
 
@@ -27,10 +26,11 @@ export default function EditPhoneNumberPage() {
   const theme = useDesignStore((state) => state.theme)
   const isDark = theme === 'dark'
   
+  const [availableCities, setAvailableCities] = useState<Array<{ id: number; name: string }>>([])
   const [formData, setFormData] = useState({
     phoneNumber: '',
     campaign: '',
-    city: '',
+    cityId: 0,
     accountName: ''
   })
   const [errors, setErrors] = useState<{ phoneNumber?: string }>({})
@@ -39,6 +39,10 @@ export default function EditPhoneNumberPage() {
 
   // Загрузка данных
   useEffect(() => {
+    apiClient.getCities().then((cities: Array<{ id: number; name: string }>) => {
+      setAvailableCities(cities)
+    }).catch(() => {})
+
     const loadPhone = async () => {
       setIsLoading(true)
       try {
@@ -48,7 +52,7 @@ export default function EditPhoneNumberPage() {
           setFormData({
             phoneNumber: phone.phoneNumber || '',
             campaign: phone.campaign || '',
-            city: phone.city || '',
+            cityId: phone.cityId || phone.city?.id || 0,
             accountName: phone.accountName || ''
           })
         } else {
@@ -93,7 +97,7 @@ export default function EditPhoneNumberPage() {
       const response = await apiClient.updatePhone(phoneId, {
         phoneNumber: formData.phoneNumber,
         campaign: formData.campaign,
-        city: formData.city,
+        cityId: formData.cityId,
         accountName: formData.accountName
       })
       
@@ -200,16 +204,16 @@ export default function EditPhoneNumberPage() {
                 Город <span className="text-red-500">*</span>
               </label>
               <Select 
-                value={formData.city} 
-                onValueChange={(v) => setFormData({ ...formData, city: v })}
+                value={formData.cityId ? formData.cityId.toString() : ''} 
+                onValueChange={(v) => setFormData({ ...formData, cityId: Number(v) })}
                 disabled={isSubmitting}
               >
                 <SelectTrigger className={`w-full h-12 ${isDark ? 'bg-[#3a4451] border-gray-600 text-gray-100' : 'bg-white border-gray-200 text-gray-800'}`}>
                   <SelectValue placeholder="Выберите город" />
                 </SelectTrigger>
                 <SelectContent className={isDark ? 'bg-[#2a3441] border-gray-600' : 'bg-white border-gray-200'}>
-                  {ALL_CITIES.map(city => (
-                    <SelectItem key={city} value={city} className={isDark ? 'text-gray-100' : 'text-gray-800'}>{city}</SelectItem>
+                  {availableCities.map(city => (
+                    <SelectItem key={city.id} value={city.id.toString()} className={isDark ? 'text-gray-100' : 'text-gray-800'}>{city.name}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>

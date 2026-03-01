@@ -9,7 +9,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 interface ApiMasterReport {
   masterId: number
   masterName: string
-  city: string
+  cityId?: number
+  cityName?: string
+  city?: string
   totalOrders: number
   turnover: number
   avgCheck: number
@@ -19,7 +21,8 @@ interface ApiMasterReport {
 interface MasterReport {
   id: number
   name: string
-  city: string
+  cityId: number
+  cityName: string
   ordersCompleted: number
   revenue: number
   avgCheck: number
@@ -44,7 +47,7 @@ export default function MastersReportPage() {
   
   const [showFilterDrawer, setShowFilterDrawer] = useState(false)
   const [mastersData, setMastersData] = useState<MasterReport[]>([])
-  const [allCities, setAllCities] = useState<string[]>([])
+  const [allCities, setAllCities] = useState<Array<{ id: number; name: string }>>([])
   const [isLoading, setIsLoading] = useState(true)
 
   // Быстрые периоды для фильтра
@@ -111,16 +114,13 @@ export default function MastersReportPage() {
         const mappedData: MasterReport[] = response.data.map((item: ApiMasterReport) => ({
           id: item.masterId,
           name: item.masterName,
-          city: item.city,
+          cityId: item.cityId ?? 0,
+          cityName: item.cityName ?? item.city ?? '',
           ordersCompleted: item.totalOrders,
           revenue: item.turnover,
           avgCheck: item.avgCheck,
           salary: item.salary
         }))
-        
-        // Получаем уникальные города
-        const cities = [...new Set(mappedData.map(d => d.city))]
-        setAllCities(cities)
         
         setMastersData(mappedData)
       } else {
@@ -136,6 +136,9 @@ export default function MastersReportPage() {
   }
 
   useEffect(() => {
+    apiClient.getCities().then((cities: Array<{ id: number; name: string }>) => {
+      setAllCities(cities)
+    }).catch(() => {})
     loadData()
   }, [])
 
@@ -190,27 +193,29 @@ export default function MastersReportPage() {
   // Фильтруем данные
   const filteredMasters = mastersData
     .filter(master => master.ordersCompleted > 0)
-    .filter(master => !cityFilter || master.city === cityFilter)
+    .filter(master => !cityFilter || master.cityId === Number(cityFilter))
     .filter(master => 
       !searchQuery || 
       master.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      master.city.toLowerCase().includes(searchQuery.toLowerCase())
+      master.cityName.toLowerCase().includes(searchQuery.toLowerCase())
     )
 
   // Группируем по городам
   const getDataByCity = () => {
     return filteredMasters.reduce((acc, report) => {
-      if (!acc[report.city]) {
-        acc[report.city] = []
+      const key = report.cityName || String(report.cityId)
+      if (!acc[key]) {
+        acc[key] = []
       }
-      acc[report.city].push(report)
+      acc[key].push(report)
       return acc
     }, {} as Record<string, MasterReport[]>)
   }
 
   const dataByCity = getDataByCity()
-  const displayCities = cityFilter 
-    ? [cityFilter].filter(c => dataByCity[c])
+  const selectedCityName = cityFilter ? allCities.find(c => c.id === Number(cityFilter))?.name : undefined
+  const displayCities = selectedCityName
+    ? [selectedCityName].filter(c => dataByCity[c])
     : Object.keys(dataByCity)
 
   // Вычисляем общие итоги
@@ -270,7 +275,7 @@ export default function MastersReportPage() {
                     )}
                     {cityFilter && (
                       <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium border ${isDark ? 'bg-teal-900/30 text-teal-300 border-teal-700' : 'bg-teal-50 text-teal-700 border-teal-200'}`}>
-                        {cityFilter}
+                        {allCities.find(c => c.id === Number(cityFilter))?.name || cityFilter}
                         <button onClick={() => setCityFilter('')} className={`ml-1 ${isDark ? 'hover:text-teal-100' : 'hover:text-teal-900'}`}>×</button>
                       </span>
                     )}
@@ -387,7 +392,7 @@ export default function MastersReportPage() {
                       <SelectContent className={isDark ? 'bg-[#2a3441] border-gray-600' : 'bg-white border-gray-200'}>
                         <SelectItem value="all" className={isDark ? 'text-gray-100 focus:bg-[#3a4451] focus:text-teal-400' : 'text-gray-800 focus:bg-teal-50 focus:text-teal-700'}>Все города</SelectItem>
                         {allCities.map(city => (
-                          <SelectItem key={city} value={city} className={isDark ? 'text-gray-100 focus:bg-[#3a4451] focus:text-teal-400' : 'text-gray-800 focus:bg-teal-50 focus:text-teal-700'}>{city}</SelectItem>
+                          <SelectItem key={city.id} value={city.id.toString()} className={isDark ? 'text-gray-100 focus:bg-[#3a4451] focus:text-teal-400' : 'text-gray-800 focus:bg-teal-50 focus:text-teal-700'}>{city.name}</SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
@@ -477,7 +482,7 @@ export default function MastersReportPage() {
                             
                             return (
                               <tr 
-                                key={`${report.id}-${report.city}`} 
+                                key={`${report.id}-${report.cityId}`} 
                                 className={`border-b transition-colors ${isDark ? 'border-gray-700 hover:bg-[#3a4451]' : 'hover:bg-teal-50'}`}
                               >
                                 <td className={`py-3 px-3 text-center font-medium ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>

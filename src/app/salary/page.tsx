@@ -10,12 +10,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 interface Director {
   id: number
   name: string
-  cities: string[]
+  cityIds: number[]
 }
 
 interface SalaryRecord {
   id: string
-  city: string
+  cityId: number
+  cityName: string
   directorName: string
   turnoverOur: number
   turnoverPartner: number
@@ -47,6 +48,7 @@ export default function SalaryPage() {
   const [draftCityFilter, setDraftCityFilter] = useState('')
   const [draftStartDate, setDraftStartDate] = useState('')
   const [draftEndDate, setDraftEndDate] = useState('')
+  const [availableCities, setAvailableCities] = useState<Array<{ id: number; name: string }>>([])
 
   // Функция для получения дат периода
   const getDateRange = (selectedPeriod: DatePeriod, customStart?: string, customEnd?: string) => {
@@ -98,6 +100,12 @@ export default function SalaryPage() {
   }
 
   useEffect(() => {
+    apiClient.getCities().then((cities: Array<{ id: number; name: string }>) => {
+      setAvailableCities(cities)
+    }).catch(() => {})
+  }, [])
+
+  useEffect(() => {
     const loadData = async () => {
       setIsLoading(true)
       try {
@@ -110,34 +118,44 @@ export default function SalaryPage() {
         const directors: Director[] = directorsResponse.data
         const dateRange = getDateRange(period, startDate, endDate)
 
-        const citiesReportResponse = await apiClient.getCitiesReport({
-          startDate: dateRange.start,
-          endDate: dateRange.end
-        })
+        const [citiesReportResponse, citiesResp] = await Promise.all([
+          apiClient.getCitiesReport({
+            startDate: dateRange.start,
+            endDate: dateRange.end
+          }),
+          apiClient.getCities()
+        ])
 
         if (!citiesReportResponse.success || !citiesReportResponse.data) {
           toast.error('Не удалось загрузить отчет по городам')
           return
         }
 
-        const cityTurnoverOur = new Map<string, number>()
-        const cityTurnoverPartner = new Map<string, number>()
+        const citiesMap: Array<{ id: number; name: string }> = citiesResp || []
+        setAvailableCities(citiesMap)
+
+        const cityTurnoverOur = new Map<number, number>()
+        const cityTurnoverPartner = new Map<number, number>()
         
         citiesReportResponse.data.forEach((cityData: any) => {
-          cityTurnoverOur.set(cityData.city, cityData.orders.totalCleanOur || 0)
-          cityTurnoverPartner.set(cityData.city, cityData.orders.totalCleanPartner || 0)
+          const cId = cityData.cityId
+          cityTurnoverOur.set(cId, cityData.orders.totalCleanOur || 0)
+          cityTurnoverPartner.set(cId, cityData.orders.totalCleanPartner || 0)
         })
 
         const records: SalaryRecord[] = []
         directors.forEach((director) => {
-          director.cities.forEach((city) => {
-            const turnoverOur = cityTurnoverOur.get(city) || 0
-            const turnoverPartner = cityTurnoverPartner.get(city) || 0
+          const cityIds: number[] = director.cityIds || []
+          cityIds.forEach((cityId) => {
+            const cityName = citiesMap.find(c => c.id === cityId)?.name || String(cityId)
+            const turnoverOur = cityTurnoverOur.get(cityId) || 0
+            const turnoverPartner = cityTurnoverPartner.get(cityId) || 0
             const salary = turnoverOur * 0.07
             
             records.push({
-              id: `${director.id}-${city}`,
-              city,
+              id: `${director.id}-${cityId}`,
+              cityId,
+              cityName,
               directorName: director.name,
               turnoverOur,
               turnoverPartner,
@@ -159,14 +177,19 @@ export default function SalaryPage() {
   }, [period, startDate, endDate])
 
   // Уникальные города
-  const uniqueCities = [...new Set(salaryRecords.map(r => r.city).filter(Boolean))]
+  const uniqueCities = salaryRecords.reduce((acc: Array<{ id: number; name: string }>, r) => {
+    if (!acc.find(c => c.id === r.cityId)) {
+      acc.push({ id: r.cityId, name: r.cityName })
+    }
+    return acc
+  }, [])
 
   // Фильтрация
   const filteredRecords = salaryRecords.filter(record => {
     const matchesSearch = !searchQuery || 
       record.directorName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      record.city.toLowerCase().includes(searchQuery.toLowerCase())
-    const matchesCity = !cityFilter || record.city === cityFilter
+      record.cityName.toLowerCase().includes(searchQuery.toLowerCase())
+    const matchesCity = !cityFilter || record.cityId === Number(cityFilter)
     return matchesSearch && matchesCity
   })
 
@@ -436,7 +459,7 @@ export default function SalaryPage() {
                       <SelectContent className={isDark ? 'bg-[#2a3441] border-gray-600' : 'bg-white border-gray-200'}>
                         <SelectItem value="all" className={isDark ? 'text-gray-100' : 'text-gray-800'}>Все города</SelectItem>
                         {uniqueCities.map(city => (
-                          <SelectItem key={city} value={city} className={isDark ? 'text-gray-100' : 'text-gray-800'}>{city}</SelectItem>
+                          <SelectItem key={city.id} value={city.id.toString()} className={isDark ? 'text-gray-100' : 'text-gray-800'}>{city.name}</SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
@@ -509,7 +532,7 @@ export default function SalaryPage() {
                       key={record.id} 
                       className={`border-b transition-colors ${isDark ? 'border-gray-700 hover:bg-[#3a4451]' : 'border-gray-200 hover:bg-gray-50'}`}
                     >
-                      <td className={`py-3 px-4 font-medium ${isDark ? 'text-gray-100' : 'text-gray-900'}`}>{record.city}</td>
+                      <td className={`py-3 px-4 font-medium ${isDark ? 'text-gray-100' : 'text-gray-900'}`}>{record.cityName}</td>
                       <td className={`py-3 px-4 ${isDark ? 'text-gray-300' : 'text-gray-600'}`}>
                         {record.directorName}
                       </td>
@@ -547,7 +570,7 @@ export default function SalaryPage() {
               >
                 {/* Верхняя строка */}
                 <div className={`flex items-center justify-between px-4 py-3 border-b ${isDark ? 'bg-[#3a4451] border-gray-700' : 'bg-gray-50 border-gray-100'}`}>
-                  <span className={`font-semibold ${isDark ? 'text-gray-100' : 'text-gray-800'}`}>{record.city}</span>
+                  <span className={`font-semibold ${isDark ? 'text-gray-100' : 'text-gray-800'}`}>{record.cityName}</span>
                   <span className={`text-lg font-bold ${isDark ? 'text-gray-100' : 'text-gray-800'}`}>
                     {formatCurrency(record.salary)}
                   </span>

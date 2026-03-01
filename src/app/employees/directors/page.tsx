@@ -10,13 +10,13 @@ import { OptimizedPagination } from '@/components/ui/optimized-pagination'
 
 interface Director {
   id: number
-  cities: string[]
+  cityIds: number[]
   name: string
   login: string
-  dateCreate: string
+  createdAt: string
   note?: string
-  contractDoc?: string
-  passportDoc?: string
+  contract?: string
+  passport?: string
 }
 
 export default function DirectorsPage() {
@@ -59,12 +59,13 @@ export default function DirectorsPage() {
     }
   }
 
-  // Получаем уникальные города для фильтра
-  const uniqueCities = useMemo(() => {
-    const cities = new Set<string>()
-    directors.forEach(d => d.cities?.forEach(c => cities.add(c)))
-    return Array.from(cities).sort()
-  }, [directors])
+  const [availableCities, setAvailableCities] = useState<Array<{ id: number; name: string }>>([])
+
+  useEffect(() => {
+    apiClient.getCities().then(cities => setAvailableCities(cities)).catch(console.error)
+  }, [])
+
+  const uniqueCities = availableCities
 
   // Фильтрация и сортировка данных
   const { filteredAndSortedData, totalPages, paginatedData } = useMemo(() => {
@@ -83,15 +84,16 @@ export default function DirectorsPage() {
     
     // Фильтруем по городу
     if (cityFilter) {
+      const cityIdNum = Number(cityFilter)
       filtered = filtered.filter(director => 
-        director.cities?.includes(cityFilter)
+        director.cityIds?.includes(cityIdNum)
       )
     }
     
     // Сортируем по дате создания (новые первыми)
     const sorted = filtered.sort((a, b) => {
-      const aDate = new Date(a.dateCreate || 0).getTime()
-      const bDate = new Date(b.dateCreate || 0).getTime()
+      const aDate = new Date(a.createdAt || 0).getTime()
+      const bDate = new Date(b.createdAt || 0).getTime()
       return bDate - aDate
     })
     
@@ -210,7 +212,7 @@ export default function DirectorsPage() {
               >
                 <option value="">Все города</option>
                 {uniqueCities.map(city => (
-                  <option key={city} value={city}>{city}</option>
+                  <option key={city.id} value={String(city.id)}>{city.name}</option>
                 ))}
               </select>
             </div>
@@ -273,26 +275,29 @@ export default function DirectorsPage() {
                   <td className={`py-3 px-4 font-medium ${isDark ? 'text-gray-200' : 'text-gray-800'}`}>{director.name}</td>
                   <td className={`py-3 px-4 ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>{director.login || '-'}</td>
                   <td className="py-3 px-4">
-                    {director.cities && director.cities.length > 0 ? (
+                    {director.cityIds && director.cityIds.length > 0 ? (
                       <div className="flex flex-wrap gap-1">
-                        {director.cities.map((city, idx) => (
-                          <span 
-                            key={idx} 
-                            className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
-                              isDark 
-                                ? 'bg-gray-600 text-gray-100' 
-                                : 'bg-gray-200 text-gray-700'
-                            }`}
-                          >
-                            {city}
-                          </span>
-                        ))}
+                        {director.cityIds.map((cityId) => {
+                          const city = availableCities.find(c => c.id === cityId)
+                          return (
+                            <span 
+                              key={cityId} 
+                              className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
+                                isDark 
+                                  ? 'bg-gray-600 text-gray-100' 
+                                  : 'bg-gray-200 text-gray-700'
+                              }`}
+                            >
+                              {city?.name || cityId}
+                            </span>
+                          )
+                        })}
                       </div>
                     ) : (
                       <span className={isDark ? 'text-gray-500' : 'text-gray-400'}>-</span>
                     )}
                   </td>
-                  <td className={`py-3 px-4 ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>{formatDate(director.dateCreate)}</td>
+                  <td className={`py-3 px-4 ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>{formatDate(director.createdAt)}</td>
                   <td className="py-3 px-4">
                     <div className="flex items-center gap-1">
                       <button

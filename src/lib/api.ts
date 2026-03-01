@@ -551,13 +551,13 @@ class ApiClient {
 
   // Мастера
   async getMasters(params?: {
-    city?: string
-    statusWork?: string
+    cityId?: number
+    status?: string
     search?: string
   }) {
     const searchParams = new URLSearchParams()
-    if (params?.city) searchParams.append('city', params.city)
-    if (params?.statusWork) searchParams.append('statusWork', params.statusWork)
+    if (params?.cityId) searchParams.append('cityId', params.cityId.toString())
+    if (params?.status) searchParams.append('status', params.status)
     if (params?.search) searchParams.append('search', params.search)
 
     const query = searchParams.toString()
@@ -717,13 +717,13 @@ class ApiClient {
     page?: number
     limit?: number
     status?: string
-    city?: string
+    cityId?: number
     search?: string
     masterId?: number
     master?: string
     closingDate?: string
-    rk?: string
-    typeEquipment?: string
+    rkId?: number
+    equipmentTypeId?: number
     dateType?: 'create' | 'close' | 'meeting'
     dateFrom?: string
     dateTo?: string
@@ -732,13 +732,13 @@ class ApiClient {
     if (params?.page) searchParams.append('page', params.page.toString())
     if (params?.limit) searchParams.append('limit', params.limit.toString())
     if (params?.status) searchParams.append('status', params.status)
-    if (params?.city) searchParams.append('city', params.city)
+    if (params?.cityId) searchParams.append('cityId', params.cityId.toString())
     if (params?.search) searchParams.append('search', params.search)
     if (params?.masterId) searchParams.append('masterId', params.masterId.toString())
     if (params?.master) searchParams.append('master', params.master)
     if (params?.closingDate) searchParams.append('closingDate', params.closingDate)
-    if (params?.rk) searchParams.append('rk', params.rk)
-    if (params?.typeEquipment) searchParams.append('typeEquipment', params.typeEquipment)
+    if (params?.rkId) searchParams.append('rkId', params.rkId.toString())
+    if (params?.equipmentTypeId) searchParams.append('equipmentTypeId', params.equipmentTypeId.toString())
     if (params?.dateType) searchParams.append('dateType', params.dateType)
     if (params?.dateFrom) searchParams.append('dateFrom', params.dateFrom)
     if (params?.dateTo) searchParams.append('dateTo', params.dateTo)
@@ -749,7 +749,17 @@ class ApiClient {
 
   // Получение опций для фильтров заказов
   async getFilterOptions() {
-    return this.request<{ rks: string[], typeEquipments: string[], cities: string[] }>('/orders/filter-options')
+    return this.request<{
+      rks: Array<{ id: number; name: string }>
+      equipmentTypes: Array<{ id: number; name: string }>
+      cities: Array<{ id: number; name: string }>
+    }>('/orders/filter-options')
+  }
+
+  // Получение списка городов (для выбора городов у сотрудников)
+  async getCities() {
+    const response = await this.getFilterOptions()
+    return response.data?.cities ?? []
   }
 
   async getOrder(id: string) {
@@ -780,13 +790,13 @@ class ApiClient {
   async getOrderStats(params?: {
     startDate?: string
     endDate?: string
-    city?: string
+    cityId?: number
     masterId?: number
   }) {
     const searchParams = new URLSearchParams()
     if (params?.startDate) searchParams.append('startDate', params.startDate)
     if (params?.endDate) searchParams.append('endDate', params.endDate)
-    if (params?.city) searchParams.append('city', params.city)
+    if (params?.cityId) searchParams.append('cityId', params.cityId.toString())
     if (params?.masterId) searchParams.append('masterId', params.masterId.toString())
 
     const query = searchParams.toString()
@@ -798,8 +808,7 @@ class ApiClient {
     page?: number
     limit?: number
     type?: string
-    city?: string
-    name?: string
+    cityId?: number
     startDate?: string
     endDate?: string
   }) {
@@ -807,8 +816,7 @@ class ApiClient {
     if (params?.page) searchParams.append('page', params.page.toString())
     if (params?.limit) searchParams.append('limit', params.limit.toString())
     if (params?.type) searchParams.append('type', params.type)
-    if (params?.city) searchParams.append('city', params.city)
-    if (params?.name) searchParams.append('name', params.name)
+    if (params?.cityId) searchParams.append('cityId', params.cityId.toString())
     if (params?.startDate) searchParams.append('startDate', params.startDate)
     if (params?.endDate) searchParams.append('endDate', params.endDate)
 
@@ -851,7 +859,7 @@ class ApiClient {
     return this.request<any>('/cash/balance')
   }
 
-  async getCashByCity(city: string, params?: {
+  async getCashByCityId(cityId: number, params?: {
     page?: number
     limit?: number
     type?: string
@@ -859,7 +867,7 @@ class ApiClient {
     endDate?: string
   }) {
     const searchParams = new URLSearchParams()
-    searchParams.append('city', city)
+    searchParams.append('cityId', cityId.toString())
     if (params?.page) searchParams.append('page', params.page.toString())
     if (params?.limit) searchParams.append('limit', params.limit.toString())
     if (params?.type) searchParams.append('type', params.type)
@@ -876,13 +884,13 @@ class ApiClient {
    * Сервер считает суммы через SQL - это быстрее и надежнее
    */
   async getCashStats(params?: {
-    city?: string
-    type?: 'приход' | 'расход'
+    cityId?: number
+    type?: 'income' | 'expense'
     startDate?: string
     endDate?: string
   }) {
     const searchParams = new URLSearchParams()
-    if (params?.city) searchParams.append('city', params.city)
+    if (params?.cityId) searchParams.append('cityId', params.cityId.toString())
     if (params?.type) searchParams.append('type', params.type)
     if (params?.startDate) searchParams.append('startDate', params.startDate)
     if (params?.endDate) searchParams.append('endDate', params.endDate)
@@ -912,7 +920,8 @@ class ApiClient {
     const query = searchParams.toString()
     return this.request<{
       cities: Array<{
-        city: string
+        cityId: number
+        cityName: string
         income: number
         expenses: number
         balance: number
@@ -955,10 +964,10 @@ class ApiClient {
     name: string
     login: string
     password: string
-    cities: string[]
+    cityIds: number[]
     tgId?: string
-    passportDoc?: string
-    contractDoc?: string
+    passport?: string
+    contract?: string
     note?: string
   }) {
     return this.request<any>('/directors', {
@@ -971,10 +980,10 @@ class ApiClient {
     name?: string
     login?: string
     password?: string
-    cities?: string[]
+    cityIds?: number[]
     tgId?: string
-    passportDoc?: string
-    contractDoc?: string
+    passport?: string
+    contract?: string
     note?: string
   }) {
     return this.request<any>(`/directors/${id}`, {
@@ -1006,13 +1015,13 @@ class ApiClient {
   async getCashByPurpose(params?: {
     startDate?: string
     endDate?: string
-    city?: string
+    cityId?: number
     purposes?: string[]
   }) {
     const searchParams = new URLSearchParams()
     if (params?.startDate) searchParams.append('startDate', params.startDate)
     if (params?.endDate) searchParams.append('endDate', params.endDate)
-    if (params?.city) searchParams.append('city', params.city)
+    if (params?.cityId) searchParams.append('cityId', params.cityId.toString())
     if (params?.purposes && params.purposes.length > 0) {
       searchParams.append('purposes', params.purposes.join(','))
     }
@@ -1027,14 +1036,14 @@ class ApiClient {
   async getOrdersReport(params?: {
     startDate?: string
     endDate?: string
-    city?: string
+    cityId?: number
     status?: string
     masterId?: number
   }) {
     const searchParams = new URLSearchParams()
     if (params?.startDate) searchParams.append('startDate', params.startDate)
     if (params?.endDate) searchParams.append('endDate', params.endDate)
-    if (params?.city) searchParams.append('city', params.city)
+    if (params?.cityId) searchParams.append('cityId', params.cityId.toString())
     if (params?.status) searchParams.append('status', params.status)
     if (params?.masterId) searchParams.append('masterId', params.masterId.toString())
 
@@ -1045,12 +1054,12 @@ class ApiClient {
   async getCitiesReport(params?: {
     startDate?: string
     endDate?: string
-    city?: string
+    cityId?: number
   }) {
     const searchParams = new URLSearchParams()
     if (params?.startDate) searchParams.append('startDate', params.startDate)
     if (params?.endDate) searchParams.append('endDate', params.endDate)
-    if (params?.city) searchParams.append('city', params.city)
+    if (params?.cityId) searchParams.append('cityId', params.cityId.toString())
 
     const query = searchParams.toString()
     return this.request<any>(`/reports/city${query ? `?${query}` : ''}`)
@@ -1073,12 +1082,12 @@ class ApiClient {
   async getCampaignsReport(params?: {
     startDate?: string
     endDate?: string
-    city?: string
+    cityId?: number
   }) {
     const searchParams = new URLSearchParams()
     if (params?.startDate) searchParams.append('startDate', params.startDate)
     if (params?.endDate) searchParams.append('endDate', params.endDate)
-    if (params?.city) searchParams.append('city', params.city)
+    if (params?.cityId) searchParams.append('cityId', params.cityId.toString())
 
     const query = searchParams.toString()
     return this.request<any>(`/reports/campaigns${query ? `?${query}` : ''}`)
@@ -1486,15 +1495,17 @@ class ApiClient {
     data: Array<{
       id: number;
       clientName: string;
-      city: string;
-      statusOrder: string;
+      cityId: number;
+      city?: { id: number; name: string };
+      statusId: number;
+      status?: { id: number; name: string; code: string };
       dateMeeting: string;
-      typeEquipment: string;
+      equipmentTypeId: number;
+      equipmentType?: { id: number; name: string };
       typeOrder: string;
-      problem: string;
       createdAt: string;
-      rk: string;
-      avitoName: string;
+      rkId: number;
+      rk?: { id: number; name: string };
       address: string;
       result: number | null;
       master: { id: number; name: string } | null;
@@ -1507,15 +1518,17 @@ class ApiClient {
       const response = await this.request<Array<{
         id: number;
         clientName: string;
-        city: string;
-        statusOrder: string;
+        cityId: number;
+        city?: { id: number; name: string };
+        statusId: number;
+        status?: { id: number; name: string; code: string };
         dateMeeting: string;
-        typeEquipment: string;
+        equipmentTypeId: number;
+        equipmentType?: { id: number; name: string };
         typeOrder: string;
-        problem: string;
         createdAt: string;
-        rk: string;
-        avitoName: string;
+        rkId: number;
+        rk?: { id: number; name: string };
         address: string;
         result: number | null;
         master: { id: number; name: string } | null;
