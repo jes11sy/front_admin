@@ -19,7 +19,7 @@ interface LoginAttempt {
 interface UserSession {
   userId: number
   fullName: string
-  role: 'admin' | 'director' | 'callcenter' | 'master'
+  role: 'admin' | 'director' | 'operator' | 'master'
   currentSession: {
     device: string
     deviceType: 'desktop' | 'mobile' | 'tablet'

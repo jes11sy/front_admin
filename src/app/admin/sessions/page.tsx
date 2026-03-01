@@ -12,7 +12,7 @@ import { OptimizedPagination } from '@/components/ui/optimized-pagination'
 interface Session {
   userId: number
   fullName: string
-  role: 'admin' | 'director' | 'callcenter' | 'master'
+  role: 'admin' | 'director' | 'operator' | 'master'
   device: string
   deviceType: 'desktop' | 'mobile' | 'tablet'
   ip: string
@@ -43,7 +43,7 @@ export default function SessionsPage() {
     { value: 'all', label: 'Все роли' },
     { value: 'admin', label: 'Администратор' },
     { value: 'director', label: 'Директор' },
-    { value: 'callcenter', label: 'Кол-центр' },
+    { value: 'operator', label: 'Кол-центр' },
     { value: 'master', label: 'Мастер' },
   ]
 

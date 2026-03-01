@@ -765,8 +765,8 @@ class ApiClient {
 
   // Получение списка городов (для выбора городов у сотрудников)
   async getCities() {
-    const response = await this.getFilterOptions()
-    return response.data?.cities ?? []
+    const response = await this.getCitiesList({ isActive: true })
+    return response.data ?? []
   }
 
   async getOrder(id: string) {
