@@ -1,6 +1,6 @@
 'use client'
 
-import { PhoneCall, PhoneIncoming, PhoneOutgoing, Plus, Edit, Trash2 } from 'lucide-react'
+import { PhoneCall, Plus, Edit, Trash2 } from 'lucide-react'
 import { useState, useEffect, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { apiClient } from '@/lib/api'
@@ -45,13 +45,6 @@ export default function TelephonyPage() {
   // Пагинация
   const [currentPage, setCurrentPage] = useState(1)
   const itemsPerPage = 20
-
-  // Мок-данные для статистики
-  const stats = {
-    totalCalls: 1245,
-    incomingCalls: 856,
-    missedCalls: 389,
-  }
 
   useEffect(() => {
     loadPhones()
@@ -161,33 +154,6 @@ export default function TelephonyPage() {
     <div className={`min-h-screen transition-colors duration-300 ${isDark ? 'bg-[#1e2530]' : 'bg-white'}`}>
       <div className="px-4 py-6">
         
-        {/* Статистика звонков - компактные карточки */}
-        <div className="grid grid-cols-3 gap-3 mb-6">
-          <div className={`rounded-xl p-4 ${isDark ? 'bg-[#2a3441]' : 'bg-gray-50'}`}>
-            <div className="flex items-center justify-between mb-2">
-              <span className={`text-xs font-medium ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>Всего</span>
-              <PhoneCall className={`h-4 w-4 ${isDark ? 'text-teal-400' : 'text-teal-600'}`} />
-            </div>
-            <div className={`text-2xl font-bold ${isDark ? 'text-gray-100' : 'text-gray-800'}`}>{stats.totalCalls}</div>
-          </div>
-          
-          <div className={`rounded-xl p-4 ${isDark ? 'bg-[#2a3441]' : 'bg-gray-50'}`}>
-            <div className="flex items-center justify-between mb-2">
-              <span className={`text-xs font-medium ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>Входящие</span>
-              <PhoneIncoming className="h-4 w-4 text-green-500" />
-            </div>
-            <div className={`text-2xl font-bold ${isDark ? 'text-gray-100' : 'text-gray-800'}`}>{stats.incomingCalls}</div>
-          </div>
-          
-          <div className={`rounded-xl p-4 ${isDark ? 'bg-[#2a3441]' : 'bg-gray-50'}`}>
-            <div className="flex items-center justify-between mb-2">
-              <span className={`text-xs font-medium ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>Пропущенные</span>
-              <PhoneOutgoing className="h-4 w-4 text-red-500" />
-            </div>
-            <div className={`text-2xl font-bold ${isDark ? 'text-gray-100' : 'text-gray-800'}`}>{stats.missedCalls}</div>
-          </div>
-        </div>
-
         {/* Панель действий */}
         <div className="flex items-center gap-2 mb-4">
           <h1 className={`text-lg font-semibold flex-1 ${isDark ? 'text-gray-100' : 'text-gray-800'}`}>
