@@ -149,7 +149,7 @@ export default function OrderStatusesPage() {
               {items.length === 0 ? (
                 <tr><td colSpan={7} className="py-8 text-center text-gray-400">Нет данных</td></tr>
               ) : items.map(item => (
-                <tr key={item.id} className={`border-b ${isDark ? 'hover:bg-[#3a4451] border-gray-700' : 'hover:bg-teal-50 border-gray-200'`}>
+                <tr key={item.id} className={`border-b transition-colors ${isDark ? 'hover:bg-[#3a4451] border-gray-700' : 'hover:bg-teal-50 border-gray-200'}`}>
                   {editingId === item.id ? (
                     <td colSpan={7} className="py-3 px-4">
                       <FormFields />
