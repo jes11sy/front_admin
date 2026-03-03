@@ -11,21 +11,24 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 export default function AddPhoneNumberPage() {
   const router = useRouter()
   
-  // Тема
   const theme = useDesignStore((state) => state.theme)
   const isDark = theme === 'dark'
   
   const [availableCities, setAvailableCities] = useState<Array<{ id: number; name: string }>>([])
+  const [availableRks, setAvailableRks] = useState<Array<{ id: number; name: string; code: string }>>([])
   const [formData, setFormData] = useState({
     phoneNumber: '',
-    campaign: '',
+    rkId: 0,
     cityId: 0,
-    accountName: ''
+    source: ''
   })
 
   useEffect(() => {
     apiClient.getCities().then((cities: Array<{ id: number; name: string }>) => {
       setAvailableCities(cities)
+    }).catch(() => {})
+    apiClient.getRkList({ isActive: true }).then((res: any) => {
+      setAvailableRks(res.data ?? [])
     }).catch(() => {})
   }, [])
   const [errors, setErrors] = useState<{ phoneNumber?: string }>({})
@@ -54,9 +57,9 @@ export default function AddPhoneNumberPage() {
     try {
       const response = await apiClient.createPhone({
         phoneNumber: formData.phoneNumber,
-        campaign: formData.campaign,
+        rkId: formData.rkId,
         cityId: formData.cityId,
-        accountName: formData.accountName
+        source: formData.source || undefined,
       })
       
       if (response.success) {
@@ -128,18 +131,16 @@ export default function AddPhoneNumberPage() {
               <label className={`block text-sm font-medium mb-2 ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
                 РК <span className="text-red-500">*</span>
               </label>
-              <input
-                type="text"
-                required
-                value={formData.campaign}
-                onChange={(e) => setFormData({ ...formData, campaign: e.target.value })}
-                placeholder="РК_Саратов_1"
-                className={`w-full px-4 py-3 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent transition-all ${
-                  isDark 
-                    ? 'bg-[#3a4451] border-gray-600 text-gray-100 placeholder-gray-500'
-                    : 'bg-white border-gray-200 text-gray-800 placeholder-gray-400'
-                }`}
-              />
+              <Select value={formData.rkId ? formData.rkId.toString() : ''} onValueChange={(v) => setFormData({ ...formData, rkId: Number(v) })}>
+                <SelectTrigger className={`w-full h-12 ${isDark ? 'bg-[#3a4451] border-gray-600 text-gray-100' : 'bg-white border-gray-200 text-gray-800'}`}>
+                  <SelectValue placeholder="Выберите РК" />
+                </SelectTrigger>
+                <SelectContent className={isDark ? 'bg-[#2a3441] border-gray-600' : 'bg-white border-gray-200'}>
+                  {availableRks.map(rk => (
+                    <SelectItem key={rk.id} value={rk.id.toString()} className={isDark ? 'text-gray-100' : 'text-gray-800'}>{rk.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
 
             {/* Город */}
@@ -159,17 +160,16 @@ export default function AddPhoneNumberPage() {
               </Select>
             </div>
 
-            {/* Имя аккаунта */}
+            {/* Источник */}
             <div>
               <label className={`block text-sm font-medium mb-2 ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
-                Имя аккаунта Авито <span className="text-red-500">*</span>
+                Источник
               </label>
               <input
                 type="text"
-                required
-                value={formData.accountName}
-                onChange={(e) => setFormData({ ...formData, accountName: e.target.value })}
-                placeholder="Avito_Saratov_Main"
+                value={formData.source}
+                onChange={(e) => setFormData({ ...formData, source: e.target.value })}
+                placeholder="Авито, Яндекс, Листовка..."
                 className={`w-full px-4 py-3 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent transition-all ${
                   isDark 
                     ? 'bg-[#3a4451] border-gray-600 text-gray-100 placeholder-gray-500'

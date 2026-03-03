@@ -12,10 +12,12 @@ import { OptimizedPagination } from '@/components/ui/optimized-pagination'
 interface PhoneNumber {
   id: number
   phoneNumber: string
-  campaign: string
+  rkId: number
+  rkName: string
+  rkCode: string
   cityId: number
-  city?: { id: number; name: string }
-  accountName: string
+  cityName: string
+  source: string | null
   callsCount: number
   createdAt: string
 }
@@ -86,23 +88,27 @@ export default function TelephonyPage() {
     }
   }
 
-  // Получаем уникальные города и РК
   const uniqueCities = phoneNumbers.reduce((acc: Array<{ id: number; name: string }>, p) => {
-    if (p.city && !acc.find(c => c.id === p.cityId)) {
-      acc.push({ id: p.cityId, name: p.city.name })
+    if (p.cityName && !acc.find(c => c.id === p.cityId)) {
+      acc.push({ id: p.cityId, name: p.cityName })
     }
     return acc
   }, [])
-  const uniqueCampaigns = [...new Set(phoneNumbers.map(p => p.campaign).filter(Boolean))]
+  const uniqueRks = phoneNumbers.reduce((acc: Array<{ id: number; name: string }>, p) => {
+    if (p.rkName && !acc.find(r => r.id === p.rkId)) {
+      acc.push({ id: p.rkId, name: p.rkName })
+    }
+    return acc
+  }, [])
 
   // Фильтрация и пагинация
   const { filteredPhoneNumbers, totalPages, paginatedPhoneNumbers } = useMemo(() => {
     const filtered = phoneNumbers.filter(phone => {
       const matchesSearch = !searchQuery || 
         phone.phoneNumber.includes(searchQuery) || 
-        phone.accountName?.toLowerCase().includes(searchQuery.toLowerCase())
+        phone.source?.toLowerCase().includes(searchQuery.toLowerCase())
       const matchesCity = !cityFilter || phone.cityId === Number(cityFilter)
-      const matchesCampaign = !campaignFilter || phone.campaign === campaignFilter
+      const matchesCampaign = !campaignFilter || phone.rkId === Number(campaignFilter)
       return matchesSearch && matchesCity && matchesCampaign
     })
     
@@ -245,7 +251,7 @@ export default function TelephonyPage() {
                 <div className="space-y-3">
                   <h3 className={`text-xs font-semibold uppercase tracking-wider ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>Поиск</h3>
                   <div>
-                    <label className={`block text-sm font-medium mb-1 ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>Номер или аккаунт</label>
+                    <label className={`block text-sm font-medium mb-1 ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>Номер или источник</label>
                     <input
                       type="text"
                       value={draftSearchQuery}
@@ -289,8 +295,8 @@ export default function TelephonyPage() {
                       </SelectTrigger>
                       <SelectContent className={isDark ? 'bg-[#2a3441] border-gray-600' : 'bg-white border-gray-200'}>
                         <SelectItem value="all" className={isDark ? 'text-gray-100' : 'text-gray-800'}>Все РК</SelectItem>
-                        {uniqueCampaigns.map(campaign => (
-                          <SelectItem key={campaign} value={campaign} className={isDark ? 'text-gray-100' : 'text-gray-800'}>{campaign}</SelectItem>
+                        {uniqueRks.map(rk => (
+                          <SelectItem key={rk.id} value={rk.id.toString()} className={isDark ? 'text-gray-100' : 'text-gray-800'}>{rk.name}</SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
@@ -352,9 +358,9 @@ export default function TelephonyPage() {
                 <thead>
                   <tr className={`border-b-2 ${isDark ? 'bg-[#3a4451] border-[#0d5c4b]' : 'bg-gray-50 border-[#0d5c4b]'}`}>
                     <th className={`text-left py-3 px-4 font-semibold ${isDark ? 'text-gray-200' : 'text-gray-700'}`}>Номер</th>
-                    <th className={`text-left py-3 px-4 font-semibold ${isDark ? 'text-gray-200' : 'text-gray-700'}`}>РК</th>
                     <th className={`text-left py-3 px-4 font-semibold ${isDark ? 'text-gray-200' : 'text-gray-700'}`}>Город</th>
-                    <th className={`text-left py-3 px-4 font-semibold ${isDark ? 'text-gray-200' : 'text-gray-700'}`}>Аккаунт</th>
+                    <th className={`text-left py-3 px-4 font-semibold ${isDark ? 'text-gray-200' : 'text-gray-700'}`}>РК</th>
+                    <th className={`text-left py-3 px-4 font-semibold ${isDark ? 'text-gray-200' : 'text-gray-700'}`}>Источник</th>
                     <th className={`text-center py-3 px-4 font-semibold ${isDark ? 'text-gray-200' : 'text-gray-700'}`}>Звонки</th>
                     <th className={`text-left py-3 px-4 font-semibold ${isDark ? 'text-gray-200' : 'text-gray-700'}`}>Создан</th>
                     <th className={`text-center py-3 px-4 font-semibold ${isDark ? 'text-gray-200' : 'text-gray-700'}`}>Действия</th>
@@ -367,9 +373,9 @@ export default function TelephonyPage() {
                       className={`border-b transition-colors ${isDark ? 'border-gray-700 hover:bg-[#3a4451]' : 'border-gray-200 hover:bg-gray-50'}`}
                     >
                       <td className={`py-3 px-4 font-mono ${isDark ? 'text-gray-100' : 'text-gray-900'}`}>{phone.phoneNumber}</td>
-                      <td className={`py-3 px-4 ${isDark ? 'text-gray-300' : 'text-gray-600'}`}>{phone.campaign}</td>
-                      <td className={`py-3 px-4 ${isDark ? 'text-gray-300' : 'text-gray-600'}`}>{phone.city?.name || '-'}</td>
-                      <td className={`py-3 px-4 font-medium ${isDark ? 'text-gray-100' : 'text-gray-900'}`}>{phone.accountName}</td>
+                      <td className={`py-3 px-4 ${isDark ? 'text-gray-300' : 'text-gray-600'}`}>{phone.cityName || '-'}</td>
+                      <td className={`py-3 px-4 ${isDark ? 'text-gray-300' : 'text-gray-600'}`}>{phone.rkName || '-'}</td>
+                      <td className={`py-3 px-4 font-medium ${isDark ? 'text-gray-100' : 'text-gray-900'}`}>{phone.source || '-'}</td>
                       <td className="py-3 px-4 text-center">
                         <span className={`px-3 py-1 rounded-full text-sm font-medium ${isDark ? 'bg-teal-900/50 text-teal-300' : 'bg-teal-100 text-teal-800'}`}>
                           {phone.callsCount}
@@ -420,16 +426,16 @@ export default function TelephonyPage() {
                 <div className="px-4 py-3">
                   <div className="grid grid-cols-2 gap-2 text-sm">
                     <div>
-                      <span className={`text-xs ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>РК</span>
-                      <p className={isDark ? 'text-gray-200' : 'text-gray-700'}>{phone.campaign}</p>
+                      <span className={`text-xs ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>Город</span>
+                      <p className={isDark ? 'text-gray-200' : 'text-gray-700'}>{phone.cityName || '-'}</p>
                     </div>
                     <div>
-                      <span className={`text-xs ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>Город</span>
-                      <p className={isDark ? 'text-gray-200' : 'text-gray-700'}>{phone.city?.name || '-'}</p>
+                      <span className={`text-xs ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>РК</span>
+                      <p className={isDark ? 'text-gray-200' : 'text-gray-700'}>{phone.rkName || '-'}</p>
                     </div>
                     <div className="col-span-2">
-                      <span className={`text-xs ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>Аккаунт</span>
-                      <p className={`font-medium ${isDark ? 'text-gray-100' : 'text-gray-800'}`}>{phone.accountName}</p>
+                      <span className={`text-xs ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>Источник</span>
+                      <p className={`font-medium ${isDark ? 'text-gray-100' : 'text-gray-800'}`}>{phone.source || '-'}</p>
                     </div>
                   </div>
                 </div>
