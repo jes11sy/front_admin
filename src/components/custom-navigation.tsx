@@ -189,13 +189,25 @@ const MenuContent = memo(function MenuContent({
               >
                 <ActiveIndicator active={active} isMobile={isMobile} />
                 <LucideIcon
-                  className={`${iconSize} flex-shrink-0 ${
-                    active ? 'text-[#0d5c4b]' : 'text-gray-500 dark:text-gray-400'
-                  } group-hover:text-[#0d5c4b] transition-colors`}
+                  className={cn(
+                    `${iconSize} flex-shrink-0 transition-colors`,
+                    active
+                      ? 'text-[#0d5c4b]'
+                      : theme === 'dark'
+                        ? 'text-white/55 group-hover:text-[#0d5c4b]'
+                        : 'text-[#6e6e73] group-hover:text-[#0d5c4b]'
+                  )}
                 />
-                <span className="text-gray-800 dark:text-gray-200 group-hover:text-[#0d5c4b]">
-                  {item.name}
-                </span>
+                {(!isCollapsed || isMobile) && (
+                  <span
+                    className={cn(
+                      'pointer-events-none truncate text-base font-medium tracking-[-0.01em]',
+                      theme === 'dark' ? '!text-white/78' : '!text-[#111113]'
+                    )}
+                  >
+                    {item.name}
+                  </span>
+                )}
               </Link>
             )
           }

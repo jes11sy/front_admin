@@ -4,9 +4,14 @@ import { useState, useEffect, useMemo } from 'react'
 import { apiClient } from '@/lib/api'
 import { useDesignStore } from '@/store/design.store'
 import { toast } from 'sonner'
-import { ChevronLeft, ChevronRight } from 'lucide-react'
+import { CalendarDays, ChevronLeft, ChevronRight, MapPin, UserRound } from 'lucide-react'
 
-interface Master { id: number; name: string; cityIds?: number[] }
+interface Master {
+  id: number
+  name: string
+  cityIds?: number[]
+}
+
 interface Schedule {
   id: number
   masterId: number
@@ -17,20 +22,10 @@ interface Schedule {
 
 type DayStatus = 'working' | 'day_off' | 'vacation' | null
 
-const STATUS_LABELS: Record<string, string> = {
+const STATUS_LABELS: Record<Exclude<DayStatus, null>, string> = {
   working: 'Работает',
   day_off: 'Выходной',
   vacation: 'Отпуск',
-}
-const STATUS_COLORS: Record<string, string> = {
-  working: 'bg-green-500',
-  day_off: 'bg-gray-400',
-  vacation: 'bg-blue-400',
-}
-const STATUS_TEXT: Record<string, string> = {
-  working: 'text-green-700 bg-green-100',
-  day_off: 'text-gray-600 bg-gray-100',
-  vacation: 'text-blue-700 bg-blue-100',
 }
 
 function getDaysInMonth(year: number, month: number) {
@@ -58,19 +53,27 @@ export default function SchedulePage() {
   const [cityFilter, setCityFilter] = useState('')
 
   useEffect(() => {
-    apiClient.getMasters().then(r => {
-      if (r.success) setMasters(Array.isArray(r.data) ? r.data : [])
-    }).catch(() => {})
-    apiClient.getCities().then(c => setCities(c)).catch(() => {})
+    apiClient
+      .getMasters()
+      .then((r) => {
+        if (r.success) setMasters(Array.isArray(r.data) ? r.data : [])
+      })
+      .catch(() => {})
+
+    apiClient
+      .getCities()
+      .then((c) => setCities(c))
+      .catch(() => {})
   }, [])
 
   const filteredMasters = useMemo(() => {
     if (!cityFilter) return masters
-    return masters.filter(m => m.cityIds?.includes(Number(cityFilter)))
+    return masters.filter((m) => m.cityIds?.includes(Number(cityFilter)))
   }, [masters, cityFilter])
 
   const loadSchedule = async () => {
     if (!selectedMaster) return
+
     setIsLoading(true)
     try {
       const dateFrom = `${year}-${String(month + 1).padStart(2, '0')}-01`
@@ -78,25 +81,32 @@ export default function SchedulePage() {
       const dateTo = `${year}-${String(month + 1).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`
       const res = await apiClient.getMasterSchedules({ masterId: selectedMaster, dateFrom, dateTo })
       if (res.success) setSchedules(Array.isArray(res.data) ? res.data : [])
-    } catch { toast.error('Не удалось загрузить расписание') }
-    finally { setIsLoading(false) }
+    } catch {
+      toast.error('Не удалось загрузить расписание')
+    } finally {
+      setIsLoading(false)
+    }
   }
 
-  useEffect(() => { loadSchedule() }, [selectedMaster, year, month])
+  useEffect(() => {
+    loadSchedule()
+  }, [selectedMaster, year, month])
 
   const getStatus = (day: number): DayStatus => {
     const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`
-    return schedules.find(s => s.date.startsWith(dateStr))?.status || null
+    return schedules.find((s) => s.date.startsWith(dateStr))?.status || null
   }
 
   const setDayStatus = async (day: number, status: DayStatus) => {
     if (!selectedMaster || !status) return
+
     const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`
     setSaving(dateStr)
+
     try {
       await apiClient.upsertMasterSchedule({ masterId: selectedMaster, date: dateStr, status })
-      setSchedules(prev => {
-        const filtered = prev.filter(s => !s.date.startsWith(dateStr))
+      setSchedules((prev) => {
+        const filtered = prev.filter((s) => !s.date.startsWith(dateStr))
         return [...filtered, { id: Date.now(), masterId: selectedMaster, date: dateStr, status, note: null }]
       })
     } catch (e: any) {
@@ -108,141 +118,290 @@ export default function SchedulePage() {
 
   const clearDay = async (day: number) => {
     const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`
-    const existing = schedules.find(s => s.date.startsWith(dateStr))
+    const existing = schedules.find((s) => s.date.startsWith(dateStr))
     if (!existing) return
+
     setSaving(dateStr)
     try {
       await apiClient.deleteMasterSchedule(existing.id)
-      setSchedules(prev => prev.filter(s => !s.date.startsWith(dateStr)))
-    } catch (e: any) { toast.error(e.message || 'Ошибка') }
-    finally { setSaving(null) }
+      setSchedules((prev) => prev.filter((s) => !s.date.startsWith(dateStr)))
+    } catch (e: any) {
+      toast.error(e.message || 'Ошибка')
+    } finally {
+      setSaving(null)
+    }
   }
 
-  const prevMonth = () => { if (month === 0) { setMonth(11); setYear(y => y - 1) } else setMonth(m => m - 1) }
-  const nextMonth = () => { if (month === 11) { setMonth(0); setYear(y => y + 1) } else setMonth(m => m + 1) }
+  const prevMonth = () => {
+    if (month === 0) {
+      setMonth(11)
+      setYear((y) => y - 1)
+    } else {
+      setMonth((m) => m - 1)
+    }
+  }
+
+  const nextMonth = () => {
+    if (month === 11) {
+      setMonth(0)
+      setYear((y) => y + 1)
+    } else {
+      setMonth((m) => m + 1)
+    }
+  }
+
+  const resetToCurrentMonth = () => {
+    setMonth(today.getMonth())
+    setYear(today.getFullYear())
+  }
 
   const daysInMonth = getDaysInMonth(year, month)
   const firstDay = getFirstDayOfWeek(year, month)
   const MONTH_NAMES = ['Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь', 'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь']
   const DAY_NAMES = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс']
 
-  const selectedMasterObj = masters.find(m => m.id === selectedMaster)
+  const selectedMasterObj = masters.find((m) => m.id === selectedMaster)
 
-  const selectCls = `px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent transition-all ${isDark ? 'bg-[#3a4451] border-gray-600 text-gray-100' : 'bg-gray-50 border-gray-200 text-gray-800'}`
+  const pageClass = isDark ? 'bg-[#111113]' : 'bg-[#f5f5f7]'
+  const panelClass = isDark
+    ? 'border border-white/10 bg-white/[0.03]'
+    : 'border border-black/[0.08] bg-white'
+  const mutedClass = isDark ? 'text-gray-400' : 'text-gray-500'
+  const titleClass = isDark ? 'text-white' : 'text-[#111113]'
+  const labelClass = isDark
+    ? 'mb-2 flex items-center gap-2 text-sm font-medium text-gray-300'
+    : 'mb-2 flex items-center gap-2 text-sm font-medium text-gray-700'
+  const selectClass = isDark
+    ? 'w-full rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-3 text-sm text-gray-100 outline-none transition focus:border-white/20'
+    : 'w-full rounded-2xl border border-[#cfd2d8] bg-white px-4 py-3 text-sm text-[#111113] shadow-[0_1px_2px_rgba(15,23,42,0.06)] outline-none transition focus:border-[#c4c9d1]'
+  const ghostButtonClass = isDark
+    ? 'flex h-10 w-10 items-center justify-center rounded-2xl text-white/92 transition hover:bg-white/[0.04] hover:text-white'
+    : 'flex h-10 w-10 items-center justify-center rounded-2xl text-[#3a3a3c] transition hover:-translate-y-[1px] hover:bg-black/[0.035] hover:text-[#111113]'
+
+  const statusMeta: Record<Exclude<DayStatus, null>, { dot: string; pill: string; button: string }> = {
+    working: {
+      dot: 'bg-emerald-500',
+      pill: isDark ? 'bg-emerald-500/12 text-emerald-300' : 'bg-emerald-50 text-emerald-700',
+      button: isDark ? 'bg-emerald-500/12 text-emerald-300 hover:bg-emerald-500/18' : 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100',
+    },
+    day_off: {
+      dot: isDark ? 'bg-gray-400' : 'bg-gray-500',
+      pill: isDark ? 'bg-white/[0.06] text-gray-300' : 'bg-gray-100 text-gray-700',
+      button: isDark ? 'bg-white/[0.06] text-gray-300 hover:bg-white/[0.1]' : 'bg-gray-100 text-gray-700 hover:bg-gray-200',
+    },
+    vacation: {
+      dot: 'bg-sky-500',
+      pill: isDark ? 'bg-sky-500/12 text-sky-300' : 'bg-sky-50 text-sky-700',
+      button: isDark ? 'bg-sky-500/12 text-sky-300 hover:bg-sky-500/18' : 'bg-sky-50 text-sky-700 hover:bg-sky-100',
+    },
+  }
 
   return (
-    <div className={`min-h-screen transition-colors duration-300 ${isDark ? 'bg-[#1e2530]' : 'bg-white'}`}>
-    <div className="px-6 py-6">
-
-      {/* Controls */}
-      <div className="flex flex-wrap gap-3 mb-6">
-        <select className={selectCls} value={cityFilter} onChange={e => { setCityFilter(e.target.value); setSelectedMaster(null) }}>
-          <option value="">Все города</option>
-          {cities.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-        </select>
-        <select className={`${selectCls} min-w-[200px]`} value={selectedMaster || ''} onChange={e => setSelectedMaster(e.target.value ? Number(e.target.value) : null)}>
-          <option value="">Выберите мастера</option>
-          {filteredMasters.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
-        </select>
-      </div>
-
-      {!selectedMaster ? (
-        <div className={`text-center py-16 ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
-          Выберите мастера для просмотра и редактирования расписания
-        </div>
-      ) : (
-        <div className={`rounded-xl border ${isDark ? 'bg-[#2a3441] border-gray-700/50' : 'bg-white border-gray-200 shadow-sm'}`}>
-          {/* Calendar Header */}
-          <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700/50">
+    <div className={`min-h-screen transition-colors duration-300 ${pageClass}`}>
+      <div className="px-4 py-6">
+        <section className={`mb-4 rounded-[20px] p-5 ${panelClass}`}>
+          <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] lg:items-end">
             <div>
-              <span className={`font-semibold ${isDark ? 'text-gray-100' : 'text-gray-800'}`}>{selectedMasterObj?.name}</span>
-              <span className={`text-sm ml-2 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>— расписание</span>
-            </div>
-            <div className="flex items-center gap-3">
-              <button onClick={prevMonth} className={`p-1.5 rounded-lg ${isDark ? 'hover:bg-gray-700' : 'hover:bg-gray-100'}`}><ChevronLeft className="w-4 h-4" /></button>
-              <span className={`font-medium w-36 text-center ${isDark ? 'text-gray-200' : 'text-gray-700'}`}>{MONTH_NAMES[month]} {year}</span>
-              <button onClick={nextMonth} className={`p-1.5 rounded-lg ${isDark ? 'hover:bg-gray-700' : 'hover:bg-gray-100'}`}><ChevronRight className="w-4 h-4" /></button>
-            </div>
-          </div>
-
-          {/* Legend */}
-          <div className="px-4 py-2 flex gap-4 flex-wrap">
-            {Object.entries(STATUS_LABELS).map(([k, v]) => (
-              <div key={k} className="flex items-center gap-1.5 text-xs">
-                <div className={`w-3 h-3 rounded-full ${STATUS_COLORS[k]}`} />
-                <span className={isDark ? 'text-gray-400' : 'text-gray-600'}>{v}</span>
-              </div>
-            ))}
-            <div className="flex items-center gap-1.5 text-xs">
-              <div className={`w-3 h-3 rounded-full ${isDark ? 'bg-[#1e2530] border border-gray-600' : 'bg-white border border-gray-300'}`} />
-              <span className={isDark ? 'text-gray-400' : 'text-gray-600'}>Не задано</span>
-            </div>
-          </div>
-
-          {isLoading ? (
-            <div className="text-center py-12"><div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-teal-600" /></div>
-          ) : (
-            <div className="p-4">
-              {/* Day names */}
-              <div className="grid grid-cols-7 gap-1 mb-1">
-                {DAY_NAMES.map(d => (
-                  <div key={d} className={`text-center text-xs font-medium py-1 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>{d}</div>
+              <label className={labelClass}>
+                <MapPin className="h-4 w-4" />
+                Город
+              </label>
+              <select
+                className={selectClass}
+                value={cityFilter}
+                onChange={(e) => {
+                  setCityFilter(e.target.value)
+                  setSelectedMaster(null)
+                }}
+              >
+                <option value="">Все города</option>
+                {cities.map((city) => (
+                  <option key={city.id} value={city.id}>
+                    {city.name}
+                  </option>
                 ))}
+              </select>
+            </div>
+
+            <div>
+              <label className={labelClass}>
+                <UserRound className="h-4 w-4" />
+                Мастер
+              </label>
+              <select
+                className={selectClass}
+                value={selectedMaster || ''}
+                onChange={(e) => setSelectedMaster(e.target.value ? Number(e.target.value) : null)}
+              >
+                <option value="">Выберите мастера</option>
+                {filteredMasters.map((master) => (
+                  <option key={master.id} value={master.id}>
+                    {master.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-2 lg:justify-end">
+              <button type="button" onClick={prevMonth} className={ghostButtonClass} aria-label="Предыдущий месяц">
+                <ChevronLeft className="h-4 w-4" />
+              </button>
+              <div className={`min-w-[160px] rounded-2xl px-4 py-3 text-center text-sm font-medium ${
+                isDark ? 'bg-white/[0.04] text-white' : 'bg-white text-[#111113] border border-black/[0.08]'
+              }`}>
+                {MONTH_NAMES[month]} {year}
               </div>
+              <button type="button" onClick={nextMonth} className={ghostButtonClass} aria-label="Следующий месяц">
+                <ChevronRight className="h-4 w-4" />
+              </button>
+              <button
+                type="button"
+                onClick={resetToCurrentMonth}
+                className={`min-h-[40px] rounded-2xl px-4 text-sm font-medium transition-all duration-200 ${
+                  isDark
+                    ? 'bg-white/[0.04] text-white/92 hover:bg-white/[0.08] hover:text-white'
+                    : 'border border-[#cfd2d8] bg-white text-[#111113] shadow-[0_1px_2px_rgba(15,23,42,0.06)] hover:bg-[#f3f4f6]'
+                }`}
+              >
+                Текущий месяц
+              </button>
+            </div>
+          </div>
+        </section>
 
-              {/* Days */}
-              <div className="grid grid-cols-7 gap-1">
-                {/* Empty cells */}
-                {Array.from({ length: firstDay }).map((_, i) => <div key={`empty-${i}`} />)}
-
-                {/* Day cells */}
-                {Array.from({ length: daysInMonth }).map((_, i) => {
-                  const day = i + 1
-                  const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`
-                  const status = getStatus(day)
-                  const isToday = day === today.getDate() && month === today.getMonth() && year === today.getFullYear()
-                  const isSaving = saving === dateStr
-                  const dayOfWeek = new Date(year, month, day).getDay()
-                  const isWeekend = dayOfWeek === 0 || dayOfWeek === 6
-
-                  return (
-                    <div
-                      key={day}
-                      className={`relative rounded-lg aspect-square flex flex-col items-center justify-center cursor-pointer transition-all group
-                        ${isToday ? 'ring-2 ring-teal-500' : ''}
-                        ${isDark ? 'hover:bg-gray-700/50' : 'hover:bg-gray-50'}
-                      `}
-                    >
-                      <div className={`text-sm font-medium ${isToday ? 'text-teal-600' : isWeekend ? (isDark ? 'text-red-400' : 'text-red-500') : (isDark ? 'text-gray-300' : 'text-gray-700')}`}>{day}</div>
-                      {status && <div className={`w-2 h-2 rounded-full mt-0.5 ${STATUS_COLORS[status]}`} />}
-                      {isSaving && <div className="absolute inset-0 flex items-center justify-center bg-black/20 rounded-lg"><div className="w-3 h-3 border-2 border-teal-400 border-t-transparent rounded-full animate-spin" /></div>}
-
-                      {/* Context menu on hover */}
-                      <div className={`absolute bottom-full left-1/2 -translate-x-1/2 mb-1 hidden group-hover:flex flex-col gap-0.5 z-20 rounded-lg shadow-lg border p-1 min-w-[110px] ${isDark ? 'bg-[#2a3441] border-gray-600' : 'bg-white border-gray-200'}`}>
-                        {Object.entries(STATUS_LABELS).map(([k, v]) => (
-                          <button
-                            key={k}
-                            onClick={() => setDayStatus(day, k as DayStatus)}
-                            className={`text-left px-2 py-1 rounded text-xs ${STATUS_TEXT[k]} hover:opacity-80 ${status === k ? 'font-semibold' : ''}`}
-                          >
-                            {v}
-                          </button>
-                        ))}
-                        {status && (
-                          <button onClick={() => clearDay(day)} className={`text-left px-2 py-1 rounded text-xs ${isDark ? 'text-gray-400 hover:bg-gray-700' : 'text-gray-500 hover:bg-gray-100'}`}>
-                            Очистить
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                  )
-                })}
+        {!selectedMaster ? (
+          <section className={`rounded-[20px] p-12 text-center ${panelClass}`}>
+            <div className="mx-auto max-w-md">
+              <div className={`mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl ${isDark ? 'bg-white/[0.05] text-gray-300' : 'bg-white border border-black/[0.08] text-gray-500'}`}>
+                <CalendarDays className="h-6 w-6" />
+              </div>
+              <h2 className={`text-lg font-semibold ${titleClass}`}>Выберите мастера</h2>
+              <p className={`mt-2 text-sm ${mutedClass}`}>
+                После выбора можно сразу редактировать календарь на нужный месяц.
+              </p>
+            </div>
+          </section>
+        ) : (
+          <section className={`rounded-[20px] p-5 ${panelClass}`}>
+            <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <h2 className={`text-base font-semibold ${titleClass}`}>{selectedMasterObj?.name}</h2>
+                <p className={`mt-1 text-sm ${mutedClass}`}>Изменения сохраняются сразу после выбора статуса.</p>
               </div>
             </div>
-          )}
-        </div>
-      )}
-    </div>
+
+            <div className="mb-4 flex flex-wrap gap-2">
+              {Object.entries(STATUS_LABELS).map(([key, value]) => (
+                <div key={key} className={`inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-medium ${statusMeta[key as Exclude<DayStatus, null>].pill}`}>
+                  <span className={`h-2 w-2 rounded-full ${statusMeta[key as Exclude<DayStatus, null>].dot}`} />
+                  {value}
+                </div>
+              ))}
+              <div className={`inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-medium ${isDark ? 'bg-white/[0.05] text-gray-300' : 'bg-gray-100 text-gray-700'}`}>
+                <span className={`h-2 w-2 rounded-full ${isDark ? 'bg-[#111113] ring-1 ring-[#313136]' : 'bg-white ring-1 ring-[#d1d5db]'}`} />
+                Не задано
+              </div>
+            </div>
+
+            {isLoading ? (
+              <div className="flex items-center justify-center py-20">
+                <div className={`h-8 w-8 animate-spin rounded-full border-2 border-transparent ${isDark ? 'border-t-white border-r-white/40' : 'border-t-[#111113] border-r-gray-300'}`} />
+              </div>
+            ) : (
+              <div className="overflow-x-auto -mx-1 px-1">
+                <div className="min-w-[760px]">
+                  <div className="mb-3 grid grid-cols-7 gap-2">
+                    {DAY_NAMES.map((dayName) => (
+                      <div key={dayName} className={`px-2 py-2 text-center text-xs font-medium uppercase tracking-[0.16em] ${mutedClass}`}>
+                        {dayName}
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="grid grid-cols-7 gap-2">
+                    {Array.from({ length: firstDay }).map((_, index) => (
+                      <div
+                        key={`empty-${index}`}
+                        className={`min-h-[124px] rounded-[20px] border border-dashed ${isDark ? 'border-[#2a2a2f]' : 'border-[#ececf1]'}`}
+                      />
+                    ))}
+
+                    {Array.from({ length: daysInMonth }).map((_, index) => {
+                      const day = index + 1
+                      const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`
+                      const status = getStatus(day)
+                      const isToday = day === today.getDate() && month === today.getMonth() && year === today.getFullYear()
+                      const isSaving = saving === dateStr
+                      const dayOfWeek = new Date(year, month, day).getDay()
+                      const isWeekend = dayOfWeek === 0 || dayOfWeek === 6
+
+                      return (
+                        <div
+                          key={day}
+                          className={`group relative min-h-[124px] rounded-[20px] border p-3 transition ${
+                            isDark
+                              ? 'border-white/10 bg-white/[0.03] hover:bg-white/[0.05]'
+                              : 'border-black/[0.08] bg-white hover:bg-[#fcfcfd]'
+                          } ${isToday ? (isDark ? 'ring-1 ring-white/30' : 'ring-1 ring-[#111113]/12') : ''}`}
+                        >
+                          <div className="flex items-start justify-between gap-2">
+                            <div className={`text-lg font-semibold ${isToday ? titleClass : isWeekend ? (isDark ? 'text-red-300' : 'text-red-500') : titleClass}`}>
+                              {day}
+                            </div>
+                            {status ? (
+                              <span className={`inline-flex items-center gap-1 rounded-full px-2 py-1 text-[11px] font-medium ${statusMeta[status].pill}`}>
+                                <span className={`h-1.5 w-1.5 rounded-full ${statusMeta[status].dot}`} />
+                                {STATUS_LABELS[status]}
+                              </span>
+                            ) : (
+                              <span className={`text-[11px] ${mutedClass}`}>Не задано</span>
+                            )}
+                          </div>
+
+                          <div className="mt-4 grid gap-1.5">
+                            {Object.entries(STATUS_LABELS).map(([key, value]) => (
+                              <button
+                                key={key}
+                                type="button"
+                                onClick={() => setDayStatus(day, key as DayStatus)}
+                                className={`rounded-xl px-3 py-2 text-left text-xs font-medium transition ${
+                                  statusMeta[key as Exclude<DayStatus, null>].button
+                                } ${status === key ? 'ring-1 ring-current/20' : 'opacity-80 hover:opacity-100'}`}
+                              >
+                                {value}
+                              </button>
+                            ))}
+
+                            {status && (
+                              <button
+                                type="button"
+                                onClick={() => clearDay(day)}
+                                className={`rounded-xl px-3 py-2 text-left text-xs font-medium transition ${
+                                  isDark
+                                    ? 'bg-white/[0.04] text-gray-300 hover:bg-white/[0.08] hover:text-white'
+                                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                                }`}
+                              >
+                                Очистить
+                              </button>
+                            )}
+                          </div>
+
+                          {isSaving && (
+                            <div className="absolute inset-0 flex items-center justify-center rounded-[20px] bg-black/20">
+                              <div className={`h-6 w-6 animate-spin rounded-full border-2 border-transparent ${isDark ? 'border-t-white border-r-white/40' : 'border-t-[#111113] border-r-gray-300'}`} />
+                            </div>
+                          )}
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
+              </div>
+            )}
+          </section>
+        )}
+      </div>
     </div>
   )
 }

@@ -1,6 +1,6 @@
 'use client'
 
-import { RefreshCw, Upload, X, ArrowLeft } from 'lucide-react'
+import { RefreshCw, Upload, X, MapPin, User, KeyRound, MessageSquare, FileText, Send } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { useState, useEffect } from 'react'
 import { apiClient } from '@/lib/api'
@@ -9,8 +9,6 @@ import { useDesignStore } from '@/store/design.store'
 
 export default function AddMasterPage() {
   const router = useRouter()
-  
-  // Тема
   const theme = useDesignStore((state) => state.theme)
   const isDark = theme === 'dark'
 
@@ -20,7 +18,7 @@ export default function AddMasterPage() {
     login: '',
     password: '',
     chatId: '',
-    note: ''
+    note: '',
   })
   const [passportFile, setPassportFile] = useState<File | null>(null)
   const [contractFile, setContractFile] = useState<File | null>(null)
@@ -30,9 +28,8 @@ export default function AddMasterPage() {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [availableCities, setAvailableCities] = useState<Array<{ id: number; name: string }>>([])
 
-  const filteredCities = availableCities.filter(city =>
-    city.name.toLowerCase().includes(citySearch.toLowerCase()) &&
-    !formData.cityIds.includes(city.id)
+  const filteredCities = availableCities.filter(
+    (city) => city.name.toLowerCase().includes(citySearch.toLowerCase()) && !formData.cityIds.includes(city.id),
   )
 
   const generateLogin = () => {
@@ -43,7 +40,7 @@ export default function AddMasterPage() {
       'ж': 'zh', 'з': 'z', 'и': 'i', 'й': 'y', 'к': 'k', 'л': 'l', 'м': 'm',
       'н': 'n', 'о': 'o', 'п': 'p', 'р': 'r', 'с': 's', 'т': 't', 'у': 'u',
       'ф': 'f', 'х': 'h', 'ц': 'ts', 'ч': 'ch', 'ш': 'sh', 'щ': 'sch',
-      'ъ': '', 'ы': 'y', 'ь': '', 'э': 'e', 'ю': 'yu', 'я': 'ya'
+      'ъ': '', 'ы': 'y', 'ь': '', 'э': 'e', 'ю': 'yu', 'я': 'ya',
     }
 
     const firstName = formData.name.split(' ')[0].toLowerCase()
@@ -66,9 +63,8 @@ export default function AddMasterPage() {
     setFormData({ ...formData, password })
   }
 
-  // Загрузка городов при монтировании
   useEffect(() => {
-    apiClient.getCities().then(cities => setAvailableCities(cities)).catch(console.error)
+    apiClient.getCities().then((cities) => setAvailableCities(cities)).catch(console.error)
   }, [])
 
   const addCity = (city: { id: number; name: string }) => {
@@ -83,27 +79,25 @@ export default function AddMasterPage() {
   const removeCity = (cityId: number) => {
     setFormData({
       ...formData,
-      cityIds: formData.cityIds.filter(id => id !== cityId)
+      cityIds: formData.cityIds.filter((id) => id !== cityId),
     })
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    
+
     if (formData.cityIds.length === 0) {
       setErrors({ cityIds: 'Выберите хотя бы один город' })
       return
     }
-    
+
     setErrors({})
     setIsSubmitting(true)
-    
+
     try {
       let passportDocUrl: string | undefined
       let contractDocUrl: string | undefined
 
-      // ✅ FIX: Используем apiClient.uploadFile() вместо getAccessToken()
-      // uploadFile() использует httpOnly cookies для авторизации и поддерживает 401 retry
       if (passportFile) {
         try {
           const result = await apiClient.uploadFile(passportFile, 'masters/passports')
@@ -130,7 +124,7 @@ export default function AddMasterPage() {
         chatId: formData.chatId || undefined,
         passport: passportDocUrl,
         contract: contractDocUrl,
-        note: formData.note || undefined
+        note: formData.note || undefined,
       })
 
       if (response.success) {
@@ -147,52 +141,48 @@ export default function AddMasterPage() {
     }
   }
 
-  return (
-    <div className={`min-h-screen transition-colors duration-300 ${isDark ? 'bg-[#1e2530]' : 'bg-white'}`}>
-      <div className="max-w-2xl mx-auto px-4 py-6">
-        {/* Шапка */}
-        <div className="mb-6">
-          <button 
-            onClick={() => router.back()}
-            className={`flex items-center gap-2 mb-4 text-sm transition-colors ${
-              isDark ? 'text-gray-400 hover:text-gray-200' : 'text-gray-500 hover:text-gray-700'
-            }`}
-          >
-            <ArrowLeft className="w-4 h-4" />
-            Назад
-          </button>
-          <h1 className={`text-xl font-semibold ${isDark ? 'text-gray-100' : 'text-gray-800'}`}>
-            Добавить мастера
-          </h1>
-        </div>
+  const pageClass = isDark ? 'bg-[#111113]' : 'bg-[#f5f5f7]'
+  const panelClass = isDark
+    ? 'border border-[#313136] bg-white/[0.04] shadow-[0_20px_44px_rgba(0,0,0,0.28)]'
+    : 'border border-[#e5e7eb] bg-white shadow-[0_14px_36px_rgba(15,23,42,0.08)]'
+  const inputClass = isDark
+    ? 'w-full rounded-2xl border border-[#313136] bg-white/[0.04] px-4 py-3 text-sm text-gray-100 placeholder:text-gray-500 outline-none transition focus:border-[#313136] focus:bg-white/[0.04]'
+    : 'w-full rounded-2xl border border-[#e5e7eb] bg-white px-4 py-3 text-sm text-gray-800 placeholder:text-gray-400 outline-none transition focus:border-[#e5e7eb] focus:bg-white'
+  const iconButtonClass = isDark
+    ? 'flex h-[50px] w-[50px] items-center justify-center rounded-2xl border border-[#313136] bg-white/[0.04] text-gray-300 transition hover:bg-white/[0.08] hover:text-white'
+    : 'flex h-[50px] w-[50px] items-center justify-center rounded-2xl border border-[#e5e7eb] bg-white text-gray-600 transition hover:bg-gray-100 hover:text-gray-900'
+  const uploadButtonClass = isDark
+    ? 'flex w-full items-center justify-between gap-3 rounded-2xl border border-[#313136] bg-white/[0.03] px-4 py-4 text-left text-sm text-gray-300 transition hover:bg-white/[0.06] hover:text-white'
+    : 'flex w-full items-center justify-between gap-3 rounded-2xl border border-[#e5e7eb] bg-white px-4 py-4 text-left text-sm text-gray-600 transition hover:bg-gray-50 hover:text-gray-900'
+  const tagClass = isDark
+    ? 'flex items-center gap-1.5 rounded-xl border border-[#313136] bg-white/[0.04] px-3 py-1.5 text-sm text-gray-200'
+    : 'flex items-center gap-1.5 rounded-xl border border-[#e5e7eb] bg-white px-3 py-1.5 text-sm text-gray-700'
+  const labelClass = isDark
+    ? 'mb-2 flex items-center gap-2 text-sm font-medium text-gray-300'
+    : 'mb-2 flex items-center gap-2 text-sm font-medium text-gray-700'
+  const mutedClass = isDark ? 'text-gray-400' : 'text-gray-500'
+  const titleClass = isDark ? 'text-white' : 'text-[#111113]'
 
-        {/* Форма */}
-        <form onSubmit={handleSubmit} className="space-y-5">
-          {/* Города */}
-          <div className={`rounded-xl p-5 ${isDark ? 'bg-[#2a3441]' : 'bg-gray-50 border border-gray-200'}`}>
-            <h2 className={`text-sm font-medium mb-4 ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
-              Города <span className="text-red-500">*</span>
-            </h2>
-            
-            {/* Выбранные города */}
+  return (
+    <div className={`min-h-screen transition-colors duration-300 ${pageClass}`}>
+      <div className="mx-auto max-w-4xl px-4 py-6 sm:px-6 lg:px-8">
+        <form onSubmit={handleSubmit} className="space-y-6">
+          <section className={`rounded-[28px] p-6 sm:p-7 ${panelClass}`}>
+            <div className="mb-6">
+              <h2 className={`text-lg font-semibold ${titleClass}`}>Города</h2>
+            </div>
+
             {formData.cityIds.length > 0 && (
-              <div className="flex flex-wrap gap-2 mb-3">
+              <div className="mb-4 flex flex-wrap gap-2">
                 {formData.cityIds.map((cityId) => {
-                  const city = availableCities.find(c => c.id === cityId)
+                  const city = availableCities.find((item) => item.id === cityId)
                   return (
-                    <div
-                      key={cityId}
-                      className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-sm ${
-                        isDark ? 'bg-gray-600 text-gray-100' : 'bg-gray-200 text-gray-700'
-                      }`}
-                    >
+                    <div key={cityId} className={tagClass}>
                       <span>{city?.name || cityId}</span>
                       <button
                         type="button"
                         onClick={() => removeCity(cityId)}
-                        className={`p-0.5 rounded transition-colors ${
-                          isDark ? 'hover:bg-gray-500' : 'hover:bg-gray-300'
-                        }`}
+                        className={`rounded p-0.5 transition ${isDark ? 'hover:bg-white/[0.08]' : 'hover:bg-gray-100'}`}
                       >
                         <X className="h-3 w-3" />
                       </button>
@@ -202,8 +192,11 @@ export default function AddMasterPage() {
               </div>
             )}
 
-            {/* Поиск городов */}
             <div className="relative">
+              <label className={labelClass}>
+                <MapPin className="h-4 w-4" />
+                Выбор городов <span className="text-[#b3261e]">*</span>
+              </label>
               <input
                 type="text"
                 value={citySearch}
@@ -213,26 +206,22 @@ export default function AddMasterPage() {
                 }}
                 onFocus={() => setShowCityDropdown(true)}
                 placeholder="Начните вводить название города..."
-                className={`w-full px-3 py-2.5 rounded-lg text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-teal-500 ${
-                  isDark 
-                    ? 'bg-[#1e2530] border border-gray-600 text-gray-100 placeholder-gray-500'
-                    : 'bg-white border border-gray-200 text-gray-800 placeholder-gray-400'
-                }`}
+                className={inputClass}
               />
-              
+
               {showCityDropdown && filteredCities.length > 0 && (
-                <div className={`absolute z-10 w-full mt-1 rounded-lg shadow-lg max-h-48 overflow-auto ${
-                  isDark ? 'bg-[#2a3441] border border-gray-600' : 'bg-white border border-gray-200'
-                }`}>
+                <div
+                  className={`absolute z-10 mt-2 max-h-56 w-full overflow-auto rounded-2xl ${
+                    isDark ? 'border border-[#313136] bg-[#1f1f22]' : 'border border-[#e5e7eb] bg-white'
+                  }`}
+                >
                   {filteredCities.map((city) => (
                     <button
                       key={city.id}
                       type="button"
                       onClick={() => addCity(city)}
-                      className={`w-full text-left px-3 py-2 text-sm transition-colors ${
-                        isDark 
-                          ? 'text-gray-200 hover:bg-[#3a4451]'
-                          : 'text-gray-700 hover:bg-gray-100'
+                      className={`w-full px-4 py-3 text-left text-sm transition ${
+                        isDark ? 'text-gray-200 hover:bg-white/[0.06]' : 'text-gray-700 hover:bg-gray-50'
                       }`}
                     >
                       {city.name}
@@ -241,22 +230,20 @@ export default function AddMasterPage() {
                 </div>
               )}
             </div>
-            {errors.cityIds && (
-              <p className="text-sm text-red-500 mt-2">{errors.cityIds}</p>
-            )}
-          </div>
 
-          {/* Основная информация */}
-          <div className={`rounded-xl p-5 ${isDark ? 'bg-[#2a3441]' : 'bg-gray-50 border border-gray-200'}`}>
-            <h2 className={`text-sm font-medium mb-4 ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
-              Основная информация
-            </h2>
-            
-            <div className="space-y-4">
-              {/* Имя */}
-              <div>
-                <label className={`block text-sm mb-1.5 ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
-                  Имя <span className="text-red-500">*</span>
+            {errors.cityIds && <p className="mt-2 text-sm text-red-500">{errors.cityIds}</p>}
+          </section>
+
+          <section className={`rounded-[28px] p-6 sm:p-7 ${panelClass}`}>
+            <div className="mb-6">
+              <h2 className={`text-lg font-semibold ${titleClass}`}>Основная информация</h2>
+            </div>
+
+            <div className="grid gap-5 md:grid-cols-2">
+              <div className="md:col-span-2">
+                <label className={labelClass}>
+                  <User className="h-4 w-4" />
+                  Имя <span className="text-[#b3261e]">*</span>
                 </label>
                 <input
                   type="text"
@@ -264,18 +251,14 @@ export default function AddMasterPage() {
                   value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                   placeholder="Введите полное имя"
-                  className={`w-full px-3 py-2.5 rounded-lg text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-teal-500 ${
-                    isDark 
-                      ? 'bg-[#1e2530] border border-gray-600 text-gray-100 placeholder-gray-500'
-                      : 'bg-white border border-gray-200 text-gray-800 placeholder-gray-400'
-                  }`}
+                  className={inputClass}
                 />
               </div>
 
-              {/* Логин */}
               <div>
-                <label className={`block text-sm mb-1.5 ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
-                  Логин <span className="text-red-500">*</span>
+                <label className={labelClass}>
+                  <User className="h-4 w-4" />
+                  Логин <span className="text-[#b3261e]">*</span>
                 </label>
                 <div className="flex gap-2">
                   <input
@@ -284,30 +267,18 @@ export default function AddMasterPage() {
                     value={formData.login}
                     onChange={(e) => setFormData({ ...formData, login: e.target.value })}
                     placeholder="Введите логин"
-                    className={`flex-1 px-3 py-2.5 rounded-lg text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-teal-500 ${
-                      isDark 
-                        ? 'bg-[#1e2530] border border-gray-600 text-gray-100 placeholder-gray-500'
-                        : 'bg-white border border-gray-200 text-gray-800 placeholder-gray-400'
-                    }`}
+                    className={inputClass}
                   />
-                  <button 
-                    type="button" 
-                    onClick={generateLogin}
-                    className={`px-3 py-2.5 rounded-lg text-sm transition-colors flex items-center gap-1.5 ${
-                      isDark 
-                        ? 'bg-[#1e2530] border border-gray-600 text-gray-300 hover:bg-[#3a4451]'
-                        : 'bg-white border border-gray-200 text-gray-600 hover:bg-gray-100'
-                    }`}
-                  >
+                  <button type="button" onClick={generateLogin} className={iconButtonClass} title="Сгенерировать логин">
                     <RefreshCw className="h-4 w-4" />
                   </button>
                 </div>
               </div>
 
-              {/* Пароль */}
               <div>
-                <label className={`block text-sm mb-1.5 ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
-                  Пароль <span className="text-red-500">*</span>
+                <label className={labelClass}>
+                  <KeyRound className="h-4 w-4" />
+                  Пароль <span className="text-[#b3261e]">*</span>
                 </label>
                 <div className="flex gap-2">
                   <input
@@ -316,75 +287,51 @@ export default function AddMasterPage() {
                     value={formData.password}
                     onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                     placeholder="Введите пароль"
-                    className={`flex-1 px-3 py-2.5 rounded-lg text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-teal-500 ${
-                      isDark 
-                        ? 'bg-[#1e2530] border border-gray-600 text-gray-100 placeholder-gray-500'
-                        : 'bg-white border border-gray-200 text-gray-800 placeholder-gray-400'
-                    }`}
+                    className={inputClass}
                   />
-                  <button 
-                    type="button" 
-                    onClick={generatePassword}
-                    className={`px-3 py-2.5 rounded-lg text-sm transition-colors flex items-center gap-1.5 ${
-                      isDark 
-                        ? 'bg-[#1e2530] border border-gray-600 text-gray-300 hover:bg-[#3a4451]'
-                        : 'bg-white border border-gray-200 text-gray-600 hover:bg-gray-100'
-                    }`}
-                  >
+                  <button type="button" onClick={generatePassword} className={iconButtonClass} title="Сгенерировать пароль">
                     <RefreshCw className="h-4 w-4" />
                   </button>
                 </div>
               </div>
-            </div>
-          </div>
 
-          {/* Telegram */}
-          <div className={`rounded-xl p-5 ${isDark ? 'bg-[#2a3441]' : 'bg-gray-50 border border-gray-200'}`}>
-            <h2 className={`text-sm font-medium mb-4 ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
-              Telegram
-            </h2>
-            
-            <div>
-              <label className={`block text-sm mb-1.5 ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
-                Chat ID
-              </label>
-              <input
-                type="text"
-                value={formData.chatId}
-                onChange={(e) => setFormData({ ...formData, chatId: e.target.value })}
-                placeholder="Введите Chat ID"
-                className={`w-full px-3 py-2.5 rounded-lg text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-teal-500 ${
-                  isDark 
-                    ? 'bg-[#1e2530] border border-gray-600 text-gray-100 placeholder-gray-500'
-                    : 'bg-white border border-gray-200 text-gray-800 placeholder-gray-400'
-                }`}
-              />
-            </div>
-          </div>
-
-          {/* Документы */}
-          <div className={`rounded-xl p-5 ${isDark ? 'bg-[#2a3441]' : 'bg-gray-50 border border-gray-200'}`}>
-            <h2 className={`text-sm font-medium mb-4 ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
-              Документы
-            </h2>
-            
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {/* Паспорт */}
-              <div>
-                <label className={`block text-sm mb-1.5 ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
-                  Фото паспорта
+              <div className="md:col-span-2">
+                <label className={labelClass}>
+                  <Send className="h-4 w-4" />
+                  Chat ID
                 </label>
+                <input
+                  type="text"
+                  value={formData.chatId}
+                  onChange={(e) => setFormData({ ...formData, chatId: e.target.value })}
+                  placeholder="Введите Chat ID"
+                  className={inputClass}
+                />
+              </div>
+            </div>
+          </section>
+
+          <section className={`rounded-[28px] p-6 sm:p-7 ${panelClass}`}>
+            <div className="mb-6">
+              <h2 className={`text-lg font-semibold ${titleClass}`}>Документы</h2>
+            </div>
+
+            <div className="grid gap-4 md:grid-cols-2">
+              <div>
+                <div className={labelClass}>
+                  <FileText className="h-4 w-4" />
+                  Фото паспорта
+                </div>
                 <button
                   type="button"
                   onClick={() => document.getElementById('passport')?.click()}
-                  className={`w-full px-3 py-2.5 rounded-lg text-sm transition-colors flex items-center justify-center gap-2 ${
-                    isDark 
-                      ? 'bg-[#1e2530] border border-gray-600 text-gray-300 hover:bg-[#3a4451]'
-                      : 'bg-white border border-gray-200 text-gray-600 hover:bg-gray-100'
-                  }`}
+                  className={uploadButtonClass}
                 >
-                  <Upload className="h-4 w-4" />
-                  {passportFile ? passportFile.name : 'Загрузить'}
+                  <div>
+                    <div className={`font-medium ${titleClass}`}>{passportFile ? passportFile.name : 'Выбрать файл'}</div>
+                    <div className={`mt-1 text-xs ${mutedClass}`}>Паспорт</div>
+                  </div>
+                  <Upload className="h-4 w-4 shrink-0" />
                 </button>
                 <input
                   id="passport"
@@ -395,22 +342,21 @@ export default function AddMasterPage() {
                 />
               </div>
 
-              {/* Договор */}
               <div>
-                <label className={`block text-sm mb-1.5 ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
+                <div className={labelClass}>
+                  <FileText className="h-4 w-4" />
                   Фото договора
-                </label>
+                </div>
                 <button
                   type="button"
                   onClick={() => document.getElementById('contract')?.click()}
-                  className={`w-full px-3 py-2.5 rounded-lg text-sm transition-colors flex items-center justify-center gap-2 ${
-                    isDark 
-                      ? 'bg-[#1e2530] border border-gray-600 text-gray-300 hover:bg-[#3a4451]'
-                      : 'bg-white border border-gray-200 text-gray-600 hover:bg-gray-100'
-                  }`}
+                  className={uploadButtonClass}
                 >
-                  <Upload className="h-4 w-4" />
-                  {contractFile ? contractFile.name : 'Загрузить'}
+                  <div>
+                    <div className={`font-medium ${titleClass}`}>{contractFile ? contractFile.name : 'Выбрать файл'}</div>
+                    <div className={`mt-1 text-xs ${mutedClass}`}>Договор</div>
+                  </div>
+                  <Upload className="h-4 w-4 shrink-0" />
                 </button>
                 <input
                   id="contract"
@@ -421,53 +367,52 @@ export default function AddMasterPage() {
                 />
               </div>
             </div>
-          </div>
+          </section>
 
-          {/* Заметка */}
-          <div className={`rounded-xl p-5 ${isDark ? 'bg-[#2a3441]' : 'bg-gray-50 border border-gray-200'}`}>
-            <h2 className={`text-sm font-medium mb-4 ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
-              Дополнительно
-            </h2>
-            
-            <div>
-              <label className={`block text-sm mb-1.5 ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
-                Заметка
-              </label>
-              <textarea
-                rows={3}
-                value={formData.note}
-                onChange={(e) => setFormData({ ...formData, note: e.target.value })}
-                placeholder="Дополнительная информация"
-                className={`w-full px-3 py-2.5 rounded-lg text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-teal-500 resize-none ${
-                  isDark 
-                    ? 'bg-[#1e2530] border border-gray-600 text-gray-100 placeholder-gray-500'
-                    : 'bg-white border border-gray-200 text-gray-800 placeholder-gray-400'
-                }`}
-              />
+          <section className={`rounded-[28px] p-6 sm:p-7 ${panelClass}`}>
+            <div className="mb-4">
+              <h2 className={`text-lg font-semibold ${titleClass}`}>Комментарий</h2>
             </div>
-          </div>
 
-          {/* Кнопки */}
-          <div className="flex gap-3 pt-2">
-            <button 
-              type="submit"
-              disabled={isSubmitting}
-              className="flex-1 px-4 py-2.5 bg-teal-600 hover:bg-teal-700 disabled:bg-gray-400 text-white rounded-lg text-sm font-medium transition-colors"
-            >
-              {isSubmitting ? 'Добавление...' : 'Добавить'}
-            </button>
-            <button 
-              type="button"
-              onClick={() => router.push('/employees/masters')}
-              disabled={isSubmitting}
-              className={`px-4 py-2.5 rounded-lg text-sm font-medium transition-colors ${
-                isDark 
-                  ? 'bg-[#2a3441] text-gray-300 hover:bg-[#3a4451]'
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-              }`}
-            >
-              Отмена
-            </button>
+            <label className={labelClass}>
+              <MessageSquare className="h-4 w-4" />
+              Заметка
+            </label>
+            <textarea
+              rows={5}
+              value={formData.note}
+              onChange={(e) => setFormData({ ...formData, note: e.target.value })}
+              placeholder="Комментарий"
+              className={`${inputClass} min-h-[132px] resize-none`}
+            />
+          </section>
+
+          <div className={`sticky bottom-0 z-10 rounded-[24px] p-4 backdrop-blur-xl ${panelClass}`}>
+            <div className="flex flex-col gap-3 sm:flex-row sm:justify-end">
+              <div className="flex flex-col gap-3 sm:flex-row">
+                <button
+                  type="button"
+                  onClick={() => router.push('/employees/masters')}
+                  disabled={isSubmitting}
+                  className={`rounded-2xl px-5 py-3 text-sm font-medium transition ${
+                    isDark
+                      ? 'bg-white/[0.04] text-gray-300 hover:bg-white/[0.08] hover:text-white disabled:opacity-50'
+                      : 'border border-[#e5e7eb] bg-white text-gray-700 hover:bg-gray-50 disabled:opacity-50'
+                  }`}
+                >
+                  Отмена
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSubmitting}
+                  className={`rounded-2xl px-6 py-3 text-sm font-semibold transition ${
+                    isDark ? 'bg-white text-[#111113] hover:bg-gray-200' : 'bg-[#111113] text-white hover:bg-[#2a2a2d]'
+                  } ${isSubmitting ? 'opacity-60' : ''}`}
+                >
+                  {isSubmitting ? 'Добавление...' : 'Добавить мастера'}
+                </button>
+              </div>
+            </div>
           </div>
         </form>
       </div>

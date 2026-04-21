@@ -18,22 +18,24 @@ export default function ReferencesLayout({ children }: { children: React.ReactNo
   const isDark = theme === 'dark'
 
   return (
-    <div className={`min-h-screen transition-colors duration-300 ${isDark ? 'bg-[#1e2530]' : 'bg-white'}`}>
-      <div className="px-6 py-6">
-        <div className={`border-b mb-6 ${isDark ? 'border-gray-700' : 'border-gray-200'}`}>
-          <nav className="flex gap-8 overflow-x-auto scrollbar-hide">
+    <div className={`transition-colors duration-300 ${isDark ? 'bg-[#111113]' : 'bg-[#f5f5f7]'}`}>
+      <div className="px-4 py-6">
+        <div className="mb-4">
+          <nav className="flex gap-2 overflow-x-auto scrollbar-hide">
             {tabs.map((tab) => {
               const isActive = pathname === tab.href
               return (
                 <Link
                   key={tab.href}
                   href={tab.href}
-                  className={`whitespace-nowrap pb-3 px-1 text-sm font-medium border-b-2 transition-colors ${
+                  className={`min-h-[40px] whitespace-nowrap rounded-2xl px-4 inline-flex items-center text-sm font-medium transition-all duration-200 ${
                     isActive
-                      ? 'border-[#0d5c4b] text-[#0d5c4b]'
+                      ? isDark
+                        ? 'bg-white/[0.08] text-white'
+                        : 'bg-[#0a4f42] text-white'
                       : isDark
-                        ? 'border-transparent text-gray-400 hover:text-gray-200 hover:border-gray-600'
-                        : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                        ? 'bg-transparent text-white/92 hover:bg-white/[0.04] hover:text-white'
+                        : 'bg-transparent text-[#3a3a3c] hover:-translate-y-[1px] hover:bg-black/[0.035] hover:text-[#111113]'
                   }`}
                 >
                   {tab.name}
