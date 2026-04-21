@@ -624,11 +624,8 @@ function OrdersContent() {
                           <SelectContent className={selectContentClass}>
                             <SelectItem value="all" className={selectItemClass}>Все города</SelectItem>
                             {allCities.map(city => (
-<<<<<<< Updated upstream
                               <SelectItem key={city.id} value={String(city.id)} className={isDark ? 'text-gray-100 focus:bg-[#3a4451] focus:text-teal-400' : 'text-gray-800 focus:bg-teal-50 focus:text-teal-700'}>{city.name}</SelectItem>
-=======
-                              <SelectItem key={city} value={city} className={selectItemClass}>{city}</SelectItem>
->>>>>>> Stashed changes
+
                             ))}
                           </SelectContent>
                         </Select>
@@ -664,11 +661,8 @@ function OrdersContent() {
                           <SelectContent className={selectContentClass}>
                             <SelectItem value="all" className={selectItemClass}>Все РК</SelectItem>
                             {allRks.map(rk => (
-<<<<<<< Updated upstream
                               <SelectItem key={rk.id} value={String(rk.id)} className={isDark ? 'text-gray-100 focus:bg-[#3a4451] focus:text-teal-400' : 'text-gray-800 focus:bg-teal-50 focus:text-teal-700'}>{rk.name}</SelectItem>
-=======
-                              <SelectItem key={rk} value={rk} className={selectItemClass}>{rk}</SelectItem>
->>>>>>> Stashed changes
+
                             ))}
                           </SelectContent>
                         </Select>
@@ -680,17 +674,11 @@ function OrdersContent() {
                           <SelectTrigger className={selectTriggerClass}>
                             <SelectValue placeholder="Все направления" />
                           </SelectTrigger>
-<<<<<<< Updated upstream
                           <SelectContent className={isDark ? 'bg-[#2a3441] border-gray-600' : 'bg-white border-gray-200'}>
                             <SelectItem value="all" className={isDark ? 'text-gray-100 focus:bg-[#3a4451] focus:text-teal-400' : 'text-gray-800 focus:bg-teal-50 focus:text-teal-700'}>Все направления</SelectItem>
                             {allEquipmentTypes.map(type => (
                               <SelectItem key={type.id} value={String(type.id)} className={isDark ? 'text-gray-100 focus:bg-[#3a4451] focus:text-teal-400' : 'text-gray-800 focus:bg-teal-50 focus:text-teal-700'}>{type.name}</SelectItem>
-=======
-                          <SelectContent className={selectContentClass}>
-                            <SelectItem value="all" className={selectItemClass}>Все направления</SelectItem>
-                            {allTypeEquipments.map(type => (
-                              <SelectItem key={type} value={type} className={selectItemClass}>{type}</SelectItem>
->>>>>>> Stashed changes
+
                             ))}
                           </SelectContent>
                         </Select>
@@ -818,14 +806,9 @@ function OrdersContent() {
                           {order.typeOrder}
                         </span>
                       </td>
-<<<<<<< Updated upstream
                       <td className={`py-2 px-2 ${isDark ? 'text-gray-300' : 'text-gray-800'}`}>{order.rk?.name || '-'}</td>
                       <td className={`py-2 px-2 ${isDark ? 'text-gray-300' : 'text-gray-800'}`}>{order.city?.name || '-'}</td>
-=======
-                      <td className={`py-2 px-2 ${isDark ? 'text-gray-300' : 'text-gray-800'}`}>{order.rk}</td>
-                      <td className={`py-2 px-2 ${isDark ? 'text-gray-300' : 'text-gray-800'}`}>{order.city}</td>
-                      <td className={`py-2 px-2 ${isDark ? 'text-gray-300' : 'text-gray-800'}`}>{order.avitoName || '-'}</td>
->>>>>>> Stashed changes
+
                       <td className={`py-2 px-2 font-mono text-[10px] ${isDark ? 'text-gray-300' : 'text-gray-800'}`}>{order.phone}</td>
                       <td className={`py-2 px-2 font-medium ${isDark ? 'text-gray-100' : 'text-gray-800'}`}>{order.clientName}</td>
                       <td className={`py-2 px-2 max-w-[100px] truncate ${isDark ? 'text-gray-300' : 'text-gray-800'}`} title={order.address}>{order.address}</td>

@@ -257,7 +257,6 @@ export default function CallCenterPage() {
               />
             </div>
 
-<<<<<<< Updated upstream
             {/* Статус */}
             <div className="min-w-[180px]">
               <label className={`block text-sm font-medium mb-1 ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>Статус</label>
@@ -275,9 +274,7 @@ export default function CallCenterPage() {
                 <option value="all">Все</option>
               </select>
             </div>
-=======
-            <hr className={isDark ? 'border-gray-700' : 'border-gray-200'} />
->>>>>>> Stashed changes
+
 
             <div className="space-y-3">
               <h3 className={`text-xs font-semibold uppercase tracking-wider ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>Статус</h3>

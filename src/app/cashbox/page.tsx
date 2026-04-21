@@ -405,15 +405,10 @@ export default function CashboxPage() {
               ) : (
                 filteredCities.map((city) => (
                   <tr 
-<<<<<<< Updated upstream
                     key={city.cityId}
                     className={`border-b transition-colors cursor-pointer ${isDark ? 'hover:bg-[#3a4451] border-gray-700' : 'hover:bg-teal-50 border-gray-200'}`}
                     onClick={() => router.push(`/cashbox/${city.cityId}`)}
-=======
-                    key={city.city}
-                    className={`border-b transition-colors cursor-pointer ${isDark ? 'hover:bg-white/[0.04] border-white/10' : 'hover:bg-black/[0.02] border-gray-200'}`}
-                    onClick={() => router.push(`/cashbox/${encodeURIComponent(city.city)}`)}
->>>>>>> Stashed changes
+
                   >
                     <td className={`py-3 px-3 font-medium ${isDark ? 'text-gray-200' : 'text-gray-800'}`}>{city.cityName}</td>
                     <td className={`py-3 px-3 text-right font-semibold ${isDark ? 'text-white' : 'text-[#0d5c4b]'}`}>

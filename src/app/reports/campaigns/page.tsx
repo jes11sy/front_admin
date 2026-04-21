@@ -399,13 +399,9 @@ export default function CampaignsReportPage() {
                         ) : (
                           cityData.campaigns.map((campaign, index) => (
                             <tr 
-<<<<<<< Updated upstream
                               key={`${cityData.cityId}-${campaign.rkId}-${index}`}
                               className={`border-b transition-colors ${isDark ? 'border-gray-700 hover:bg-[#3a4451]' : 'hover:bg-teal-50'}`}
-=======
-                              key={`${cityData.city}-${campaign.rk}-${campaign.avitoName}-${index}`}
-                              className={`border-b transition-colors ${isDark ? 'border-white/10 hover:bg-white/[0.04]' : 'hover:bg-black/[0.02]'}`}
->>>>>>> Stashed changes
+
                             >
                               <td className={`py-3 px-4 font-medium ${isDark ? 'text-gray-200' : 'text-gray-900'}`}>{campaign.rk?.name || '-'}</td>
                               <td className={`py-3 px-4 text-center ${isDark ? 'text-gray-300' : 'text-gray-600'}`}>{campaign.ordersCount}</td>

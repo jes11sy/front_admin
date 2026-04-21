@@ -1,25 +1,20 @@
 'use client'
 
-<<<<<<< Updated upstream
-import React, { useState, useEffect, useCallback, memo } from 'react'
-=======
-import { useState, useEffect, useCallback, memo, useRef } from 'react'
->>>>>>> Stashed changes
+import React, { useState, useEffect, useCallback, useRef, memo } from 'react'
+
 import Image from 'next/image'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { useAuthStore } from '@/store/auth.store'
 import { useDesignStore } from '@/store/design.store'
-<<<<<<< Updated upstream
-import {
-  Sun, Moon, Bell, User, Menu, X,
-  Globe, MessageSquare, BookOpen, Calendar,
-} from 'lucide-react'
-=======
 import { useNotifications } from '@/hooks/useNotifications'
-import { Bell, ChartColumnBig, Check, ChevronLeft, ChevronRight, ClipboardList, FileText, GripHorizontal, Info, LayoutDashboard, LayoutGrid, LogOut, MoonStar, Phone, Search, Settings, ShieldCheck, SunMedium, User, Users2, Wallet, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
->>>>>>> Stashed changes
+import {
+  SunMedium, MoonStar, Bell, User, Menu, X,
+  Globe, MessageSquare, BookOpen, Calendar, ChartColumnBig, ClipboardList, Wallet,
+  Search, FileText, Info, LayoutGrid, Settings, LogOut, ChevronRight, ChevronLeft, GripHorizontal,
+} from 'lucide-react'
+
 
 // Функция для синхронного получения темы из DOM/localStorage
 function getThemeFromDOM(): 'light' | 'dark' {
@@ -65,7 +60,6 @@ function useThemeWithoutFlash() {
   return isMounted ? clientTheme : 'light'
 }
 
-<<<<<<< Updated upstream
 type NavItem =
   | { name: string; href: string; icon: string; lucideIcon?: undefined }
   | { name: string; href: string; lucideIcon: React.ElementType; icon?: undefined }
@@ -83,16 +77,7 @@ const navigationItems: NavItem[] = [
   { name: 'Отчеты', href: '/reports', icon: '/navigate/reports.svg' },
   { name: 'Справочники', href: '/references', lucideIcon: BookOpen },
   { name: 'Администрирование', href: '/admin', icon: '/navigate/admin.svg' },
-=======
-const navigationItems = [
-  { name: 'Дашборд', href: '/', icon: LayoutDashboard },
-  { name: 'Сотрудники', href: '/employees', icon: Users2 },
-  { name: 'Телефония', href: '/telephony', icon: Phone },
-  { name: 'Заказы', href: '/orders', icon: ClipboardList },
-  { name: 'Касса', href: '/cashbox', icon: Wallet },
-  { name: 'Отчеты', href: '/reports', icon: FileText },
-  { name: 'Админ', href: '/admin', icon: ShieldCheck },
->>>>>>> Stashed changes
+
 ]
 
 const mobileBottomTabs = [
@@ -161,12 +146,9 @@ const MenuContent = memo(function MenuContent({
   unreadCount,
   notificationsButtonRef,
 }: MenuContentProps) {
-<<<<<<< Updated upstream
   const isDark = theme === 'dark'
 
-=======
-  // Проверка активности с учетом подстраниц
->>>>>>> Stashed changes
+
   const isActive = (href: string) => {
     if (pathname === href) return true
     if (href === '/reports' && pathname.startsWith('/salary')) return true
@@ -174,38 +156,26 @@ const MenuContent = memo(function MenuContent({
     return false
   }
 
-<<<<<<< Updated upstream
   const iconSize = isMobile ? 'w-6 h-6' : 'w-5 h-5'
   const rowPy = isMobile ? 'py-3.5 text-base' : 'py-2.5 text-sm'
+  const isProfileActive = pathname === '/profile'
+  const itemBaseClass = isMobile
+    ? 'w-full rounded-[20px] px-4 py-3.5'
+    : 'w-full rounded-[20px] px-4 py-3'
+  const itemThemeClass = (active: boolean) =>
+    active
+      ? theme === 'dark'
+        ? 'bg-white text-[#111113] shadow-[0_12px_30px_rgba(255,255,255,0.12)]'
+        : 'bg-[#0a4f42] text-white shadow-[0_12px_30px_rgba(10,79,66,0.22)]'
+      : theme === 'dark'
+        ? 'text-white/78 hover:bg-white/[0.06] hover:text-white'
+        : 'text-[#6e6e73] hover:bg-black/[0.04] hover:text-[#111113]'
 
   return (
     <>
       {/* Navigation */}
       <nav className={`flex-1 px-5 ${isMobile ? 'space-y-2' : 'space-y-1'} overflow-y-auto`}>
-=======
-  const itemBaseClass = isMobile
-    ? 'min-h-[52px] rounded-2xl px-4 text-base'
-    : isCollapsed
-      ? 'min-h-[52px] justify-center rounded-2xl px-0'
-      : 'min-h-[48px] rounded-2xl px-4'
 
-  const itemThemeClass = (active: boolean) =>
-    active
-      ? (isCollapsed && !isMobile
-          ? 'bg-transparent text-[#0a4f42] dark:text-white'
-          : 'bg-[#0a4f42] text-white dark:bg-white/[0.08] dark:text-white')
-      : isMobile
-        ? 'text-[#3a3a3c] hover:bg-black/[0.05] hover:text-[#111113] dark:text-white/92 dark:hover:bg-white/[0.04] dark:hover:text-white'
-        : isCollapsed
-          ? 'bg-transparent text-[#3a3a3c] hover:text-[#111113] dark:text-white/92 dark:hover:text-white'
-          : 'text-[#3a3a3c] hover:-translate-y-[1px] hover:bg-black/[0.05] hover:text-[#111113] dark:text-white/92 dark:hover:bg-white/[0.04] dark:hover:text-white'
-
-  const isProfileActive = isActive('/profile')
-
-  return (
-    <>
-      <nav className={`flex-1 px-4 ${isMobile ? 'space-y-2' : 'space-y-1'} overflow-y-auto`}>
->>>>>>> Stashed changes
         {navigationItems.map((item) => {
           if ('lucideIcon' in item && item.lucideIcon) {
             const LucideIcon = item.lucideIcon
@@ -231,21 +201,11 @@ const MenuContent = memo(function MenuContent({
           }
 
           const active = isActive(item.href)
-<<<<<<< Updated upstream
-=======
-          const Icon = item.icon
-          const activeCollapsedGlow = active && isCollapsed && !isMobile
-            ? (theme === 'dark'
-                ? { filter: 'drop-shadow(0 0 10px rgba(255,255,255,0.75))' }
-                : { filter: 'drop-shadow(0 0 6px rgba(10,79,66,0.55)) drop-shadow(0 0 14px rgba(10,79,66,0.45))' })
-            : undefined
 
->>>>>>> Stashed changes
           return (
             <Link
               key={item.name}
               href={item.href}
-<<<<<<< Updated upstream
               className={`nav-icon-hover relative flex items-center gap-3 px-3 font-normal group ${rowPy}`}
               onClick={onCloseMobileMenu}
             >
@@ -256,18 +216,7 @@ const MenuContent = memo(function MenuContent({
                 width={isMobile ? 24 : 20}
                 height={isMobile ? 24 : 20}
                 className={`nav-icon ${active ? 'nav-icon-active' : ''} ${iconSize}`}
-=======
-              className={`group relative flex items-center gap-3 transition-all duration-200 ${itemBaseClass} ${itemThemeClass(active)} ${!isMobile && isCollapsed ? 'mx-auto w-14' : ''}`}
-              onClick={onCloseMobileMenu}
-            >
-              <Icon
-                className={`${isMobile ? 'h-5 w-5' : isCollapsed ? 'h-6 w-6' : 'h-5 w-5'} transition-colors ${
-                  active
-                    ? (isCollapsed && !isMobile ? 'text-[#0a4f42] dark:text-white' : 'text-white')
-                    : 'text-[#6e6e73] group-hover:text-[#111113] dark:text-white/78 dark:group-hover:text-white'
-                }`}
-                style={activeCollapsedGlow}
->>>>>>> Stashed changes
+
               />
               {(!isCollapsed || isMobile) && (
                 <span className="truncate text-base font-medium tracking-[-0.01em]">{item.name}</span>

@@ -468,13 +468,9 @@ export default function MastersReportPage() {
                             
                             return (
                               <tr 
-<<<<<<< Updated upstream
                                 key={`${report.id}-${report.cityId}`} 
                                 className={`border-b transition-colors ${isDark ? 'border-gray-700 hover:bg-[#3a4451]' : 'hover:bg-teal-50'}`}
-=======
-                                key={`${report.id}-${report.city}`} 
-                                className={`border-b transition-colors ${isDark ? 'border-white/10 hover:bg-white/[0.04]' : 'hover:bg-black/[0.02]'}`}
->>>>>>> Stashed changes
+
                               >
                                 <td className={`py-3 px-3 text-center font-medium ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
                                   {rank}

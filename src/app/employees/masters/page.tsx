@@ -269,7 +269,6 @@ export default function MastersPage() {
               />
             </div>
 
-<<<<<<< Updated upstream
             {/* Статус */}
             <div className="min-w-[150px]">
               <label className={`block text-sm font-medium mb-1 ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>Статус</label>
@@ -306,29 +305,7 @@ export default function MastersPage() {
                 ))}
               </select>
             </div>
-=======
-            <hr className={isDark ? 'border-gray-700' : 'border-gray-200'} />
 
-            <div className="space-y-3">
-              <h3 className={`text-xs font-semibold uppercase tracking-wider ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>Статус</h3>
-              <Select value={statusFilter} onValueChange={(value: 'working' | 'fired' | 'all') => setStatusFilter(value)}>
-                <SelectTrigger className={`w-full min-h-[44px] rounded-2xl border shadow-sm focus:ring-0 focus-visible:ring-0 data-[state=open]:ring-0 ${
-                  isDark
-                    ? 'bg-white/[0.04] text-gray-200 border-white/15 data-[state=open]:border-white/25'
-                    : 'bg-white text-gray-800 border-gray-200 data-[state=open]:border-gray-300'
-                }`}>
-                  <SelectValue placeholder="Статус" />
-                </SelectTrigger>
-                <SelectContent className={isDark ? 'bg-[#1e1e20] border-white/10' : 'bg-white border-black/[0.08]'}>
-                  <SelectItem value="working" className={isDark ? 'text-gray-100 focus:bg-white/10 focus:text-white' : 'text-gray-800 focus:bg-gray-100 focus:text-gray-900'}>Работает</SelectItem>
-                  <SelectItem value="fired" className={isDark ? 'text-gray-100 focus:bg-white/10 focus:text-white' : 'text-gray-800 focus:bg-gray-100 focus:text-gray-900'}>Уволен</SelectItem>
-                  <SelectItem value="all" className={isDark ? 'text-gray-100 focus:bg-white/10 focus:text-white' : 'text-gray-800 focus:bg-gray-100 focus:text-gray-900'}>Все</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <hr className={isDark ? 'border-gray-700' : 'border-gray-200'} />
->>>>>>> Stashed changes
 
             <div className="space-y-3">
               <h3 className={`text-xs font-semibold uppercase tracking-wider ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>Город</h3>

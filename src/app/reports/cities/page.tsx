@@ -248,15 +248,10 @@ export default function CitiesReportPage() {
                       </span>
                     )}
                     {cityFilter && (
-<<<<<<< Updated upstream
                       <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium border ${isDark ? 'bg-teal-900/30 text-teal-300 border-teal-700' : 'bg-teal-50 text-teal-700 border-teal-200'}`}>
                         {allCities.find(c => c.id === Number(cityFilter))?.name || cityFilter}
                         <button onClick={() => { setCityFilter(''); loadData(startDate, endDate) }} className={`ml-1 ${isDark ? 'hover:text-teal-100' : 'hover:text-teal-900'}`}>×</button>
-=======
-                      <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium border ${isDark ? 'bg-white/[0.08] text-white border-white/20' : 'bg-teal-50 text-teal-700 border-teal-200'}`}>
-                        {cityFilter}
-                        <button onClick={() => { setCityFilter(''); loadData(startDate, endDate, '') }} className={`ml-1 ${isDark ? 'hover:text-teal-100' : 'hover:text-teal-900'}`}>×</button>
->>>>>>> Stashed changes
+
                       </span>
                     )}
                     <button
@@ -339,11 +334,8 @@ export default function CitiesReportPage() {
                       <SelectContent className={`rounded-2xl border-0 shadow-xl ${isDark ? 'bg-[#1e1e20]' : 'bg-white'}`}>
                         <SelectItem value="all" className={`rounded-xl mx-1 my-0.5 cursor-pointer ${isDark ? 'text-white focus:bg-white/10 focus:text-white' : 'text-[#111113] focus:bg-black/5 focus:text-[#111113]'}`}>Все города</SelectItem>
                         {allCities.map(city => (
-<<<<<<< Updated upstream
                           <SelectItem key={city.id} value={city.id.toString()} className={isDark ? 'text-gray-100 focus:bg-[#3a4451] focus:text-teal-400' : 'text-gray-800 focus:bg-teal-50 focus:text-teal-700'}>{city.name}</SelectItem>
-=======
-                          <SelectItem key={city} value={city} className={`rounded-xl mx-1 my-0.5 cursor-pointer ${isDark ? 'text-white focus:bg-white/10 focus:text-white' : 'text-[#111113] focus:bg-black/5 focus:text-[#111113]'}`}>{city}</SelectItem>
->>>>>>> Stashed changes
+
                         ))}
                       </SelectContent>
                     </Select>
@@ -442,13 +434,9 @@ export default function CitiesReportPage() {
                   <tbody>
                     {sortedData.map((city) => (
                       <tr 
-<<<<<<< Updated upstream
                         key={city.cityId} 
                         className={`border-b transition-colors ${isDark ? 'border-gray-700 hover:bg-[#3a4451]' : 'hover:bg-teal-50'}`}
-=======
-                        key={city.city} 
-                        className={`border-b transition-colors ${isDark ? 'border-white/10 hover:bg-white/[0.04]' : 'hover:bg-black/[0.02]'}`}
->>>>>>> Stashed changes
+
                       >
                         <td className={`py-3 px-4 font-medium ${isDark ? 'text-gray-200' : 'text-gray-800'}`}>{city.cityName}</td>
                         <td className={`py-3 px-4 text-center ${isDark ? 'text-gray-300' : 'text-gray-600'}`}>{city.completedOrders}</td>

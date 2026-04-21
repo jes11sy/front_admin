@@ -1,10 +1,7 @@
 'use client'
 
-<<<<<<< Updated upstream
 import { PhoneCall, Plus, Edit, Trash2 } from 'lucide-react'
-=======
-import { Plus, Edit, Trash2 } from 'lucide-react'
->>>>>>> Stashed changes
+
 import { useState, useEffect, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { apiClient } from '@/lib/api'
@@ -294,11 +291,8 @@ export default function TelephonyPage() {
                       <SelectContent className={selectContentClass}>
                         <SelectItem value="all" className={selectItemClass}>Все города</SelectItem>
                         {uniqueCities.map(city => (
-<<<<<<< Updated upstream
                           <SelectItem key={city.id} value={city.id.toString()} className={isDark ? 'text-gray-100' : 'text-gray-800'}>{city.name}</SelectItem>
-=======
-                          <SelectItem key={city} value={city} className={selectItemClass}>{city}</SelectItem>
->>>>>>> Stashed changes
+
                         ))}
                       </SelectContent>
                     </Select>
@@ -310,17 +304,11 @@ export default function TelephonyPage() {
                       <SelectTrigger className={selectTriggerClass}>
                         <SelectValue placeholder="Все РК" />
                       </SelectTrigger>
-<<<<<<< Updated upstream
                       <SelectContent className={isDark ? 'bg-[#2a3441] border-gray-600' : 'bg-white border-gray-200'}>
                         <SelectItem value="all" className={isDark ? 'text-gray-100' : 'text-gray-800'}>Все РК</SelectItem>
                         {uniqueRks.map(rk => (
                           <SelectItem key={rk.id} value={rk.id.toString()} className={isDark ? 'text-gray-100' : 'text-gray-800'}>{rk.name}</SelectItem>
-=======
-                      <SelectContent className={selectContentClass}>
-                        <SelectItem value="all" className={selectItemClass}>Все РК</SelectItem>
-                        {uniqueCampaigns.map(campaign => (
-                          <SelectItem key={campaign} value={campaign} className={selectItemClass}>{campaign}</SelectItem>
->>>>>>> Stashed changes
+
                         ))}
                       </SelectContent>
                     </Select>

@@ -116,7 +116,9 @@ export default function AvitoPage() {
       }
       
       // Сохраняем время последней проверки
-      localStorage.setItem('lastAvitoCheck', Date.now().toString())
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('lastAvitoCheck', Date.now().toString())
+      }
       setLastCheckTime(Date.now()) // Обновляем UI
       
       if (hasErrors) {
@@ -134,6 +136,7 @@ export default function AvitoPage() {
 
   // Проверка необходимости автоматической проверки
   const shouldRunAutoCheck = () => {
+    if (typeof window === 'undefined') return false
     const lastCheck = localStorage.getItem('lastAvitoCheck')
     if (!lastCheck) return true
     
@@ -233,6 +236,7 @@ export default function AvitoPage() {
   }
 
   const getLastCheckTime = () => {
+    if (typeof window === 'undefined') return 'Никогда'
     const lastCheck = localStorage.getItem('lastAvitoCheck')
     if (!lastCheck) return 'Никогда'
     
@@ -247,6 +251,7 @@ export default function AvitoPage() {
   }
 
   const getNextCheckTime = () => {
+    if (typeof window === 'undefined') return 'Скоро'
     const lastCheck = localStorage.getItem('lastAvitoCheck')
     if (!lastCheck) return 'Скоро'
     

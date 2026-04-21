@@ -575,15 +575,11 @@ export default function ReportsPage() {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
                 </svg>
                 {/* Индикатор активных фильтров */}
-<<<<<<< Updated upstream
                 {(selectedCityIds.length < availableCities.length || filterByPurpose) && (
                   <span className={`absolute -top-0.5 -right-0.5 w-2.5 h-2.5 bg-teal-500 rounded-full border-2 ${
                     isDark ? 'border-[#1e2530]' : 'border-white'
                   }`}></span>
-=======
-                {(selectedCities.length < availableCities.length || filterByPurpose) && (
-                  <span className="absolute top-2 right-2 w-2 h-2 bg-[#b3261e] rounded-full"></span>
->>>>>>> Stashed changes
+
                 )}
               </button>
 
@@ -736,11 +732,8 @@ export default function ReportsPage() {
                         <SelectContent className={isDark ? 'bg-[#1e1e20] border-white/10' : 'bg-white border-black/[0.08]'}>
                           <SelectItem value="all" className={isDark ? 'text-gray-100 focus:bg-white/10 focus:text-white' : 'text-gray-800 focus:bg-gray-100 focus:text-gray-900'}>Все города</SelectItem>
                           {availableCities.map(city => (
-<<<<<<< Updated upstream
                             <SelectItem key={city.id} value={city.id.toString()} className={isDark ? 'text-gray-100 focus:bg-[#3a4451] focus:text-teal-400' : 'text-gray-800 focus:bg-teal-50 focus:text-teal-700'}>{city.name}</SelectItem>
-=======
-                            <SelectItem key={city} value={city} className={isDark ? 'text-gray-100 focus:bg-white/10 focus:text-white' : 'text-gray-800 focus:bg-gray-100 focus:text-gray-900'}>{city}</SelectItem>
->>>>>>> Stashed changes
+
                           ))}
                         </SelectContent>
                       </Select>
