@@ -1,3 +1,4 @@
+<<<<<<< Updated upstream
 'use client'
 
 import { Download } from 'lucide-react'
@@ -620,4 +621,10 @@ export default function SalaryPage() {
         )}
     </div>
   )
+=======
+import { redirect } from 'next/navigation'
+
+export default function SalaryPage() {
+  redirect('/reports/salary')
+>>>>>>> Stashed changes
 }

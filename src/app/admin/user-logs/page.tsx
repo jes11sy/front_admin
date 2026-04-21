@@ -5,6 +5,8 @@ import { useDesignStore } from '@/store/design.store'
 import { Badge } from '@/components/ui/badge'
 import { OptimizedPagination } from '@/components/ui/optimized-pagination'
 import apiClient from '@/lib/api'
+import { DateRangePicker } from '@/components/ui/date-range-picker'
+import { LoadingState } from '@/components/ui/loading-state'
 
 interface AuditLog {
   id: number
@@ -245,15 +247,15 @@ export default function UserLogsPage() {
   }
 
   return (
-    <div className={`min-h-screen transition-colors duration-300 ${isDark ? 'bg-[#1e2530]' : 'bg-white'}`}>
-      <div className="px-6 py-6">
+    <div className={`min-h-screen transition-colors duration-300 ${isDark ? 'bg-[#111113]' : 'bg-[#f5f5f7]'}`}>
+      <div className="px-4 py-6">
         {/* Статистика */}
         <div className="mb-6 grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className={`rounded-lg p-4 border ${isDark ? 'bg-[#2a3441] border-gray-700' : 'bg-white border-gray-200'}`}>
+          <div className={`rounded-[20px] p-4 border ${isDark ? 'bg-white/[0.03] border-white/10' : 'bg-white border-black/[0.08]'}`}>
             <div className={`text-xs font-medium mb-1 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>Всего записей</div>
             <div className={`text-xl font-bold ${isDark ? 'text-gray-100' : 'text-gray-800'}`}>{total}</div>
           </div>
-          <div className={`rounded-lg p-4 border ${isDark ? 'bg-[#2a3441] border-gray-700' : 'bg-white border-gray-200'}`}>
+          <div className={`rounded-[20px] p-4 border ${isDark ? 'bg-white/[0.03] border-white/10' : 'bg-white border-black/[0.08]'}`}>
             <div className={`text-xs font-medium mb-1 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>На странице</div>
             <div className={`text-xl font-bold ${isDark ? 'text-gray-100' : 'text-gray-800'}`}>{logs.length}</div>
           </div>
@@ -264,35 +266,35 @@ export default function UserLogsPage() {
           <div className="flex items-center gap-2 flex-wrap">
             <button
               onClick={openFilters}
-              className={`relative p-2 rounded-lg transition-all duration-200 ${isDark ? 'bg-[#3a4451] hover:bg-[#4a5461] text-gray-300 hover:text-teal-400' : 'bg-gray-100 hover:bg-gray-200 text-gray-600 hover:text-teal-600'}`}
+              className={`relative flex items-center justify-center min-h-[40px] w-[40px] rounded-2xl transition-all duration-200 bg-transparent ${isDark ? 'text-white/92 hover:bg-white/[0.04] hover:text-white' : 'text-[#3a3a3c] hover:bg-black/[0.035] hover:text-[#111113]'}`}
               title="Фильтры"
             >
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
               </svg>
               {activeFiltersCount > 0 && (
-                <span className={`absolute -top-0.5 -right-0.5 w-2.5 h-2.5 bg-teal-500 rounded-full border-2 ${isDark ? 'border-[#1e2530]' : 'border-white'}`}></span>
+                <span className="absolute top-2 right-2 w-2 h-2 bg-[#b3261e] rounded-full"></span>
               )}
             </button>
 
             {activeFiltersCount > 0 && (
               <div className="flex items-center gap-2 flex-wrap">
                 {filterFullName && (
-                  <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium border ${isDark ? 'bg-teal-900/30 text-teal-300 border-teal-700' : 'bg-teal-50 text-teal-700 border-teal-200'}`}>
+                  <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium border ${isDark ? 'bg-white/[0.08] text-white border-white/20' : 'bg-white text-[#111113] border-black/[0.08]'}`}>
                     ФИО: {filterFullName}
-                    <button onClick={() => { setFilterFullName(''); loadLogs(); }} className={`ml-1 ${isDark ? 'hover:text-teal-100' : 'hover:text-teal-900'}`}>×</button>
+                    <button onClick={() => { setFilterFullName(''); loadLogs(); }} className={`ml-1 ${isDark ? 'hover:text-white' : 'hover:text-black/70'}`}>×</button>
                   </span>
                 )}
                 {filterRole !== 'all' && (
-                  <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium border ${isDark ? 'bg-teal-900/30 text-teal-300 border-teal-700' : 'bg-teal-50 text-teal-700 border-teal-200'}`}>
+                  <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium border ${isDark ? 'bg-white/[0.08] text-white border-white/20' : 'bg-white text-[#111113] border-black/[0.08]'}`}>
                     {ROLES.find(r => r.value === filterRole)?.label}
-                    <button onClick={() => setFilterRole('all')} className={`ml-1 ${isDark ? 'hover:text-teal-100' : 'hover:text-teal-900'}`}>×</button>
+                    <button onClick={() => setFilterRole('all')} className={`ml-1 ${isDark ? 'hover:text-white' : 'hover:text-black/70'}`}>×</button>
                   </span>
                 )}
                 {filterEventType !== 'all' && (
-                  <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium border ${isDark ? 'bg-teal-900/30 text-teal-300 border-teal-700' : 'bg-teal-50 text-teal-700 border-teal-200'}`}>
+                  <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium border ${isDark ? 'bg-white/[0.08] text-white border-white/20' : 'bg-white text-[#111113] border-black/[0.08]'}`}>
                     {EVENT_TYPES.find(e => e.value === filterEventType)?.label}
-                    <button onClick={() => setFilterEventType('all')} className={`ml-1 ${isDark ? 'hover:text-teal-100' : 'hover:text-teal-900'}`}>×</button>
+                    <button onClick={() => setFilterEventType('all')} className={`ml-1 ${isDark ? 'hover:text-white' : 'hover:text-black/70'}`}>×</button>
                   </span>
                 )}
                 <button
@@ -307,67 +309,65 @@ export default function UserLogsPage() {
         </div>
 
         {/* Drawer фильтров */}
-        {showFilters && (
-          <>
+        <>
             <div 
-              className="fixed inset-0 bg-black/30 z-40 transition-opacity duration-300"
+              className={`fixed inset-0 z-40 transition-opacity duration-300 ${showFilters ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'} ${isDark ? 'bg-black/50' : 'bg-black/30 backdrop-blur-sm'}`}
               onClick={() => setShowFilters(false)}
             />
             
-            <div className={`fixed top-16 md:top-0 right-0 h-[calc(100%-4rem)] md:h-full w-full sm:w-80 shadow-xl z-50 transform transition-transform duration-300 ease-out overflow-y-auto ${isDark ? 'bg-[#2a3441]' : 'bg-white'}`}>
-              <div className={`hidden md:flex sticky top-0 border-b px-4 py-3 items-center justify-between z-10 ${isDark ? 'bg-[#2a3441] border-gray-700' : 'bg-white border-gray-200'}`}>
-                <h2 className={`text-lg font-semibold ${isDark ? 'text-gray-100' : 'text-gray-800'}`}>Фильтры</h2>
+            <div className={`fixed top-16 md:top-4 right-0 md:right-4 h-[calc(100%-4rem)] md:h-[calc(100vh-2rem)] w-full sm:w-[360px] z-50 transform transition-all duration-300 ease-out overflow-y-auto md:rounded-[30px] ${showFilters ? 'translate-x-0 opacity-100' : 'translate-x-[120%] opacity-0'} ${isDark ? 'bg-[#111113]/92 backdrop-blur-xl border-l md:border border-white/10 shadow-[0_24px_60px_rgba(0,0,0,0.35)]' : 'bg-white border-l md:border border-black/[0.08] shadow-[0_24px_60px_rgba(15,23,42,0.12)]'}`}>
+              <div className={`hidden md:flex sticky top-0 border-b px-4 py-4 items-center justify-start z-10 ${isDark ? 'bg-[#111113]/40 backdrop-blur-md border-white/10' : 'bg-white border-black/[0.08]'}`}>
                 <button
                   onClick={() => setShowFilters(false)}
-                  className={`p-2 rounded-lg transition-colors ${isDark ? 'text-gray-400 hover:text-gray-200 hover:bg-[#3a4451]' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'}`}
+                  className="flex h-10 w-10 items-center justify-center rounded-xl text-[#6e6e73] transition-colors hover:bg-black/[0.04] hover:text-[#111113] dark:text-white/60 dark:hover:bg-white/[0.05] dark:hover:text-white"
                 >
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  <svg className="w-[18px] h-[18px]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="m9 18 6-6-6-6" />
                   </svg>
                 </button>
               </div>
 
-              <div className={`md:hidden sticky top-0 border-b px-4 py-3 z-10 ${isDark ? 'bg-[#2a3441] border-gray-700' : 'bg-white border-gray-200'}`}>
+              <div className={`md:hidden sticky top-0 border-b px-4 py-3 z-10 ${isDark ? 'bg-[#111113]/40 backdrop-blur-md border-white/10' : 'bg-white border-black/[0.08]'}`}>
                 <button
                   onClick={() => setShowFilters(false)}
-                  className={`w-full py-2.5 px-4 rounded-xl text-sm font-medium transition-colors flex items-center justify-center gap-2 ${isDark ? 'bg-[#3a4451] hover:bg-[#4a5461] text-gray-300' : 'bg-gray-100 hover:bg-gray-200 text-gray-600'}`}
+                  className={`w-full py-3 px-4 rounded-2xl text-base font-medium transition-colors flex items-center justify-center gap-2 ${isDark ? 'bg-white/[0.04] hover:bg-white/[0.08] text-white' : 'bg-black/[0.04] hover:bg-black/[0.07] text-[#111113]'}`}
                 >
                   Скрыть фильтры
                 </button>
               </div>
 
-              <div className="p-4 space-y-4">
-                <div className="space-y-3">
-                  <h3 className={`text-xs font-semibold uppercase tracking-wider ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>Поиск</h3>
+              <div className="p-6 space-y-8">
+                <div className="space-y-4">
+                  <h3 className={`text-xs font-bold uppercase tracking-widest ${isDark ? 'text-white/40' : 'text-black/40'}`}>Поиск</h3>
                   <input
                     type="text"
                     placeholder="ФИО..."
                     value={draftFullName}
                     onChange={(e) => setDraftFullName(e.target.value)}
-                    className={`w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 ${isDark ? 'bg-[#3a4451] border-gray-600 text-gray-200 placeholder-gray-500' : 'bg-gray-50 border-gray-200 text-gray-800 placeholder-gray-400'}`}
+                    className={`w-full min-h-[44px] px-4 py-2 border rounded-2xl text-sm outline-none ring-0 focus:outline-none focus-visible:outline-none focus:ring-0 focus-visible:ring-0 transition-all ${isDark ? 'bg-white/[0.04] border-white/15 text-gray-200 placeholder-gray-500 focus:border-white/30' : 'bg-white border-gray-200 text-gray-800 placeholder-gray-400 focus:border-gray-300'}`}
                   />
                   <input
                     type="text"
                     placeholder="Логин..."
                     value={draftLogin}
                     onChange={(e) => setDraftLogin(e.target.value)}
-                    className={`w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 ${isDark ? 'bg-[#3a4451] border-gray-600 text-gray-200 placeholder-gray-500' : 'bg-gray-50 border-gray-200 text-gray-800 placeholder-gray-400'}`}
+                    className={`w-full min-h-[44px] px-4 py-2 border rounded-2xl text-sm outline-none ring-0 focus:outline-none focus-visible:outline-none focus:ring-0 focus-visible:ring-0 transition-all ${isDark ? 'bg-white/[0.04] border-white/15 text-gray-200 placeholder-gray-500 focus:border-white/30' : 'bg-white border-gray-200 text-gray-800 placeholder-gray-400 focus:border-gray-300'}`}
                   />
                 </div>
 
                 <hr className={isDark ? 'border-gray-700' : 'border-gray-200'} />
 
-                <div className="space-y-3">
-                  <h3 className={`text-xs font-semibold uppercase tracking-wider ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>Должность</h3>
+                <div className="space-y-4">
+                  <h3 className={`text-xs font-bold uppercase tracking-widest ${isDark ? 'text-white/40' : 'text-black/40'}`}>Должность</h3>
                   <div className="flex flex-wrap gap-2">
                     {ROLES.map((role) => (
                       <button
                         key={role.value}
                         onClick={() => setDraftRole(role.value)}
-                        className={`px-3 py-1.5 border rounded-lg text-xs font-medium transition-all ${
+                        className={`px-3 py-1.5 rounded-xl text-xs font-medium transition-all border-0 shadow-sm ${
                           draftRole === role.value
-                            ? isDark ? 'bg-teal-900/50 border-teal-600 text-teal-400' : 'bg-teal-50 border-teal-300 text-teal-700'
-                            : isDark ? 'bg-[#3a4451] border-gray-600 text-gray-300' : 'bg-gray-50 border-gray-200 text-gray-700'
+                            ? isDark ? 'bg-white text-[#111113]' : 'bg-[#0a4f42] text-white'
+                            : isDark ? 'bg-white/[0.04] text-gray-300 hover:bg-white/[0.08]' : 'bg-white text-[#111113] hover:bg-black/[0.035]'
                         }`}
                       >
                         {role.label}
@@ -378,17 +378,17 @@ export default function UserLogsPage() {
 
                 <hr className={isDark ? 'border-gray-700' : 'border-gray-200'} />
 
-                <div className="space-y-3">
-                  <h3 className={`text-xs font-semibold uppercase tracking-wider ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>Тип действия</h3>
+                <div className="space-y-4">
+                  <h3 className={`text-xs font-bold uppercase tracking-widest ${isDark ? 'text-white/40' : 'text-black/40'}`}>Тип действия</h3>
                   <div className="flex flex-wrap gap-2">
                     {EVENT_TYPES.map((event) => (
                       <button
                         key={event.value}
                         onClick={() => setDraftEventType(event.value)}
-                        className={`px-3 py-1.5 border rounded-lg text-xs font-medium transition-all ${
+                        className={`px-3 py-1.5 rounded-xl text-xs font-medium transition-all border-0 shadow-sm ${
                           draftEventType === event.value
-                            ? isDark ? 'bg-teal-900/50 border-teal-600 text-teal-400' : 'bg-teal-50 border-teal-300 text-teal-700'
-                            : isDark ? 'bg-[#3a4451] border-gray-600 text-gray-300' : 'bg-gray-50 border-gray-200 text-gray-700'
+                            ? isDark ? 'bg-white text-[#111113]' : 'bg-[#0a4f42] text-white'
+                            : isDark ? 'bg-white/[0.04] text-gray-300 hover:bg-white/[0.08]' : 'bg-white text-[#111113] hover:bg-black/[0.035]'
                         }`}
                       >
                         {event.label}
@@ -399,64 +399,49 @@ export default function UserLogsPage() {
 
                 <hr className={isDark ? 'border-gray-700' : 'border-gray-200'} />
 
-                <div className="space-y-3">
-                  <h3 className={`text-xs font-semibold uppercase tracking-wider ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>Период</h3>
-                  <div className="grid grid-cols-2 gap-2">
-                    <div>
-                      <label className={`block text-sm font-medium mb-1 ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>С</label>
-                      <input
-                        type="date"
-                        value={draftStartDate}
-                        onChange={(e) => setDraftStartDate(e.target.value)}
-                        className={`w-full px-3 py-2 border rounded-lg text-sm ${isDark ? 'bg-[#3a4451] border-gray-600 text-gray-200' : 'bg-gray-50 border-gray-200 text-gray-800'}`}
-                      />
-                    </div>
-                    <div>
-                      <label className={`block text-sm font-medium mb-1 ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>По</label>
-                      <input
-                        type="date"
-                        value={draftEndDate}
-                        onChange={(e) => setDraftEndDate(e.target.value)}
-                        className={`w-full px-3 py-2 border rounded-lg text-sm ${isDark ? 'bg-[#3a4451] border-gray-600 text-gray-200' : 'bg-gray-50 border-gray-200 text-gray-800'}`}
-                      />
-                    </div>
-                  </div>
+                <div className="space-y-4">
+                  <h3 className={`text-xs font-bold uppercase tracking-widest ${isDark ? 'text-white/40' : 'text-black/40'}`}>Период</h3>
+                  <DateRangePicker
+                    startDate={draftStartDate}
+                    endDate={draftEndDate}
+                    onChange={(start, end) => {
+                      setDraftStartDate(start)
+                      setDraftEndDate(end)
+                    }}
+                    isDark={isDark}
+                  />
                 </div>
               </div>
 
-              <div className={`sticky bottom-0 border-t px-4 py-3 flex gap-2 ${isDark ? 'bg-[#2a3441] border-gray-700' : 'bg-white border-gray-200'}`}>
+              <div className={`sticky bottom-0 border-t px-6 py-4 flex gap-3 ${isDark ? 'bg-[#111113]/40 backdrop-blur-md border-white/10' : 'bg-white border-black/[0.08]'}`}>
                 <button
                   onClick={resetFilters}
-                  className={`flex-1 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${isDark ? 'bg-[#3a4451] hover:bg-[#4a5461] text-gray-300' : 'bg-gray-100 hover:bg-gray-200 text-gray-700'}`}
+                  className={`flex-1 py-3.5 rounded-2xl text-[15px] font-semibold transition-colors ${isDark ? 'bg-white/[0.04] hover:bg-white/[0.08] text-white' : 'border border-[#cfd2d8] bg-white hover:bg-[#f3f4f6] text-[#111113] shadow-[0_1px_2px_rgba(15,23,42,0.06)]'}`}
                 >
                   Сбросить
                 </button>
                 <button
                   onClick={applyFilters}
-                  className="flex-1 px-4 py-2 bg-teal-600 hover:bg-teal-700 text-white rounded-lg text-sm font-medium transition-colors"
+                  className={`flex-1 py-3.5 rounded-2xl transition-colors text-[15px] font-semibold ${isDark ? 'bg-white hover:bg-gray-200 text-[#111113]' : 'bg-[#0a4f42] hover:bg-[#0a4f42]/90 text-white shadow-md shadow-[#0a4f42]/20'}`}
                 >
                   Применить
                 </button>
               </div>
             </div>
-          </>
-        )}
+        </>
 
         {/* Загрузка */}
         {loading && (
-          <div className="text-center py-8">
-            <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-teal-600"></div>
-            <div className={`text-lg mt-4 ${isDark ? 'text-gray-200' : 'text-gray-700'}`}>Загрузка...</div>
-          </div>
+          <LoadingState isDark={isDark} message="Загрузка..." />
         )}
 
         {/* Таблица */}
         {!loading && logs.length > 0 && (
           <>
             <div className="overflow-x-auto">
-              <table className={`w-full border-collapse text-[11px] min-w-[900px] rounded-lg shadow-lg ${isDark ? 'bg-[#2a3441]' : 'bg-white'}`}>
+              <table className={`w-full border-collapse text-[11px] min-w-[900px] rounded-[20px] shadow-lg overflow-hidden ${isDark ? 'bg-white/[0.03]' : 'bg-white'}`}>
                 <thead>
-                  <tr className={`border-b-2 ${isDark ? 'bg-[#3a4451]' : 'bg-gray-50'}`} style={{borderColor: '#0d5c4b'}}>
+                  <tr className={`border-b-2 ${isDark ? 'bg-white/[0.04] border-white/20' : 'bg-gray-50 border-gray-200'}`}>
                     <th className={`text-left py-3 px-3 font-semibold ${isDark ? 'text-gray-200' : 'text-gray-700'}`}>Дата/Время</th>
                     <th className={`text-left py-3 px-3 font-semibold ${isDark ? 'text-gray-200' : 'text-gray-700'}`}>ФИО</th>
                     <th className={`text-left py-3 px-3 font-semibold ${isDark ? 'text-gray-200' : 'text-gray-700'}`}>Логин</th>
@@ -470,7 +455,7 @@ export default function UserLogsPage() {
                   {logs.map((log) => (
                     <tr
                       key={log.id}
-                      className={`border-b transition-colors cursor-pointer ${isDark ? 'hover:bg-[#3a4451] border-gray-700' : 'hover:bg-teal-50 border-gray-200'}`}
+                      className={`border-b transition-colors cursor-pointer ${isDark ? 'hover:bg-white/[0.04] border-white/10' : 'hover:bg-black/[0.02] border-gray-200'}`}
                       onClick={() => {
                         setSelectedLog(log)
                         setShowModal(true)
@@ -517,7 +502,7 @@ export default function UserLogsPage() {
 
         {/* Пусто */}
         {!loading && logs.length === 0 && (
-          <div className={`text-center py-16 rounded-lg ${isDark ? 'bg-[#2a3441]' : 'bg-gray-50'}`}>
+          <div className={`text-center py-16 rounded-[20px] border ${isDark ? 'bg-white/[0.03] border-white/10' : 'bg-white border-black/[0.08]'}`}>
             <p className={`text-lg mb-2 ${isDark ? 'text-gray-300' : 'text-gray-600'}`}>
               Записей не найдено
             </p>

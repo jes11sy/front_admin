@@ -6,7 +6,7 @@
 html.dark,
 html.dark body,
 html.dark main {
-  background-color: #1e2530 !important;
+  background-color: #111113 !important;
   color-scheme: dark;
 }
 
@@ -234,12 +234,12 @@ html, body {
   box-shadow: 0 4px 12px rgba(20, 184, 166, 0.3);
 }
 
-/* Force remove outline for login inputs */
-input:focus,
-input:focus-visible,
-input:focus-within,
-input[type="text"]:focus,
-input[type="password"]:focus {
+/* Force remove outline only for login inputs */
+.login-input:focus,
+.login-input:focus-visible,
+.login-input:focus-within,
+input.login-input[type="text"]:focus,
+input.login-input[type="password"]:focus {
   outline: none !important;
   box-shadow: none !important;
   border: 2px solid #14b8a6 !important;
@@ -257,7 +257,7 @@ input[type="password"]:focus {
   outline: none !important;
 }
 
-input:focus {
+input.login-input:focus {
   outline: none !important;
   box-shadow: none !important;
 }
@@ -288,5 +288,16 @@ input:focus {
 
 .scrollbar-hide::-webkit-scrollbar {
   display: none;
+}
+
+@media (min-width: 768px) {
+  html .main-content {
+    margin-left: 18rem !important;
+    transition: margin-left 0.3s ease;
+  }
+
+  html.sidebar-collapsed .main-content {
+    margin-left: 8.5rem !important;
+  }
 }
 

@@ -1,6 +1,10 @@
 'use client'
 
+<<<<<<< Updated upstream
 import { PhoneCall, Plus, Edit, Trash2 } from 'lucide-react'
+=======
+import { Plus, Edit, Trash2 } from 'lucide-react'
+>>>>>>> Stashed changes
 import { useState, useEffect, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { apiClient } from '@/lib/api'
@@ -8,6 +12,8 @@ import { useDesignStore } from '@/store/design.store'
 import { toast } from 'sonner'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { OptimizedPagination } from '@/components/ui/optimized-pagination'
+import { NetworkError } from '@/components/ui/network-error'
+import { LoadingState } from '@/components/ui/loading-state'
 
 interface PhoneNumber {
   id: number
@@ -32,6 +38,7 @@ export default function TelephonyPage() {
   // Состояния
   const [phoneNumbers, setPhoneNumbers] = useState<PhoneNumber[]>([])
   const [isLoading, setIsLoading] = useState(true)
+  const [loadError, setLoadError] = useState<string | null>(null)
   const [showFilters, setShowFilters] = useState(false)
   
   // Фильтры
@@ -54,16 +61,17 @@ export default function TelephonyPage() {
 
   const loadPhones = async () => {
     setIsLoading(true)
+    setLoadError(null)
     try {
       const response = await apiClient.getPhones({ search: searchQuery })
       if (response.success && response.data) {
         setPhoneNumbers(response.data)
       } else {
-        toast.error('Не удалось загрузить список телефонных номеров')
+        setLoadError('Ошибка загрузки данных')
       }
     } catch (error) {
       console.error('Error loading phones:', error)
-      toast.error('Ошибка при загрузке телефонных номеров')
+      setLoadError('Ошибка загрузки данных')
     } finally {
       setIsLoading(false)
     }
@@ -133,6 +141,12 @@ export default function TelephonyPage() {
     })
   }
 
+  const selectTriggerClass = `w-full min-h-[44px] px-4 rounded-2xl text-[15px] shadow-sm outline-none ring-0 focus:outline-none focus-visible:outline-none focus:ring-0 focus-visible:ring-0 data-[state=open]:ring-0 data-[state=open]:ring-offset-0 dark:border-white/15 dark:focus:!border-white/30 dark:data-[state=open]:!border-white/30 ${
+    isDark ? 'bg-white/[0.04] text-white data-[state=open]:border-white/20' : 'border border-[#cfd2d8] bg-white text-[#111113] shadow-[0_1px_2px_rgba(15,23,42,0.06)] focus:border-gray-300 data-[state=open]:border-[#c4c9d1]'
+  }`
+  const selectContentClass = `rounded-2xl border-0 shadow-xl ${isDark ? 'bg-[#1e1e20]' : 'bg-white'}`
+  const selectItemClass = `rounded-xl mx-1 my-0.5 cursor-pointer ${isDark ? 'text-white focus:bg-white/10 focus:text-white' : 'text-[#111113] focus:bg-black/5 focus:text-[#111113]'}`
+
   // Открытие панели фильтров
   const openFiltersPanel = () => {
     setDraftSearchQuery(searchQuery)
@@ -157,25 +171,20 @@ export default function TelephonyPage() {
   }
 
   return (
-    <div className={`min-h-screen transition-colors duration-300 ${isDark ? 'bg-[#1e2530]' : 'bg-white'}`}>
+    <div className={`min-h-screen transition-colors duration-300 ${isDark ? 'bg-[#111113]' : 'bg-[#f5f5f7]'}`}>
       <div className="px-4 py-6">
         
         {/* Панель действий */}
         <div className="flex items-center gap-2 mb-4">
-          <h1 className={`text-lg font-semibold flex-1 ${isDark ? 'text-gray-100' : 'text-gray-800'}`}>
-            Телефонные номера
-            <span className={`ml-2 text-sm font-normal ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
-              ({filteredPhoneNumbers.length})
-            </span>
-          </h1>
+          <div className="flex-1" />
           
           {/* Иконка фильтров */}
           <button
             onClick={openFiltersPanel}
-            className={`relative flex-shrink-0 p-2 rounded-lg transition-all duration-200 ${
+            className={`relative flex items-center justify-center min-h-[40px] w-[40px] flex-shrink-0 rounded-2xl transition-all duration-200 bg-transparent ${
               isDark 
-                ? 'bg-[#2a3441] hover:bg-[#3a4451] text-gray-400 hover:text-teal-400'
-                : 'bg-gray-100 hover:bg-gray-200 text-gray-600 hover:text-teal-600'
+                ? 'text-white/92 hover:bg-white/[0.04] hover:text-white' 
+                : 'text-[#3a3a3c] hover:-translate-y-[1px] hover:bg-black/[0.035] hover:text-[#111113]'
             }`}
             title="Фильтры"
           >
@@ -183,9 +192,7 @@ export default function TelephonyPage() {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
             </svg>
             {(searchQuery || cityFilter || campaignFilter) && (
-              <span className={`absolute -top-0.5 -right-0.5 w-2.5 h-2.5 bg-teal-500 rounded-full border-2 ${
-                isDark ? 'border-[#1e2530]' : 'border-white'
-              }`}></span>
+              <span className="absolute top-2 right-2 w-2 h-2 bg-[#b3261e] rounded-full"></span>
             )}
           </button>
 
@@ -193,7 +200,11 @@ export default function TelephonyPage() {
           <button
             onClick={() => router.push('/telephony/add')}
             disabled={isLoading}
-            className="flex items-center gap-2 px-4 py-2 bg-teal-600 hover:bg-teal-700 disabled:bg-gray-400 text-white rounded-lg transition-all duration-200 text-sm font-medium"
+            className={`flex items-center gap-2 min-h-[40px] px-4 rounded-2xl transition-all duration-200 text-sm font-medium ${
+              isDark
+                ? 'bg-white text-[#111113] hover:bg-gray-200 disabled:bg-white/40 disabled:text-[#111113]/60'
+                : 'bg-[#0a4f42] text-white hover:bg-[#083f35] disabled:bg-[#0a4f42]/40'
+            }`}
           >
             <Plus className="h-4 w-4" />
             <span className="hidden sm:inline">Добавить</span>
@@ -201,41 +212,43 @@ export default function TelephonyPage() {
         </div>
 
         {/* Выезжающая панель фильтров */}
-        {showFilters && (
-          <>
+        <>
             <div 
-              className={`fixed inset-0 z-40 transition-opacity duration-300 ${isDark ? 'bg-black/50' : 'bg-black/30'}`}
+              className={`fixed inset-0 z-40 transition-opacity duration-300 ${
+                showFilters ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
+              } ${isDark ? 'bg-black/50' : 'bg-black/30 backdrop-blur-sm'}`}
               onClick={() => setShowFilters(false)}
             />
             
-            <div className={`fixed top-16 md:top-0 right-0 h-[calc(100%-4rem)] md:h-full w-full sm:w-80 shadow-xl z-50 transform transition-transform duration-300 ease-out overflow-y-auto ${
-              isDark ? 'bg-[#2a3441]' : 'bg-white'
+            <div className={`fixed top-16 md:top-4 right-0 md:right-4 h-[calc(100%-4rem)] md:h-[calc(100vh-2rem)] w-full sm:w-[360px] z-50 transform transition-all duration-300 ease-out overflow-y-auto md:rounded-[30px] ${
+              showFilters ? 'translate-x-0 opacity-100' : 'translate-x-[120%] opacity-0'
+            } ${
+              isDark
+                ? 'bg-[#111113]/92 backdrop-blur-xl border-l md:border border-white/10 shadow-[0_24px_60px_rgba(0,0,0,0.35)]'
+                : 'bg-white border-l md:border border-black/[0.08] shadow-[0_24px_60px_rgba(15,23,42,0.12)]'
             }`}>
               {/* Заголовок */}
-              <div className={`hidden md:flex sticky top-0 border-b px-4 py-3 items-center justify-between z-10 ${
-                isDark ? 'bg-[#2a3441] border-gray-700' : 'bg-white border-gray-200'
+              <div className={`hidden md:flex sticky top-0 border-b px-4 py-4 items-center justify-start z-10 ${
+                isDark ? 'bg-[#111113]/40 backdrop-blur-md border-white/10' : 'bg-white border-black/[0.08]'
               }`}>
-                <h2 className={`text-lg font-semibold ${isDark ? 'text-gray-100' : 'text-gray-800'}`}>Фильтры</h2>
                 <button
                   onClick={() => setShowFilters(false)}
-                  className={`p-2 rounded-lg transition-colors ${
-                    isDark ? 'text-gray-400 hover:text-gray-200 hover:bg-[#3a4451]' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
-                  }`}
+                  className="flex h-10 w-10 items-center justify-center rounded-xl text-[#6e6e73] transition-colors hover:bg-black/[0.04] hover:text-[#111113] dark:text-white/60 dark:hover:bg-white/[0.05] dark:hover:text-white"
                 >
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  <svg className="w-[18px] h-[18px]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="m9 18 6-6-6-6" />
                   </svg>
                 </button>
               </div>
 
               {/* Мобильная кнопка скрыть */}
               <div className={`md:hidden sticky top-0 border-b px-4 py-3 z-10 ${
-                isDark ? 'bg-[#2a3441] border-gray-700' : 'bg-white border-gray-200'
+                isDark ? 'bg-[#111113]/40 backdrop-blur-md border-white/10' : 'bg-white border-black/[0.08]'
               }`}>
                 <button
                   onClick={() => setShowFilters(false)}
-                  className={`w-full py-2.5 px-4 rounded-xl text-sm font-medium transition-colors flex items-center justify-center gap-2 ${
-                    isDark ? 'bg-[#3a4451] hover:bg-[#4a5461] text-gray-300' : 'bg-gray-100 hover:bg-gray-200 text-gray-600'
+                  className={`w-full py-3 px-4 rounded-2xl text-base font-medium transition-colors flex items-center justify-center gap-2 ${
+                    isDark ? 'bg-white/[0.04] hover:bg-white/[0.08] text-white' : 'bg-black/[0.04] hover:bg-black/[0.07] text-[#111113]'
                   }`}
                 >
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -246,7 +259,7 @@ export default function TelephonyPage() {
               </div>
 
               {/* Содержимое */}
-              <div className="p-4 space-y-4">
+              <div className="p-6 space-y-8">
                 {/* Поиск */}
                 <div className="space-y-3">
                   <h3 className={`text-xs font-semibold uppercase tracking-wider ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>Поиск</h3>
@@ -257,10 +270,10 @@ export default function TelephonyPage() {
                       value={draftSearchQuery}
                       onChange={(e) => setDraftSearchQuery(e.target.value)}
                       placeholder="Поиск..."
-                      className={`w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent transition-all ${
+                      className={`w-full min-h-[44px] px-4 py-2 rounded-2xl text-[15px] outline-none ring-0 focus:outline-none focus-visible:outline-none focus:ring-0 focus-visible:ring-0 transition-all shadow-sm ${
                         isDark 
-                          ? 'bg-[#3a4451] border-gray-600 text-gray-100 placeholder-gray-500'
-                          : 'bg-gray-50 border-gray-200 text-gray-800 placeholder-gray-400'
+                          ? 'bg-white/[0.04] text-white placeholder-white/30 border border-white/15 focus:border-white/30'
+                          : 'border border-[#cfd2d8] bg-white text-[#111113] placeholder:text-[#8e8e93] shadow-[0_1px_2px_rgba(15,23,42,0.06)] focus:border-gray-300'
                       }`}
                     />
                   </div>
@@ -275,13 +288,17 @@ export default function TelephonyPage() {
                   <div>
                     <label className={`block text-sm font-medium mb-1 ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>Город</label>
                     <Select value={draftCityFilter || "all"} onValueChange={(v) => setDraftCityFilter(v === "all" ? "" : v)}>
-                      <SelectTrigger className={`w-full ${isDark ? 'bg-[#3a4451] border-gray-600 text-gray-100' : 'bg-gray-50 border-gray-200 text-gray-800'}`}>
+                      <SelectTrigger className={selectTriggerClass}>
                         <SelectValue placeholder="Все города" />
                       </SelectTrigger>
-                      <SelectContent className={isDark ? 'bg-[#2a3441] border-gray-600' : 'bg-white border-gray-200'}>
-                        <SelectItem value="all" className={isDark ? 'text-gray-100' : 'text-gray-800'}>Все города</SelectItem>
+                      <SelectContent className={selectContentClass}>
+                        <SelectItem value="all" className={selectItemClass}>Все города</SelectItem>
                         {uniqueCities.map(city => (
+<<<<<<< Updated upstream
                           <SelectItem key={city.id} value={city.id.toString()} className={isDark ? 'text-gray-100' : 'text-gray-800'}>{city.name}</SelectItem>
+=======
+                          <SelectItem key={city} value={city} className={selectItemClass}>{city}</SelectItem>
+>>>>>>> Stashed changes
                         ))}
                       </SelectContent>
                     </Select>
@@ -290,13 +307,20 @@ export default function TelephonyPage() {
                   <div>
                     <label className={`block text-sm font-medium mb-1 ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>РК</label>
                     <Select value={draftCampaignFilter || "all"} onValueChange={(v) => setDraftCampaignFilter(v === "all" ? "" : v)}>
-                      <SelectTrigger className={`w-full ${isDark ? 'bg-[#3a4451] border-gray-600 text-gray-100' : 'bg-gray-50 border-gray-200 text-gray-800'}`}>
+                      <SelectTrigger className={selectTriggerClass}>
                         <SelectValue placeholder="Все РК" />
                       </SelectTrigger>
+<<<<<<< Updated upstream
                       <SelectContent className={isDark ? 'bg-[#2a3441] border-gray-600' : 'bg-white border-gray-200'}>
                         <SelectItem value="all" className={isDark ? 'text-gray-100' : 'text-gray-800'}>Все РК</SelectItem>
                         {uniqueRks.map(rk => (
                           <SelectItem key={rk.id} value={rk.id.toString()} className={isDark ? 'text-gray-100' : 'text-gray-800'}>{rk.name}</SelectItem>
+=======
+                      <SelectContent className={selectContentClass}>
+                        <SelectItem value="all" className={selectItemClass}>Все РК</SelectItem>
+                        {uniqueCampaigns.map(campaign => (
+                          <SelectItem key={campaign} value={campaign} className={selectItemClass}>{campaign}</SelectItem>
+>>>>>>> Stashed changes
                         ))}
                       </SelectContent>
                     </Select>
@@ -305,41 +329,48 @@ export default function TelephonyPage() {
               </div>
 
               {/* Кнопки */}
-              <div className={`sticky bottom-0 border-t px-4 py-3 flex gap-2 ${
-                isDark ? 'bg-[#2a3441] border-gray-700' : 'bg-white border-gray-200'
+              <div className={`sticky bottom-0 border-t px-6 py-4 flex gap-3 ${
+                isDark ? 'bg-[#111113]/40 backdrop-blur-md border-white/10' : 'bg-white border-black/[0.08]'
               }`}>
                 <button
                   onClick={resetFilters}
-                  className={`flex-1 px-4 py-2 rounded-lg transition-colors text-sm font-medium ${
+                  className={`flex-1 py-3.5 rounded-2xl text-[15px] font-semibold transition-colors ${
                     isDark 
-                      ? 'bg-[#3a4451] hover:bg-[#4a5461] text-gray-300'
-                      : 'bg-gray-100 hover:bg-gray-200 text-gray-700'
+                      ? 'bg-white/[0.04] hover:bg-white/[0.08] text-white'
+                      : 'border border-[#cfd2d8] bg-white hover:bg-[#f3f4f6] text-[#111113] shadow-[0_1px_2px_rgba(15,23,42,0.06)]'
                   }`}
                 >
                   Сбросить
                 </button>
                 <button
                   onClick={applyFilters}
-                  className="flex-1 px-4 py-2 bg-teal-500 hover:bg-teal-600 text-white rounded-lg transition-colors text-sm font-medium"
+                  className={`flex-1 py-3.5 rounded-2xl transition-colors text-[15px] font-semibold ${
+                    isDark
+                      ? 'bg-white hover:bg-gray-200 text-[#111113]'
+                      : 'bg-[#0a4f42] hover:bg-[#0a4f42]/90 text-white shadow-md shadow-[#0a4f42]/20'
+                  }`}
                 >
                   Применить
                 </button>
               </div>
             </div>
           </>
-        )}
 
         {/* Загрузка */}
-        {isLoading && (
-          <div className="text-center py-8 animate-fade-in">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-teal-600 mx-auto mb-4"></div>
-            <p className={`font-medium ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>Загрузка...</p>
-          </div>
+        {isLoading && <LoadingState isDark={isDark} message="Загрузка..." />}
+        
+        {/* Ошибка */}
+        {!isLoading && loadError && (
+          <NetworkError
+            isDark={isDark}
+            onRetry={loadPhones}
+            message={loadError}
+          />
         )}
 
         {/* Пусто */}
-        {!isLoading && filteredPhoneNumbers.length === 0 && (
-          <div className={`text-center py-16 rounded-lg ${isDark ? 'bg-[#2a3441]' : 'bg-gray-50'}`}>
+        {!isLoading && !loadError && filteredPhoneNumbers.length === 0 && (
+          <div className="text-center py-8 animate-fade-in">
             <PhoneCall className={`w-16 h-16 mx-auto mb-4 ${isDark ? 'text-gray-600' : 'text-gray-300'}`} />
             <p className={`text-lg mb-2 ${isDark ? 'text-gray-300' : 'text-gray-600'}`}>
               {phoneNumbers.length === 0 ? 'Нет телефонных номеров' : 'Номера не найдены'}
@@ -351,12 +382,12 @@ export default function TelephonyPage() {
         )}
 
         {/* Десктопная таблица */}
-        {!isLoading && paginatedPhoneNumbers.length > 0 && (
+        {!isLoading && !loadError && paginatedPhoneNumbers.length > 0 && (
           <div className="hidden md:block animate-fade-in">
-            <div className={`rounded-lg shadow-lg overflow-hidden ${isDark ? 'bg-[#2a3441]' : 'bg-white'}`}>
+            <div className={`rounded-[20px] shadow-lg overflow-hidden ${isDark ? 'bg-white/[0.03]' : 'bg-white'}`}>
               <table className="w-full text-sm">
                 <thead>
-                  <tr className={`border-b-2 ${isDark ? 'bg-[#3a4451] border-[#0d5c4b]' : 'bg-gray-50 border-[#0d5c4b]'}`}>
+                  <tr className={`border-b-2 ${isDark ? 'bg-white/[0.04] border-white/20' : 'bg-black/[0.02] border-black/10'}`}>
                     <th className={`text-left py-3 px-4 font-semibold ${isDark ? 'text-gray-200' : 'text-gray-700'}`}>Номер</th>
                     <th className={`text-left py-3 px-4 font-semibold ${isDark ? 'text-gray-200' : 'text-gray-700'}`}>Город</th>
                     <th className={`text-left py-3 px-4 font-semibold ${isDark ? 'text-gray-200' : 'text-gray-700'}`}>РК</th>
@@ -370,14 +401,14 @@ export default function TelephonyPage() {
                   {paginatedPhoneNumbers.map((phone) => (
                     <tr 
                       key={phone.id} 
-                      className={`border-b transition-colors ${isDark ? 'border-gray-700 hover:bg-[#3a4451]' : 'border-gray-200 hover:bg-gray-50'}`}
+                      className={`border-b transition-colors ${isDark ? 'border-white/10 hover:bg-white/[0.04]' : 'border-black/10 hover:bg-black/[0.02]'}`}
                     >
                       <td className={`py-3 px-4 font-mono ${isDark ? 'text-gray-100' : 'text-gray-900'}`}>{phone.phoneNumber}</td>
                       <td className={`py-3 px-4 ${isDark ? 'text-gray-300' : 'text-gray-600'}`}>{phone.cityName || '-'}</td>
                       <td className={`py-3 px-4 ${isDark ? 'text-gray-300' : 'text-gray-600'}`}>{phone.rkName || '-'}</td>
                       <td className={`py-3 px-4 font-medium ${isDark ? 'text-gray-100' : 'text-gray-900'}`}>{phone.source || '-'}</td>
                       <td className="py-3 px-4 text-center">
-                        <span className={`px-3 py-1 rounded-full text-sm font-medium ${isDark ? 'bg-teal-900/50 text-teal-300' : 'bg-teal-100 text-teal-800'}`}>
+                        <span className={`px-3 py-1 rounded-full text-sm font-medium ${isDark ? 'bg-white/[0.08] text-white' : 'bg-[#0a4f42]/10 text-[#0a4f42]'}`}>
                           {phone.callsCount}
                         </span>
                       </td>
@@ -386,13 +417,13 @@ export default function TelephonyPage() {
                         <div className="flex items-center justify-center gap-2">
                           <button 
                             onClick={() => router.push(`/telephony/edit/${phone.id}`)}
-                            className={`p-2 rounded-lg transition-colors ${isDark ? 'text-teal-400 hover:bg-[#3a4451]' : 'text-teal-600 hover:bg-teal-50'}`}
+                            className={`p-2 rounded-lg transition-colors ${isDark ? 'text-white/85 hover:bg-white/[0.08]' : 'text-[#0a4f42] hover:bg-[#0a4f42]/10'}`}
                           >
                             <Edit className="h-4 w-4" />
                           </button>
                           <button 
                             onClick={() => handleDelete(phone.id)}
-                            className={`p-2 rounded-lg transition-colors ${isDark ? 'text-red-400 hover:bg-[#3a4451]' : 'text-red-600 hover:bg-red-50'}`}
+                            className={`p-2 rounded-lg transition-colors ${isDark ? 'text-red-300 hover:bg-white/[0.08]' : 'text-red-600 hover:bg-red-50'}`}
                           >
                             <Trash2 className="h-4 w-4" />
                           </button>
@@ -407,17 +438,17 @@ export default function TelephonyPage() {
         )}
 
         {/* Мобильные карточки */}
-        {!isLoading && paginatedPhoneNumbers.length > 0 && (
+        {!isLoading && !loadError && paginatedPhoneNumbers.length > 0 && (
           <div className="md:hidden space-y-3 animate-fade-in">
             {paginatedPhoneNumbers.map((phone) => (
               <div 
                 key={phone.id}
-                className={`rounded-xl overflow-hidden border ${isDark ? 'bg-[#2a3441] border-gray-700' : 'bg-white border-gray-200'}`}
+                className={`rounded-[20px] overflow-hidden border ${isDark ? 'bg-white/[0.02] border-white/10' : 'bg-white border-black/10'}`}
               >
                 {/* Верхняя строка */}
-                <div className={`flex items-center justify-between px-4 py-3 border-b ${isDark ? 'bg-[#3a4451] border-gray-700' : 'bg-gray-50 border-gray-100'}`}>
+                <div className={`flex items-center justify-between px-4 py-3 border-b ${isDark ? 'bg-white/[0.04] border-white/10' : 'bg-gray-50 border-gray-100'}`}>
                   <span className={`font-mono font-bold ${isDark ? 'text-gray-100' : 'text-gray-800'}`}>{phone.phoneNumber}</span>
-                  <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${isDark ? 'bg-teal-900/50 text-teal-300' : 'bg-teal-100 text-teal-800'}`}>
+                  <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${isDark ? 'bg-white/[0.08] text-white' : 'bg-[#0a4f42]/10 text-[#0a4f42]'}`}>
                     {phone.callsCount} звонков
                   </span>
                 </div>
@@ -441,18 +472,18 @@ export default function TelephonyPage() {
                 </div>
                 
                 {/* Нижняя строка */}
-                <div className={`flex items-center justify-between px-4 py-2 border-t ${isDark ? 'bg-[#3a4451] border-gray-700' : 'bg-gray-50 border-gray-100'}`}>
+                <div className={`flex items-center justify-between px-4 py-2 border-t ${isDark ? 'bg-white/[0.04] border-white/10' : 'bg-gray-50 border-gray-100'}`}>
                   <span className={`text-xs ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>{formatDate(phone.createdAt)}</span>
                   <div className="flex gap-2">
                     <button 
                       onClick={() => router.push(`/telephony/edit/${phone.id}`)}
-                      className={`p-2 rounded-lg transition-colors ${isDark ? 'text-teal-400 hover:bg-[#2a3441]' : 'text-teal-600 hover:bg-teal-50'}`}
+                      className={`p-2 rounded-lg transition-colors ${isDark ? 'text-white/85 hover:bg-white/[0.08]' : 'text-[#0a4f42] hover:bg-[#0a4f42]/10'}`}
                     >
                       <Edit className="h-4 w-4" />
                     </button>
                     <button 
                       onClick={() => handleDelete(phone.id)}
-                      className={`p-2 rounded-lg transition-colors ${isDark ? 'text-red-400 hover:bg-[#2a3441]' : 'text-red-600 hover:bg-red-50'}`}
+                      className={`p-2 rounded-lg transition-colors ${isDark ? 'text-red-300 hover:bg-white/[0.08]' : 'text-red-600 hover:bg-red-50'}`}
                     >
                       <Trash2 className="h-4 w-4" />
                     </button>
@@ -464,15 +495,12 @@ export default function TelephonyPage() {
         )}
         
         {/* Пагинация */}
-        {!isLoading && totalPages > 1 && (
-          <div className={`flex items-center justify-center mt-6 pt-4 border-t ${
-            isDark ? 'border-gray-700' : 'border-gray-200'
-          }`}>
+        {!isLoading && !loadError && totalPages > 1 && (
+          <div className="mt-6 animate-fade-in">
             <OptimizedPagination
               currentPage={currentPage}
               totalPages={totalPages}
               onPageChange={setCurrentPage}
-              isDark={isDark}
             />
           </div>
         )}

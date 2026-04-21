@@ -41,9 +41,9 @@ const themeScript = `
       var theme = parsed.state && parsed.state.theme;
       if (theme === 'dark') {
         document.documentElement.classList.add('dark');
-        document.documentElement.style.backgroundColor = '#1e2530';
+        document.documentElement.style.backgroundColor = '#111113';
         document.documentElement.style.colorScheme = 'dark';
-        document.body && (document.body.style.backgroundColor = '#1e2530');
+        document.body && (document.body.style.backgroundColor = '#111113');
       }
     }
   } catch (e) {}
@@ -60,8 +60,8 @@ export default function RootLayout({
       <head>
         <style dangerouslySetInnerHTML={{
           __html: `
-            html.dark, html.dark body { background-color: #1e2530 !important; }
-            html:not(.dark), html:not(.dark) body { background-color: #fff; }
+            html.dark, html.dark body { background-color: #111113 !important; }
+            html:not(.dark), html:not(.dark) body { background-color: #f5f5f7; }
           `
         }} />
         <script dangerouslySetInnerHTML={{ __html: themeScript }} />

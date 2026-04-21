@@ -6,6 +6,7 @@ import { apiClient } from '@/lib/api'
 import { toast } from 'sonner'
 import { useDesignStore } from '@/store/design.store'
 import { OptimizedPagination } from '@/components/ui/optimized-pagination'
+import { DateRangePicker } from '@/components/ui/date-range-picker'
 
 interface Transaction {
   id: number
@@ -442,61 +443,53 @@ export default function CityTransactionsPage() {
               {/* Content */}
               <div className="p-4 space-y-4">
                 {/* Секция: Период */}
-                <div className="space-y-3">
-                  <h3 className={`text-xs font-semibold uppercase tracking-wider ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>Период</h3>
+                <div className="space-y-4">
+                  <h3 className={`text-xs font-bold uppercase tracking-widest ${isDark ? 'text-white/40' : 'text-black/40'}`}>Период</h3>
                   
                   <div className="grid grid-cols-2 gap-2">
                     {quickPeriods.map((period) => (
                       <button
                         key={period.filter}
                         onClick={() => {
+                          if (draftDateFilter === period.filter) {
+                            setDraftDateFilter('all')
+                            setDraftStartDate('')
+                            setDraftEndDate('')
+                            return
+                          }
                           setDraftDateFilter(period.filter)
                           if (period.filter !== 'custom') {
                             setDraftStartDate('')
                             setDraftEndDate('')
                           }
                         }}
-                        className={`px-3 py-2 border rounded-lg text-sm font-medium transition-all duration-200 ${
+                        className={`min-h-[40px] px-3 py-2 rounded-xl text-sm font-medium transition-all duration-200 border-0 shadow-sm ${
                           draftDateFilter === period.filter
                             ? isDark 
-                              ? 'bg-teal-900/50 border-teal-600 text-teal-400' 
-                              : 'bg-teal-50 border-teal-300 text-teal-700'
+                              ? 'bg-white text-[#111113]' 
+                              : 'bg-[#0a4f42] text-white'
                             : isDark 
-                              ? 'bg-[#3a4451] hover:bg-teal-900/30 border-gray-600 hover:border-teal-600 text-gray-300 hover:text-teal-400' 
-                              : 'bg-gray-50 hover:bg-teal-50 border-gray-200 hover:border-teal-300 text-gray-700 hover:text-teal-700'
+                              ? 'bg-white/[0.04] hover:bg-white/10 text-white' 
+                              : 'bg-white hover:bg-black/[0.035] text-[#111113]'
                         }`}
                       >
                         {period.label}
                       </button>
                     ))}
                   </div>
-                  
-                  <div className="grid grid-cols-2 gap-2">
-                    <div>
-                      <label className={`block text-sm font-medium mb-1 ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>С</label>
-                      <input
-                        type="date"
-                        value={draftStartDate}
-                        onChange={(e) => {
-                          setDraftStartDate(e.target.value)
-                          setDraftDateFilter('custom')
-                        }}
-                        className={`w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent transition-all ${isDark ? 'bg-[#3a4451] border-gray-600 text-gray-200' : 'bg-gray-50 border-gray-200 text-gray-800'}`}
-                      />
-                    </div>
-                    <div>
-                      <label className={`block text-sm font-medium mb-1 ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>По</label>
-                      <input
-                        type="date"
-                        value={draftEndDate}
-                        onChange={(e) => {
-                          setDraftEndDate(e.target.value)
-                          setDraftDateFilter('custom')
-                        }}
-                        className={`w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent transition-all ${isDark ? 'bg-[#3a4451] border-gray-600 text-gray-200' : 'bg-gray-50 border-gray-200 text-gray-800'}`}
-                      />
-                    </div>
-                  </div>
+
+                  {draftDateFilter === 'custom' && (
+                    <DateRangePicker
+                      startDate={draftStartDate}
+                      endDate={draftEndDate}
+                      onChange={(start, end) => {
+                        setDraftStartDate(start)
+                        setDraftEndDate(end)
+                        setDraftDateFilter(start || end ? 'custom' : 'all')
+                      }}
+                      isDark={isDark}
+                    />
+                  )}
                 </div>
 
                 <hr className={isDark ? 'border-gray-700' : 'border-gray-200'} />

@@ -1,7 +1,8 @@
 'use client'
 
-import React, { useState, useEffect, useCallback, useRef } from 'react'
+import React, { useState, useEffect, useCallback, useLayoutEffect, useRef } from 'react'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { DateRangePicker } from '@/components/ui/date-range-picker'
 import { apiClient } from '@/lib/api'
 import { useDesignStore } from '@/store/design.store'
 import { toast } from 'sonner'
@@ -9,6 +10,12 @@ import { logger } from '@/lib/logger'
 
 // Типы отчётов
 type ReportType = 'cash' | 'orders' | 'campaigns'
+
+const reportTabs: Array<{ id: ReportType; label: string }> = [
+  { id: 'cash', label: 'По кассе' },
+  { id: 'orders', label: 'По заказам' },
+  { id: 'campaigns', label: 'По РК' },
+]
 
 // Назначения платежей (хардкоры из фронта директора)
 const PAYMENT_PURPOSES = {
@@ -76,6 +83,7 @@ export default function ReportsPage() {
   const [draftSelectedCityIds, setDraftSelectedCityIds] = useState<number[]>([])
   const [draftDateFrom, setDraftDateFrom] = useState('')
   const [draftDateTo, setDraftDateTo] = useState('')
+  const [activeQuickPeriod, setActiveQuickPeriod] = useState<'day' | 'week' | 'month' | 'custom' | null>(null)
   const [draftFilterByPurpose, setDraftFilterByPurpose] = useState(false)
   const [draftSelectedPurposes, setDraftSelectedPurposes] = useState<string[]>([])
   
@@ -83,6 +91,17 @@ export default function ReportsPage() {
   const [isLoadingCities, setIsLoadingCities] = useState(true)
   const [isGenerating, setIsGenerating] = useState(false)
   const [reportData, setReportData] = useState<ReportData | null>(null)
+  const mobileTabsTrackRef = useRef<HTMLDivElement>(null)
+  const mobileTabRefs = useRef<(HTMLButtonElement | null)[]>([])
+  const mobileIndicatorFirstLayout = useRef(true)
+  const [mobileIndicatorStyle, setMobileIndicatorStyle] = useState({
+    left: 0,
+    top: 0,
+    width: 0,
+    height: 0,
+    opacity: 0,
+    transition: 'none' as string,
+  })
   
   // Загрузка списка городов
   useEffect(() => {
@@ -101,6 +120,7 @@ export default function ReportsPage() {
     setDraftDateTo(dateTo)
     setDraftFilterByPurpose(filterByPurpose)
     setDraftSelectedPurposes(selectedPurposes)
+    setActiveQuickPeriod(null)
     setShowFilters(true)
   }
   
@@ -123,8 +143,37 @@ export default function ReportsPage() {
       return date.toISOString().split('T')[0]
     })
     setDraftDateTo(new Date().toISOString().split('T')[0])
+    setActiveQuickPeriod(null)
     setDraftFilterByPurpose(false)
     setDraftSelectedPurposes([])
+  }
+
+  const toggleQuickPeriod = (period: 'day' | 'week' | 'month' | 'custom') => {
+    if (activeQuickPeriod === period) {
+      setActiveQuickPeriod(null)
+      setDraftDateFrom('')
+      setDraftDateTo('')
+      return
+    }
+
+    if (period === 'custom') {
+      setActiveQuickPeriod('custom')
+      return
+    }
+
+    const now = new Date()
+    const end = new Date().toISOString().split('T')[0]
+    let start = end
+
+    if (period === 'week') {
+      start = new Date(now.setDate(now.getDate() - 7)).toISOString().split('T')[0]
+    } else if (period === 'month') {
+      start = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0]
+    }
+
+    setActiveQuickPeriod(period)
+    setDraftDateFrom(start)
+    setDraftDateTo(end)
   }
   
   // Обработка выбора назначения платежа
@@ -395,8 +444,53 @@ export default function ReportsPage() {
     })
   }
 
+  const updateMobileTabsIndicator = useCallback(() => {
+    const track = mobileTabsTrackRef.current
+    if (!track) return
+
+    const idx = reportTabs.findIndex((tab) => tab.id === selectedReport)
+    if (idx < 0) {
+      setMobileIndicatorStyle((prev) => ({ ...prev, opacity: 0, transition: 'opacity 180ms ease-out' }))
+      return
+    }
+
+    const tab = mobileTabRefs.current[idx]
+    if (!tab) return
+
+    const tr = track.getBoundingClientRect()
+    const r = tab.getBoundingClientRect()
+    const spring =
+      'left 340ms cubic-bezier(0.34, 1.28, 0.64, 1), top 340ms cubic-bezier(0.34, 1.28, 0.64, 1), width 340ms cubic-bezier(0.34, 1.28, 0.64, 1), height 340ms cubic-bezier(0.34, 1.28, 0.64, 1), opacity 180ms ease-out'
+
+    setMobileIndicatorStyle({
+      left: r.left - tr.left,
+      top: r.top - tr.top,
+      width: r.width,
+      height: r.height,
+      opacity: 1,
+      transition: mobileIndicatorFirstLayout.current ? 'none' : spring,
+    })
+    mobileIndicatorFirstLayout.current = false
+  }, [selectedReport])
+
+  useLayoutEffect(() => {
+    updateMobileTabsIndicator()
+  }, [updateMobileTabsIndicator])
+
+  useLayoutEffect(() => {
+    const track = mobileTabsTrackRef.current
+    if (!track) return
+    const ro = new ResizeObserver(() => updateMobileTabsIndicator())
+    ro.observe(track)
+    window.addEventListener('orientationchange', updateMobileTabsIndicator)
+    return () => {
+      ro.disconnect()
+      window.removeEventListener('orientationchange', updateMobileTabsIndicator)
+    }
+  }, [updateMobileTabsIndicator])
+
   return (
-    <div className={`min-h-screen transition-colors duration-300 ${isDark ? 'bg-[#1e2530]' : 'bg-white'}`}>
+    <div className={`min-h-screen transition-colors duration-300 ${isDark ? 'bg-[#111113]' : 'bg-[#f5f5f7]'}`}>
       <div className="px-4 py-6">
         <div className="w-full">
           
@@ -404,37 +498,76 @@ export default function ReportsPage() {
           <div className="mb-4 animate-slide-in-left">
             <div className="flex items-center gap-2">
               {/* Табы с прокруткой */}
-              <div className="flex-1 min-w-0 overflow-x-auto scrollbar-hide">
-                <div className={`flex gap-1 p-1 rounded-lg w-max ${isDark ? 'bg-[#2a3441]' : 'bg-gray-100'}`}>
-                  {[
-                    { id: 'cash', label: 'По кассе' },
-                    { id: 'orders', label: 'По заказам' },
-                    { id: 'campaigns', label: 'По РК' },
-                  ].map((tab) => (
-                    <button
-                      key={tab.id}
-                      onClick={() => setSelectedReport(tab.id as ReportType)}
-                      className={`px-3 py-1.5 text-sm font-medium rounded-md transition-all duration-200 whitespace-nowrap ${
-                        selectedReport === tab.id
-                          ? 'bg-[#0d5c4b] text-white shadow-sm'
-                          : isDark
-                            ? 'text-gray-400 hover:text-gray-200 hover:bg-[#3a4451]'
-                            : 'text-gray-600 hover:text-gray-800 hover:bg-gray-50'
+              <div className="flex-1 min-w-0">
+                <div className="md:hidden">
+                  <div
+                    ref={mobileTabsTrackRef}
+                    className={`relative inline-flex w-full max-w-full items-center gap-0.5 rounded-[22px] border p-1 ${
+                      isDark ? 'border-white/10 bg-[#111113]/90' : 'border-black/[0.08] bg-white'
+                    }`}
+                  >
+                    <div
+                      aria-hidden
+                      className={`pointer-events-none absolute will-change-[left,top,width,height] rounded-[16px] ${
+                        isDark
+                          ? 'bg-white/[0.10] shadow-[inset_0_1px_0_rgba(255,255,255,0.12)]'
+                          : 'bg-[#0a4f42] shadow-[0_8px_20px_rgba(10,79,66,0.22)]'
                       }`}
-                    >
-                      {tab.label}
-                    </button>
-                  ))}
+                      style={{
+                        left: mobileIndicatorStyle.left,
+                        top: mobileIndicatorStyle.top,
+                        width: mobileIndicatorStyle.width,
+                        height: mobileIndicatorStyle.height,
+                        opacity: mobileIndicatorStyle.opacity,
+                        transition: mobileIndicatorStyle.transition,
+                      }}
+                    />
+                    {reportTabs.map((tab, i) => (
+                      <button
+                        key={tab.id}
+                        ref={(el) => {
+                          mobileTabRefs.current[i] = el
+                        }}
+                        onClick={() => setSelectedReport(tab.id)}
+                        className={`relative z-[1] min-h-[34px] flex-1 rounded-[16px] px-2 py-1 text-[13px] font-semibold leading-tight transition-colors duration-200 ${
+                          selectedReport === tab.id
+                            ? 'text-white'
+                            : isDark
+                              ? 'text-white/80 hover:bg-white/[0.06] hover:text-white'
+                              : 'text-[#3a3a3c] hover:bg-black/[0.04] hover:text-[#111113]'
+                        }`}
+                      >
+                        {tab.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <div className="hidden md:block overflow-x-auto scrollbar-hide">
+                  <div className="flex gap-2 w-max">
+                    {reportTabs.map((tab) => (
+                      <button
+                        key={tab.id}
+                        onClick={() => setSelectedReport(tab.id)}
+                        className={`min-h-[40px] px-4 text-sm font-medium rounded-2xl transition-all duration-200 whitespace-nowrap ${
+                          selectedReport === tab.id
+                            ? (isDark ? 'bg-white/[0.08] text-white' : 'bg-[#0a4f42] text-white')
+                            : (isDark ? 'text-white/92 hover:bg-white/[0.04] hover:text-white bg-transparent' : 'text-[#3a3a3c] hover:-translate-y-[1px] hover:bg-black/[0.035] hover:text-[#111113] bg-transparent')
+                        }`}
+                      >
+                        {tab.label}
+                      </button>
+                    ))}
+                  </div>
                 </div>
               </div>
 
               {/* Иконка фильтров */}
               <button
                 onClick={openFiltersPanel}
-                className={`relative flex-shrink-0 p-2 rounded-lg transition-all duration-200 ${
+                className={`relative flex items-center justify-center min-h-[40px] w-[40px] flex-shrink-0 rounded-2xl transition-all duration-200 bg-transparent ${
                   isDark 
-                    ? 'bg-[#2a3441] hover:bg-[#3a4451] text-gray-400 hover:text-teal-400'
-                    : 'bg-gray-100 hover:bg-gray-200 text-gray-600 hover:text-teal-600'
+                    ? 'text-white/92 hover:bg-white/[0.04] hover:text-white' 
+                    : 'text-[#3a3a3c] hover:-translate-y-[1px] hover:bg-black/[0.035] hover:text-[#111113]'
                 }`}
                 title="Фильтры"
               >
@@ -442,10 +575,15 @@ export default function ReportsPage() {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
                 </svg>
                 {/* Индикатор активных фильтров */}
+<<<<<<< Updated upstream
                 {(selectedCityIds.length < availableCities.length || filterByPurpose) && (
                   <span className={`absolute -top-0.5 -right-0.5 w-2.5 h-2.5 bg-teal-500 rounded-full border-2 ${
                     isDark ? 'border-[#1e2530]' : 'border-white'
                   }`}></span>
+=======
+                {(selectedCities.length < availableCities.length || filterByPurpose) && (
+                  <span className="absolute top-2 right-2 w-2 h-2 bg-[#b3261e] rounded-full"></span>
+>>>>>>> Stashed changes
                 )}
               </button>
 
@@ -453,7 +591,11 @@ export default function ReportsPage() {
               <button
                 onClick={generateReport}
                 disabled={isGenerating || isLoadingCities}
-                className="flex-shrink-0 px-4 py-2 bg-teal-600 hover:bg-teal-700 disabled:bg-gray-400 text-white rounded-lg transition-all duration-200 text-sm font-medium flex items-center gap-2"
+                className={`flex-shrink-0 min-h-[40px] px-4 rounded-2xl transition-all duration-200 text-sm font-medium flex items-center gap-2 ${
+                  isDark
+                    ? 'bg-white text-[#111113] hover:bg-gray-200 disabled:bg-white/40 disabled:text-[#111113]/60'
+                    : 'bg-[#0a4f42] text-white hover:bg-[#083f35] disabled:bg-[#0a4f42]/40'
+                }`}
               >
                 {isGenerating ? (
                   <>
@@ -473,44 +615,46 @@ export default function ReportsPage() {
           </div>
 
           {/* Выезжающая панель фильтров справа */}
-          {showFilters && (
-            <>
+          <>
               {/* Затемнение фона */}
               <div 
-                className={`fixed inset-0 z-40 transition-opacity duration-300 ${isDark ? 'bg-black/50' : 'bg-black/30'}`}
+                className={`fixed inset-0 z-40 transition-opacity duration-300 ${
+                  showFilters ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
+                } ${isDark ? 'bg-black/50' : 'bg-black/30 backdrop-blur-sm'}`}
                 onClick={() => setShowFilters(false)}
               />
               
               {/* Панель фильтров */}
-              <div className={`fixed top-16 md:top-0 right-0 h-[calc(100%-4rem)] md:h-full w-full sm:w-80 shadow-xl z-50 transform transition-transform duration-300 ease-out overflow-y-auto ${
-                isDark ? 'bg-[#2a3441]' : 'bg-white'
+              <div className={`fixed top-16 md:top-4 right-0 md:right-4 h-[calc(100%-4rem)] md:h-[calc(100vh-2rem)] w-full sm:w-[360px] z-50 transform transition-all duration-300 ease-out overflow-y-auto md:rounded-[30px] ${
+                showFilters ? 'translate-x-0 opacity-100' : 'translate-x-[120%] opacity-0'
+              } ${
+                isDark
+                  ? 'bg-[#111113]/92 backdrop-blur-xl border-l md:border border-white/10 shadow-[0_24px_60px_rgba(0,0,0,0.35)]'
+                  : 'bg-white border-l md:border border-black/[0.08] shadow-[0_24px_60px_rgba(15,23,42,0.12)]'
               }`}>
                 {/* Заголовок панели - только на десктопе */}
-                <div className={`hidden md:flex sticky top-0 border-b px-4 py-3 items-center justify-between z-10 ${
-                  isDark ? 'bg-[#2a3441] border-gray-700' : 'bg-white border-gray-200'
+                <div className={`hidden md:flex sticky top-0 border-b px-4 py-4 items-center justify-start z-10 ${
+                  isDark ? 'bg-[#111113]/40 backdrop-blur-md border-white/10' : 'bg-white border-black/[0.08]'
                 }`}>
-                  <h2 className={`text-lg font-semibold ${isDark ? 'text-gray-100' : 'text-gray-800'}`}>Фильтры отчёта</h2>
                   <button
                     onClick={() => setShowFilters(false)}
-                    className={`p-2 rounded-lg transition-colors ${
-                      isDark ? 'text-gray-400 hover:text-gray-200 hover:bg-[#3a4451]' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
-                    }`}
+                    className="flex h-10 w-10 items-center justify-center rounded-xl text-[#6e6e73] transition-colors hover:bg-black/[0.04] hover:text-[#111113] dark:text-white/60 dark:hover:bg-white/[0.05] dark:hover:text-white"
                     title="Закрыть"
                   >
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    <svg className="w-[18px] h-[18px]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="m9 18 6-6-6-6" />
                     </svg>
                   </button>
                 </div>
 
                 {/* Кнопка скрыть - только на мобильных */}
                 <div className={`md:hidden sticky top-0 border-b px-4 py-3 z-10 ${
-                  isDark ? 'bg-[#2a3441] border-gray-700' : 'bg-white border-gray-200'
+                  isDark ? 'bg-[#111113]/40 backdrop-blur-md border-white/10' : 'bg-white border-black/[0.08]'
                 }`}>
                   <button
                     onClick={() => setShowFilters(false)}
-                    className={`w-full py-2.5 px-4 rounded-xl text-sm font-medium transition-colors flex items-center justify-center gap-2 ${
-                      isDark ? 'bg-[#3a4451] hover:bg-[#4a5461] text-gray-300' : 'bg-gray-100 hover:bg-gray-200 text-gray-600'
+                    className={`w-full py-3 px-4 rounded-2xl text-base font-medium transition-colors flex items-center justify-center gap-2 ${
+                      isDark ? 'bg-white/[0.04] hover:bg-white/[0.08] text-white' : 'bg-black/[0.04] hover:bg-black/[0.07] text-[#111113]'
                     }`}
                   >
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -521,92 +665,55 @@ export default function ReportsPage() {
                 </div>
 
                 {/* Содержимое фильтров */}
-                <div className="p-4 space-y-4">
+                <div className="p-6 space-y-8">
                   {/* Секция: Период */}
-                  <div className="space-y-3">
-                    <h3 className={`text-xs font-semibold uppercase tracking-wider ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>Период</h3>
-                    
-                    <div className="grid grid-cols-2 gap-2">
-                      <div>
-                        <label className={`block text-sm font-medium mb-1 ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>С</label>
-                        <input
-                          type="date"
-                          value={draftDateFrom}
-                          onChange={(e) => setDraftDateFrom(e.target.value)}
-                          className={`w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent transition-all ${
-                            isDark 
-                              ? 'bg-[#3a4451] border-gray-600 text-gray-100'
-                              : 'bg-gray-50 border-gray-200 text-gray-800'
+                  <div className="space-y-4">
+                    <h3 className={`text-xs font-bold uppercase tracking-widest ${isDark ? 'text-white/40' : 'text-black/40'}`}>Период</h3>
+
+                    <div className="flex gap-2 flex-wrap">
+                      {[
+                        { id: 'day', label: 'День' },
+                        { id: 'week', label: 'Неделя' },
+                        { id: 'month', label: 'Месяц' },
+                        { id: 'custom', label: 'Свой' },
+                      ].map((period) => (
+                        <button
+                          key={period.id}
+                          onClick={() => toggleQuickPeriod(period.id as 'day' | 'week' | 'month' | 'custom')}
+                          className={`px-3 py-1.5 text-xs font-medium rounded-xl transition-all ${
+                            activeQuickPeriod === period.id
+                              ? (isDark ? 'bg-white text-[#111113]' : 'bg-[#0a4f42] text-white')
+                              : isDark
+                                ? 'bg-white/[0.04] text-gray-300 hover:bg-white/[0.08]'
+                                : 'bg-[#e7eaef] border border-[#d1d5db] text-[#111113] hover:bg-[#dde2e8]'
                           }`}
+                        >
+                          {period.label}
+                        </button>
+                      ))}
+                    </div>
+
+                    {activeQuickPeriod === 'custom' && (
+                      <div className="mt-3">
+                        <DateRangePicker
+                          startDate={draftDateFrom}
+                          endDate={draftDateTo}
+                          onChange={(start, end) => {
+                            setDraftDateFrom(start)
+                            setDraftDateTo(end)
+                            setActiveQuickPeriod('custom')
+                          }}
+                          isDark={isDark}
                         />
                       </div>
-                      <div>
-                        <label className={`block text-sm font-medium mb-1 ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>По</label>
-                        <input
-                          type="date"
-                          value={draftDateTo}
-                          onChange={(e) => setDraftDateTo(e.target.value)}
-                          className={`w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent transition-all ${
-                            isDark 
-                              ? 'bg-[#3a4451] border-gray-600 text-gray-100'
-                              : 'bg-gray-50 border-gray-200 text-gray-800'
-                          }`}
-                        />
-                      </div>
-                    </div>
-                    
-                    {/* Быстрые периоды */}
-                    <div className="flex gap-2">
-                      <button
-                        onClick={() => {
-                          const today = new Date().toISOString().split('T')[0]
-                          setDraftDateFrom(today)
-                          setDraftDateTo(today)
-                        }}
-                        className={`flex-1 px-3 py-1.5 text-xs font-medium rounded-md transition-all ${
-                          isDark 
-                            ? 'bg-[#3a4451] hover:bg-[#4a5461] text-gray-300'
-                            : 'bg-gray-100 hover:bg-gray-200 text-gray-600'
-                        }`}
-                      >
-                        День
-                      </button>
-                      <button
-                        onClick={() => {
-                          const now = new Date()
-                          setDraftDateFrom(new Date(now.setDate(now.getDate() - 7)).toISOString().split('T')[0])
-                          setDraftDateTo(new Date().toISOString().split('T')[0])
-                        }}
-                        className={`flex-1 px-3 py-1.5 text-xs font-medium rounded-md transition-all ${
-                          isDark 
-                            ? 'bg-[#3a4451] hover:bg-[#4a5461] text-gray-300'
-                            : 'bg-gray-100 hover:bg-gray-200 text-gray-600'
-                        }`}
-                      >
-                        Неделя
-                      </button>
-                      <button
-                        onClick={() => {
-                          const now = new Date()
-                          setDraftDateFrom(new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0])
-                          setDraftDateTo(new Date().toISOString().split('T')[0])
-                        }}
-                        className={`flex-1 px-3 py-1.5 text-xs font-medium rounded-md transition-all ${
-                          isDark 
-                            ? 'bg-[#3a4451] hover:bg-[#4a5461] text-gray-300'
-                            : 'bg-gray-100 hover:bg-gray-200 text-gray-600'
-                        }`}
-                      >
-                        Месяц
-                      </button>
-                    </div>
+                    )}
                   </div>
 
                   <hr className={isDark ? 'border-gray-700' : 'border-gray-200'} />
 
                   {/* Секция: Город */}
-                  <div className="space-y-3">
-                    <h3 className={`text-xs font-semibold uppercase tracking-wider ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>Город</h3>
+                  <div className="space-y-4">
+                    <h3 className={`text-xs font-bold uppercase tracking-widest ${isDark ? 'text-white/40' : 'text-black/40'}`}>Город</h3>
                     
                     <div>
                       <Select 
@@ -619,13 +726,21 @@ export default function ReportsPage() {
                           }
                         }}
                       >
-                        <SelectTrigger className={`w-full ${isDark ? 'bg-[#3a4451] border-gray-600 text-gray-100' : 'bg-gray-50 border-gray-200 text-gray-800'}`}>
+                        <SelectTrigger className={`w-full min-h-[44px] rounded-2xl border shadow-sm focus:ring-0 focus-visible:ring-0 data-[state=open]:ring-0 ${
+                          isDark
+                            ? 'bg-white/[0.04] text-white border-white/10 data-[state=open]:border-white/20'
+                            : 'bg-white text-[#111113] border-[#d1d5db] data-[state=open]:border-[#c4c9d1]'
+                        }`}>
                           <SelectValue placeholder="Выберите город" />
                         </SelectTrigger>
-                        <SelectContent className={isDark ? 'bg-[#2a3441] border-gray-600' : 'bg-white border-gray-200'}>
-                          <SelectItem value="all" className={isDark ? 'text-gray-100 focus:bg-[#3a4451] focus:text-teal-400' : 'text-gray-800 focus:bg-teal-50 focus:text-teal-700'}>Все города</SelectItem>
+                        <SelectContent className={isDark ? 'bg-[#1e1e20] border-white/10' : 'bg-white border-black/[0.08]'}>
+                          <SelectItem value="all" className={isDark ? 'text-gray-100 focus:bg-white/10 focus:text-white' : 'text-gray-800 focus:bg-gray-100 focus:text-gray-900'}>Все города</SelectItem>
                           {availableCities.map(city => (
+<<<<<<< Updated upstream
                             <SelectItem key={city.id} value={city.id.toString()} className={isDark ? 'text-gray-100 focus:bg-[#3a4451] focus:text-teal-400' : 'text-gray-800 focus:bg-teal-50 focus:text-teal-700'}>{city.name}</SelectItem>
+=======
+                            <SelectItem key={city} value={city} className={isDark ? 'text-gray-100 focus:bg-white/10 focus:text-white' : 'text-gray-800 focus:bg-gray-100 focus:text-gray-900'}>{city}</SelectItem>
+>>>>>>> Stashed changes
                           ))}
                         </SelectContent>
                       </Select>
@@ -639,43 +754,46 @@ export default function ReportsPage() {
                       
                       <div className="space-y-3">
                         <div className="flex items-center justify-between">
-                          <h3 className={`text-xs font-semibold uppercase tracking-wider ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>Назначение платежа</h3>
+                          <h3 className={`text-xs font-bold uppercase tracking-widest ${isDark ? 'text-white/40' : 'text-black/40'}`}>Назначение платежа</h3>
                           <label className="flex items-center gap-2 cursor-pointer">
                             <input
                               type="checkbox"
                               checked={draftFilterByPurpose}
                               onChange={(e) => setDraftFilterByPurpose(e.target.checked)}
-                              className="h-4 w-4 rounded border-gray-300 text-teal-600 focus:ring-teal-500"
+                              className={`h-4 w-4 rounded border-gray-400 focus:ring-0 ${isDark ? 'accent-white' : 'accent-[#0a4f42]'}`}
                             />
-                            <span className={`text-xs ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>Группировать</span>
+                            <span className={`text-xs ${isDark ? 'text-white/80' : 'text-gray-500'}`}>Группировать</span>
                           </label>
                         </div>
                         
                         {draftFilterByPurpose && (
-                          <div className={`p-3 rounded-lg space-y-2 ${isDark ? 'bg-[#3a4451]' : 'bg-gray-50'}`}>
-                            <label className="flex items-center gap-2 cursor-pointer hover:bg-opacity-50 p-1.5 rounded">
+                          <div className={`p-3 rounded-2xl space-y-2 ${isDark ? 'bg-white/[0.04] border border-white/10' : 'bg-gray-50'}`}>
+                            <label className={`flex items-center gap-2 cursor-pointer p-1.5 rounded ${isDark ? 'hover:bg-white/[0.06]' : 'hover:bg-black/[0.03]'}`}>
                               <input
                                 type="checkbox"
                                 checked={draftSelectedPurposes.length === ALL_PURPOSES.length}
                                 onChange={handleSelectAllPurposes}
-                                className="h-4 w-4 rounded border-gray-300 text-teal-600 focus:ring-teal-500"
+                                className={`h-4 w-4 rounded border-gray-400 focus:ring-0 ${isDark ? 'accent-white' : 'accent-[#0a4f42]'}`}
                               />
-                              <span className={`text-sm font-medium ${isDark ? 'text-gray-200' : 'text-gray-700'}`}>Выбрать все</span>
+                              <span className={`text-sm font-medium ${isDark ? 'text-white' : 'text-gray-700'}`}>Выбрать все</span>
                             </label>
-                            <hr className={isDark ? 'border-gray-600' : 'border-gray-200'} />
-                            <div className="max-h-40 overflow-y-auto space-y-1">
+                            <hr className={isDark ? 'border-white/10' : 'border-gray-200'} />
+                            <div
+                              className="max-h-40 overflow-y-auto space-y-1"
+                              style={{ scrollbarColor: isDark ? '#9ca3af #334155' : '#9ca3af #e5e7eb' }}
+                            >
                               {ALL_PURPOSES.map(purpose => (
                                 <label 
                                   key={purpose.value} 
-                                  className="flex items-center gap-2 cursor-pointer hover:bg-opacity-50 p-1.5 rounded"
+                                  className={`flex items-center gap-2 cursor-pointer p-1.5 rounded ${isDark ? 'hover:bg-white/[0.06]' : 'hover:bg-black/[0.03]'}`}
                                 >
                                   <input
                                     type="checkbox"
                                     checked={draftSelectedPurposes.includes(purpose.value)}
                                     onChange={() => handlePurposeToggle(purpose.value)}
-                                    className="h-4 w-4 rounded border-gray-300 text-teal-600 focus:ring-teal-500"
+                                    className={`h-4 w-4 rounded border-gray-400 focus:ring-0 ${isDark ? 'accent-white' : 'accent-[#0a4f42]'}`}
                                   />
-                                  <span className={`text-sm ${isDark ? 'text-gray-300' : 'text-gray-600'}`}>{purpose.label}</span>
+                                  <span className={`text-sm ${isDark ? 'text-white/90' : 'text-gray-600'}`}>{purpose.label}</span>
                                 </label>
                               ))}
                             </div>
@@ -687,29 +805,32 @@ export default function ReportsPage() {
                 </div>
 
                 {/* Нижняя панель с кнопками */}
-                <div className={`sticky bottom-0 border-t px-4 py-3 flex gap-2 ${
-                  isDark ? 'bg-[#2a3441] border-gray-700' : 'bg-white border-gray-200'
+                <div className={`sticky bottom-0 border-t px-6 py-4 flex gap-3 ${
+                  isDark ? 'bg-[#111113]/40 backdrop-blur-md border-white/10' : 'bg-white border-black/[0.08]'
                 }`}>
                   <button
                     onClick={resetFilters}
-                    className={`flex-1 px-4 py-2 rounded-lg transition-colors text-sm font-medium ${
+                    className={`flex-1 py-3.5 rounded-2xl text-[15px] font-semibold transition-colors ${
                       isDark 
-                        ? 'bg-[#3a4451] hover:bg-[#4a5461] text-gray-300'
-                        : 'bg-gray-100 hover:bg-gray-200 text-gray-700'
+                        ? 'bg-white/[0.04] hover:bg-white/[0.08] text-white'
+                        : 'border border-[#cfd2d8] bg-white hover:bg-[#f3f4f6] text-[#111113] shadow-[0_1px_2px_rgba(15,23,42,0.06)]'
                     }`}
                   >
                     Сбросить
                   </button>
                   <button
                     onClick={applyFilters}
-                    className="flex-1 px-4 py-2 bg-teal-500 hover:bg-teal-600 text-white rounded-lg transition-colors text-sm font-medium"
+                    className={`flex-1 py-3.5 rounded-2xl transition-colors text-[15px] font-semibold ${
+                      isDark
+                        ? 'bg-white hover:bg-gray-200 text-[#111113]'
+                        : 'bg-[#0a4f42] hover:bg-[#0a4f42]/90 text-white shadow-md shadow-[#0a4f42]/20'
+                    }`}
                   >
                     Применить
                   </button>
                 </div>
               </div>
             </>
-          )}
 
           {/* Информация о текущих фильтрах */}
           {reportData && (
@@ -756,14 +877,14 @@ export default function ReportsPage() {
           {/* Состояние загрузки */}
           {isGenerating && (
             <div className="text-center py-8 animate-fade-in">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-teal-600 mx-auto mb-4"></div>
+              <div className={`animate-spin rounded-full h-12 w-12 border-b-2 mx-auto mb-4 ${isDark ? 'border-white' : 'border-[#0a4f42]'}`}></div>
               <p className={`font-medium ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>Формирование отчёта...</p>
             </div>
           )}
 
           {/* Пустое состояние */}
           {!reportData && !isGenerating && (
-            <div className={`text-center py-16 rounded-lg ${isDark ? 'bg-[#2a3441]' : 'bg-gray-50'}`}>
+            <div className={`text-center py-16 rounded-[20px] border ${isDark ? 'bg-white/[0.03] border-white/10' : 'bg-white border-black/[0.08]'}`}>
               <svg className={`w-16 h-16 mx-auto mb-4 ${isDark ? 'text-gray-600' : 'text-gray-300'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
               </svg>
@@ -778,10 +899,10 @@ export default function ReportsPage() {
               
               {/* Таблица кассы (простой режим) */}
               {reportData.type === 'cash' && !reportData.data.groupByPurpose && (
-                <div className={`rounded-lg shadow-lg overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0 ${isDark ? 'bg-[#2a3441]' : 'bg-white'}`}>
+                <div className={`rounded-[20px] shadow-lg overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0 ${isDark ? 'bg-white/[0.03]' : 'bg-white'}`}>
                   <table className="w-full text-sm">
                     <thead>
-                      <tr className={`border-b-2 ${isDark ? 'bg-[#3a4451] border-[#0d5c4b]' : 'bg-gray-50 border-[#0d5c4b]'}`}>
+                      <tr className={`border-b-2 ${isDark ? 'bg-white/[0.04] border-white/20' : 'bg-black/[0.02] border-black/10'}`}>
                         <th className={`text-left py-3 px-4 font-semibold ${isDark ? 'text-gray-200' : 'text-gray-700'}`}>Город</th>
                         <th className={`text-right py-3 px-4 font-semibold ${isDark ? 'text-gray-200' : 'text-gray-700'}`}>Приход</th>
                         <th className={`text-right py-3 px-4 font-semibold ${isDark ? 'text-gray-200' : 'text-gray-700'}`}>Расход</th>

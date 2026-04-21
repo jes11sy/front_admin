@@ -7,6 +7,9 @@ import { useDesignStore } from '@/store/design.store'
 import { toast } from 'sonner'
 import { logger } from '@/lib/logger'
 import { OptimizedPagination } from '@/components/ui/optimized-pagination'
+import { LoadingState } from '@/components/ui/loading-state'
+import { NetworkError } from '@/components/ui/network-error'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 
 interface Director {
   id: number
@@ -23,6 +26,7 @@ export default function DirectorsPage() {
   const router = useRouter()
   const [directors, setDirectors] = useState<Director[]>([])
   const [isLoading, setIsLoading] = useState(true)
+  const [loadError, setLoadError] = useState<string | null>(null)
   
   // Тема
   const theme = useDesignStore((state) => state.theme)
@@ -44,16 +48,17 @@ export default function DirectorsPage() {
 
   const loadDirectors = async () => {
     setIsLoading(true)
+    setLoadError(null)
     try {
       const response = await apiClient.getDirectors()
       if (response.success && response.data) {
         setDirectors(response.data)
       } else {
-        toast.error('Не удалось загрузить список директоров')
+        setLoadError('Ошибка загрузки данных')
       }
     } catch (error) {
       logger.error('Error loading directors', { error: String(error) })
-      toast.error('Ошибка при загрузке директоров')
+      setLoadError('Ошибка загрузки данных')
     } finally {
       setIsLoading(false)
     }
@@ -126,78 +131,104 @@ export default function DirectorsPage() {
     toast.error('Удаление директоров пока не реализовано')
   }
 
-  if (isLoading) {
-    return (
-      <div className="text-center py-8">
-        <div className={`inline-block animate-spin rounded-full h-8 w-8 border-b-2 ${
-          isDark ? 'border-[#0d5c4b]' : 'border-[#0d5c4b]'
-        }`}></div>
-        <div className={`text-lg mt-4 ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>Загрузка директоров...</div>
-      </div>
-    )
-  }
-  
   return (
-    <div>
+    <div className={`min-h-screen transition-colors duration-300 ${isDark ? 'bg-[#111113]' : 'bg-[#f5f5f7]'}`}>
+      <div className="px-4 py-6">
       {/* Панель управления: фильтры + добавление */}
-      <div className="mb-6 flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          {/* Иконка фильтров */}
-          <button
-            onClick={() => setShowFilters(!showFilters)}
-            className={`relative p-2 rounded-lg transition-all duration-200 ${
-              showFilters 
-                ? isDark 
-                  ? 'bg-[#0d5c4b]/20 text-[#0d5c4b]'
-                  : 'bg-[#daece2] text-[#0d5c4b]'
-                : isDark
-                  ? 'bg-[#2a3441] text-gray-400 hover:bg-[#2a3441]/80 hover:text-[#0d5c4b]'
-                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200 hover:text-[#0d5c4b]'
-            }`}
-            title="Фильтры"
-          >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
-            </svg>
-            {/* Индикатор активных фильтров */}
-            {hasActiveFilters && (
-              <span className={`absolute -top-0.5 -right-0.5 w-2.5 h-2.5 bg-[#0d5c4b] rounded-full border-2 ${isDark ? 'border-[#1e2530]' : 'border-white'}`}></span>
-            )}
-          </button>
-        </div>
-
+      <div className="mb-6 flex items-center justify-end gap-2">
         <button 
           onClick={() => router.push('/employees/directors/add')}
-          className="px-4 py-2 bg-[#0d5c4b] hover:bg-[#0a4a3c] text-white rounded-lg transition-colors text-sm font-medium"
+          className={`px-4 py-2 rounded-2xl transition-colors text-sm font-medium ${
+            isDark ? 'bg-white text-[#111113] hover:bg-gray-200' : 'bg-[#0a4f42] text-white hover:bg-[#083f35]'
+          }`}
         >
           + Добавить директора
         </button>
+
+        {/* Иконка фильтров */}
+        <button
+          onClick={() => setShowFilters(true)}
+          className={`relative flex items-center justify-center min-h-[40px] w-[40px] rounded-2xl transition-all duration-200 bg-transparent ${
+            showFilters 
+              ? isDark 
+                ? 'bg-white/[0.08] text-white'
+                : 'bg-[#0a4f42] text-white'
+              : isDark
+                ? 'text-white/92 hover:bg-white/[0.04] hover:text-white'
+                : 'text-[#3a3a3c] hover:bg-black/[0.035] hover:text-[#111113]'
+          }`}
+          title="Фильтры"
+        >
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
+          </svg>
+          {/* Индикатор активных фильтров */}
+          {hasActiveFilters && (
+            <span className="absolute top-2 right-2 w-2 h-2 bg-[#b3261e] rounded-full"></span>
+          )}
+        </button>
       </div>
 
-      {/* Панель фильтров */}
-      {showFilters && (
-        <div className={`mb-6 p-4 rounded-lg border animate-fade-in ${
-          isDark 
-            ? 'bg-[#2a3441] border-[#0d5c4b]/30' 
-            : 'bg-gray-50 border-gray-200'
+      {/* Панель фильтров справа */}
+      <>
+        <div
+          className={`fixed inset-0 z-40 transition-opacity duration-300 ${
+            showFilters ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
+          } ${isDark ? 'bg-black/50' : 'bg-black/30 backdrop-blur-sm'}`}
+          onClick={() => setShowFilters(false)}
+        />
+
+        <div className={`fixed top-16 md:top-4 right-0 md:right-4 h-[calc(100%-4rem)] md:h-[calc(100vh-2rem)] w-full sm:w-[360px] z-50 transform transition-all duration-300 ease-out overflow-y-auto md:rounded-[30px] ${
+          showFilters ? 'translate-x-0 opacity-100' : 'translate-x-[120%] opacity-0'
+        } ${
+          isDark
+            ? 'bg-[#111113]/92 backdrop-blur-xl border-l md:border border-white/10 shadow-[0_24px_60px_rgba(0,0,0,0.35)]'
+            : 'bg-white border-l md:border border-black/[0.08] shadow-[0_24px_60px_rgba(15,23,42,0.12)]'
         }`}>
-          <div className="flex flex-wrap gap-4 items-end">
-            {/* Поиск по имени */}
-            <div className="flex-1 min-w-[200px]">
-              <label className={`block text-sm font-medium mb-1 ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>Поиск по имени или логину</label>
+          <div className={`hidden md:flex sticky top-0 border-b px-4 py-4 items-center justify-start z-10 ${
+            isDark ? 'bg-[#111113]/40 backdrop-blur-md border-white/10' : 'bg-white border-black/[0.08]'
+          }`}>
+            <button
+              onClick={() => setShowFilters(false)}
+              className="flex h-10 w-10 items-center justify-center rounded-xl text-[#6e6e73] transition-colors hover:bg-black/[0.04] hover:text-[#111113] dark:text-white/60 dark:hover:bg-white/[0.05] dark:hover:text-white"
+              title="Закрыть"
+            >
+              <svg className="w-[18px] h-[18px]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="m9 18 6-6-6-6" />
+              </svg>
+            </button>
+          </div>
+
+          <div className={`md:hidden sticky top-0 border-b px-4 py-3 z-10 ${
+            isDark ? 'bg-[#111113]/40 backdrop-blur-md border-white/10' : 'bg-white border-black/[0.08]'
+          }`}>
+            <button
+              onClick={() => setShowFilters(false)}
+              className={`w-full py-3 px-4 rounded-2xl text-base font-medium transition-colors flex items-center justify-center gap-2 ${
+                isDark ? 'bg-white/[0.04] hover:bg-white/[0.08] text-white' : 'bg-black/[0.04] hover:bg-black/[0.07] text-[#111113]'
+              }`}
+            >
+              Скрыть фильтры
+            </button>
+          </div>
+
+          <div className="p-6 space-y-8">
+            <div className="space-y-3">
+              <h3 className={`text-xs font-semibold uppercase tracking-wider ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>Поиск</h3>
               <input
                 type="text"
                 value={searchName}
                 onChange={(e) => setSearchName(e.target.value)}
                 placeholder="Введите имя или логин..."
-                className={`w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#0d5c4b] focus:border-transparent transition-all ${
-                  isDark 
-                    ? 'bg-[#1e2530] border-[#0d5c4b]/30 text-gray-200 placeholder-gray-500'
-                    : 'bg-white border-gray-200 text-gray-800 placeholder-gray-400'
+                className={`w-full px-3 py-2 border rounded-2xl text-sm outline-none ring-0 focus:outline-none focus-visible:outline-none focus:ring-0 focus-visible:ring-0 focus:border-transparent transition-all ${
+                  isDark
+                    ? 'bg-white/[0.04] border-white/15 text-gray-200 placeholder-gray-500 focus:border-white/30'
+                    : 'bg-white border-gray-200 text-gray-800 placeholder-gray-400 focus:border-gray-300'
                 }`}
               />
             </div>
 
+<<<<<<< Updated upstream
             {/* Город */}
             <div className="min-w-[180px]">
               <label className={`block text-sm font-medium mb-1 ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>Город</label>
@@ -216,31 +247,70 @@ export default function DirectorsPage() {
                 ))}
               </select>
             </div>
+=======
+            <hr className={isDark ? 'border-gray-700' : 'border-gray-200'} />
+>>>>>>> Stashed changes
 
-            {/* Кнопка сброса */}
+            <div className="space-y-3">
+              <h3 className={`text-xs font-semibold uppercase tracking-wider ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>Город</h3>
+              <Select value={cityFilter || 'all'} onValueChange={(value) => setCityFilter(value === 'all' ? '' : value)}>
+                <SelectTrigger className={`w-full min-h-[44px] rounded-2xl border shadow-sm focus:ring-0 focus-visible:ring-0 data-[state=open]:ring-0 ${
+                  isDark
+                    ? 'bg-white/[0.04] text-gray-200 border-white/15 data-[state=open]:border-white/25'
+                    : 'bg-white text-gray-800 border-gray-200 data-[state=open]:border-gray-300'
+                }`}>
+                  <SelectValue placeholder="Все города" />
+                </SelectTrigger>
+                <SelectContent className={isDark ? 'bg-[#1e1e20] border-white/10' : 'bg-white border-black/[0.08]'}>
+                  <SelectItem value="all" className={isDark ? 'text-gray-100 focus:bg-white/10 focus:text-white' : 'text-gray-800 focus:bg-gray-100 focus:text-gray-900'}>Все города</SelectItem>
+                  {uniqueCities.map(city => (
+                    <SelectItem key={city} value={city} className={isDark ? 'text-gray-100 focus:bg-white/10 focus:text-white' : 'text-gray-800 focus:bg-gray-100 focus:text-gray-900'}>{city}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          <div className={`sticky bottom-0 border-t px-6 py-4 flex gap-3 ${
+            isDark ? 'bg-[#111113]/40 backdrop-blur-md border-white/10' : 'bg-white border-black/[0.08]'
+          }`}>
             <button
               onClick={() => {
                 setSearchName('')
                 setCityFilter('')
               }}
-              className={`px-4 py-2 rounded-lg text-sm transition-colors font-medium ${
-                isDark 
-                  ? 'bg-[#1e2530] hover:bg-[#1e2530]/80 text-gray-300'
-                  : 'bg-gray-200 hover:bg-gray-300 text-gray-700'
+              className={`flex-1 py-3.5 rounded-2xl text-[15px] font-semibold transition-colors ${
+                isDark
+                  ? 'bg-white/[0.04] hover:bg-white/[0.08] text-white'
+                  : 'border border-[#cfd2d8] bg-white hover:bg-[#f3f4f6] text-[#111113] shadow-[0_1px_2px_rgba(15,23,42,0.06)]'
               }`}
             >
               Сбросить
             </button>
+            <button
+              onClick={() => setShowFilters(false)}
+              className={`flex-1 py-3.5 rounded-2xl transition-colors text-[15px] font-semibold ${
+                isDark
+                  ? 'bg-white hover:bg-gray-200 text-[#111113]'
+                  : 'bg-[#0a4f42] hover:bg-[#0a4f42]/90 text-white shadow-md shadow-[#0a4f42]/20'
+              }`}
+            >
+              Применить
+            </button>
           </div>
         </div>
-      )}
+      </>
 
       {/* Таблица */}
-      <div className="overflow-x-auto">
-        <table className="w-full border-collapse text-sm">
+      {isLoading && <LoadingState isDark={isDark} message="Загрузка директоров..." />}
+      {!isLoading && loadError && <NetworkError isDark={isDark} onRetry={loadDirectors} message={loadError} />}
+
+      {!isLoading && !loadError && (
+      <div className="overflow-x-auto animate-fade-in">
+        <table className={`w-full border-collapse text-sm rounded-[20px] shadow-lg overflow-hidden ${isDark ? 'bg-white/[0.03]' : 'bg-white'}`}>
           <thead>
             <tr className={`border-b-2 ${
-              isDark ? 'border-[#0d5c4b]/30 bg-[#2a3441]' : 'border-gray-200 bg-gray-50'
+              isDark ? 'border-white/20 bg-white/[0.04]' : 'border-gray-200 bg-gray-50'
             }`}>
               <th className={`text-left py-3 px-4 font-semibold ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>ID</th>
               <th className={`text-left py-3 px-4 font-semibold ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>Имя</th>
@@ -266,8 +336,8 @@ export default function DirectorsPage() {
                   key={director.id} 
                   className={`border-b transition-colors cursor-pointer ${
                     isDark 
-                      ? 'border-[#0d5c4b]/20 hover:bg-[#2a3441]' 
-                      : 'border-gray-100 hover:bg-gray-50'
+                      ? 'border-white/10 hover:bg-white/[0.04]' 
+                      : 'border-gray-100 hover:bg-black/[0.02]'
                   }`}
                   onClick={() => router.push(`/employees/directors/edit/${director.id}`)}
                 >
@@ -337,20 +407,19 @@ export default function DirectorsPage() {
           </tbody>
         </table>
       </div>
+      )}
       
       {/* Пагинация */}
-      {totalPages > 1 && (
-        <div className={`flex items-center justify-center mt-6 pt-4 border-t ${
-          isDark ? 'border-gray-700' : 'border-gray-200'
-        }`}>
+      {!isLoading && !loadError && totalPages > 1 && (
+        <div className="mt-6 animate-fade-in">
           <OptimizedPagination
             currentPage={currentPage}
             totalPages={totalPages}
             onPageChange={setCurrentPage}
-            isDark={isDark}
           />
         </div>
       )}
+      </div>
     </div>
   )
 }

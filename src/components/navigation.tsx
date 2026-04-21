@@ -16,7 +16,6 @@ import {
   Phone,
   Briefcase,
   Wrench,
-  Tag,
   PhoneCall,
   MapPin,
   UserCheck,
@@ -51,8 +50,11 @@ const navigationItems = [
   },
   { name: 'Расписание', href: '/schedule', icon: Calendar },
   { name: 'Телефония', href: '/telephony', icon: PhoneCall },
+<<<<<<< Updated upstream
   // { name: 'Авито', href: '/avito', icon: Tag }, // Временно скрыто
   { name: 'Заявки с сайта', href: '/site-orders', icon: Globe },
+=======
+>>>>>>> Stashed changes
   { name: 'Заказы', href: '/orders', icon: ShoppingCart },
   {
     name: 'Касса',

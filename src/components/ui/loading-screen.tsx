@@ -47,9 +47,9 @@ export function LoadingScreen({
       </div>
 
       {/* Спиннер */}
-      <div className="relative w-12 h-12">
-        <div className="w-full h-full rounded-full border-4 border-[#0d5c4b]/20 dark:border-[#0d5c4b]/30" />
-        <div className="absolute inset-0 rounded-full border-4 border-transparent border-t-[#0d5c4b] animate-spin" />
+      <div className="relative h-12 w-12">
+        <div className="h-12 w-12 rounded-full border-2 border-black/12 dark:border-white/20" />
+        <div className="absolute inset-0 h-12 w-12 animate-spin rounded-full border-2 border-transparent border-b-[#0a4f42] dark:border-b-white" />
       </div>
     </div>
   )
@@ -89,8 +89,8 @@ export function LoadingSpinner({
 
   return (
     <div className={`relative ${sizeClasses[size]} ${className}`}>
-      <div className={`${sizeClasses[size]} rounded-full border-2 border-[#0d5c4b]/20`} />
-      <div className={`absolute top-0 left-0 ${sizeClasses[size]} rounded-full border-2 border-transparent border-t-[#0d5c4b] animate-spin`} />
+      <div className={`${sizeClasses[size]} rounded-full border-2 border-black/10 dark:border-white/20`} />
+      <div className={`absolute top-0 left-0 ${sizeClasses[size]} animate-spin rounded-full border-2 border-transparent border-t-[#0a4f42] dark:border-t-white`} />
     </div>
   )
 }

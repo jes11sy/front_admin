@@ -3,7 +3,6 @@
 import { usePathname } from 'next/navigation'
 import { CustomNavigation } from '@/components/custom-navigation'
 import { ErrorBoundary } from '@/components/ErrorBoundary'
-import AuthGuard from '@/components/auth-guard'
 import { useDesignStore } from '@/store/design.store'
 import React, { useLayoutEffect, useEffect, useMemo, useRef, useState } from 'react'
 
@@ -62,11 +61,11 @@ const ClientLayout = ({ children }: ClientLayoutProps) => {
     const html = document.documentElement
     if (isDark) {
       html.classList.add('dark')
-      html.style.backgroundColor = '#1e2530'
+      html.style.backgroundColor = '#111113'
       html.style.colorScheme = 'dark'
     } else {
       html.classList.remove('dark')
-      html.style.backgroundColor = ''
+      html.style.backgroundColor = '#f5f5f7'
       html.style.colorScheme = ''
     }
   }, [isDark])
@@ -95,13 +94,12 @@ const ClientLayout = ({ children }: ClientLayoutProps) => {
     )
   }
 
-  // Защищенные страницы
+  // Временный bypass авторизации для всех непубличных страниц
+  // (доступ ко всем страницам без логина)
   return (
     <ErrorBoundary>
       <CustomNavigation />
-      <AuthGuard>
-        <main className="pt-16 md:pt-0 md:ml-56 min-h-screen bg-white dark:bg-[#1e2530]">{children}</main>
-      </AuthGuard>
+      <main className="main-content pt-16 pb-28 md:pb-0 md:pt-0 min-h-screen bg-[#f5f5f7] dark:bg-[#111113]">{children}</main>
     </ErrorBoundary>
   )
 }
