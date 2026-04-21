@@ -5,6 +5,7 @@ import { apiClient } from '@/lib/api'
 import { useDesignStore } from '@/store/design.store'
 import { toast } from 'sonner'
 import { Plus, Pencil, Trash2, Check, X } from 'lucide-react'
+import { dashboardStyles } from '@/lib/dashboard-ui'
 
 interface OrderStatus {
   id: number
@@ -29,6 +30,7 @@ const emptyForm: FormState = { name: '', code: '', color: '#6b7280', sortOrder: 
 export default function OrderStatusesPage() {
   const theme = useDesignStore((state) => state.theme)
   const isDark = theme === 'dark'
+  const ds = dashboardStyles(isDark)
 
   const [items, setItems] = useState<OrderStatus[]>([])
   const [isLoading, setIsLoading] = useState(true)
@@ -75,114 +77,124 @@ export default function OrderStatusesPage() {
     catch (e: any) { toast.error(e.message || 'Ошибка удаления') }
   }
 
-  const inputCls = `w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent transition-all ${isDark ? 'bg-[#3a4451] border-gray-600 text-gray-100 placeholder-gray-500' : 'bg-gray-50 border-gray-200 text-gray-800 placeholder-gray-400'}`
-
-  const FormFields = ({ inline = false }: { inline?: boolean }) => (
-    <div className={`${inline ? 'flex gap-3 flex-wrap items-end' : 'grid grid-cols-2 sm:grid-cols-3 gap-3'}`}>
+  const FormFields = () => (
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
       <div>
-        <label className={`block text-xs mb-1 ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>Название</label>
-        <input className={inputCls} placeholder="Новый, В работе..." value={form.name} onChange={e => setForm({...form, name: e.target.value})} />
+        <label className={`mb-2 block ${ds.sectionLabel}`}>Название</label>
+        <input className={ds.input} placeholder="Новый, В работе..." value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} />
       </div>
       <div>
-        <label className={`block text-xs mb-1 ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>Код</label>
-        <input className={inputCls} placeholder="new, in_progress..." value={form.code} onChange={e => setForm({...form, code: e.target.value.toLowerCase()})} />
+        <label className={`mb-2 block ${ds.sectionLabel}`}>Код</label>
+        <input className={ds.input} placeholder="new, in_progress..." value={form.code} onChange={e => setForm({ ...form, code: e.target.value.toLowerCase() })} />
       </div>
       <div>
-        <label className={`block text-xs mb-1 ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>Цвет</label>
+        <label className={`mb-2 block ${ds.sectionLabel}`}>Цвет</label>
         <div className="flex gap-2">
-          <input type="color" value={form.color} onChange={e => setForm({...form, color: e.target.value})} className="h-9 w-10 rounded border border-gray-300 cursor-pointer" />
-          <input className={inputCls} placeholder="#FF5733" value={form.color} onChange={e => setForm({...form, color: e.target.value})} />
+          <input type="color" value={form.color} onChange={e => setForm({ ...form, color: e.target.value })} className="h-11 w-12 cursor-pointer rounded-xl border border-black/10" />
+          <input className={ds.input} placeholder="#FF5733" value={form.color} onChange={e => setForm({ ...form, color: e.target.value })} />
         </div>
       </div>
       <div>
-        <label className={`block text-xs mb-1 ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>Порядок</label>
-        <input type="number" className={inputCls} value={form.sortOrder} onChange={e => setForm({...form, sortOrder: Number(e.target.value)})} />
+        <label className={`mb-2 block ${ds.sectionLabel}`}>Порядок</label>
+        <input type="number" className={ds.input} value={form.sortOrder} onChange={e => setForm({ ...form, sortOrder: Number(e.target.value) })} />
       </div>
-      <div className="flex items-center gap-2 pt-4">
-        <input type="checkbox" checked={form.isActive} onChange={e => setForm({...form, isActive: e.target.checked})} className="rounded" />
+      <div className="flex items-center gap-2 pt-6 sm:pt-8">
+        <input type="checkbox" checked={form.isActive} onChange={e => setForm({ ...form, isActive: e.target.checked })} className={`rounded h-4 w-4 ${isDark ? 'accent-white' : 'accent-[#0a4f42]'}`} />
         <span className={`text-sm ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>Активен</span>
       </div>
     </div>
   )
 
   return (
-    <>
-      <div className="mb-6 flex items-center justify-between">
-        <div>
-          <h1 className={`text-xl font-semibold ${isDark ? 'text-gray-100' : 'text-gray-800'}`}>Статусы заказов</h1>
-        </div>
-        <button onClick={() => { setShowAdd(true); setEditingId(null); setForm(emptyForm) }} className="flex items-center gap-2 px-4 py-2 bg-teal-600 hover:bg-teal-700 text-white rounded-lg text-sm font-medium">
-          <Plus className="w-4 h-4" /> Добавить
-        </button>
-      </div>
-
-      {showAdd && (
-        <div className={`mb-6 p-4 rounded-lg border ${isDark ? 'bg-[#2a3441] border-gray-700' : 'bg-gray-50 border-gray-200'}`}>
-          <div className={`text-sm font-medium mb-3 ${isDark ? 'text-gray-200' : 'text-gray-800'}`}>Новый статус</div>
-          <FormFields />
-          <div className="flex gap-2 mt-4">
-            <button onClick={save} disabled={saving} className="flex items-center gap-1 px-4 py-2 bg-teal-600 hover:bg-teal-700 text-white rounded-lg text-sm disabled:opacity-50"><Check className="w-4 h-4" />{saving ? 'Сохранение...' : 'Сохранить'}</button>
-            <button onClick={() => { setShowAdd(false); setForm(emptyForm) }} className={`flex items-center gap-1 px-4 py-2 rounded-lg text-sm ${isDark ? 'bg-[#1e2530] text-gray-300' : 'bg-gray-200 text-gray-700'}`}><X className="w-4 h-4" />Отмена</button>
+    <div className={ds.pageRoot}>
+      <div className={ds.content}>
+        <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+          <div>
+            <h1 className={ds.title}>Статусы заказов</h1>
+            <p className={ds.subtitle}>Цвета и порядок в воронке и списках заказов.</p>
           </div>
+          <button type="button" onClick={() => { setShowAdd(true); setEditingId(null); setForm(emptyForm) }} className={`${ds.primaryBtn} shrink-0`}>
+            <Plus className="w-4 h-4" /> Добавить
+          </button>
         </div>
-      )}
 
-      {isLoading ? (
-        <div className="text-center py-12"><div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-teal-600" /></div>
-      ) : (
-        <div className="overflow-x-auto">
-          <table className={`w-full border-collapse text-[11px] rounded-lg shadow-lg ${isDark ? 'bg-[#2a3441]' : 'bg-white'}`}>
-            <thead>
-              <tr className={`border-b-2 ${isDark ? 'bg-[#3a4451]' : 'bg-gray-50'}`} style={{ borderColor: '#0d5c4b' }}>
-                {['ID', 'Название', 'Код', 'Цвет', 'Порядок', 'Статус', 'Действия'].map(h => (
-                  <th key={h} className={`text-left py-3 px-4 font-semibold ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {items.length === 0 ? (
-                <tr><td colSpan={7} className="py-8 text-center text-gray-400">Нет данных</td></tr>
-              ) : items.map(item => (
-                <tr key={item.id} className={`border-b transition-colors ${isDark ? 'hover:bg-[#3a4451] border-gray-700' : 'hover:bg-teal-50 border-gray-200'}`}>
-                  {editingId === item.id ? (
-                    <td colSpan={7} className="py-3 px-4">
-                      <FormFields />
-                      <div className="flex gap-2 mt-3">
-                        <button onClick={save} disabled={saving} className="flex items-center gap-1 px-4 py-2 bg-teal-600 text-white rounded-lg text-sm disabled:opacity-50"><Check className="w-4 h-4" />{saving ? 'Сохр...' : 'Сохранить'}</button>
-                        <button onClick={cancelEdit} className={`flex items-center gap-1 px-4 py-2 rounded-lg text-sm ${isDark ? 'bg-[#1e2530] text-gray-300' : 'bg-gray-200 text-gray-700'}`}><X className="w-4 h-4" />Отмена</button>
-                      </div>
-                    </td>
-                  ) : (
-                    <>
-                      <td className={`py-3 px-4 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>{item.id}</td>
-                      <td className="py-3 px-4">
-                        <span className="px-2.5 py-1 rounded-full text-xs font-medium text-white" style={{ backgroundColor: item.color || '#6b7280' }}>
-                          {item.name}
-                        </span>
-                      </td>
-                      <td className={`py-3 px-4 font-mono text-xs ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>{item.code}</td>
-                      <td className="py-3 px-4">
-                        <div className="flex items-center gap-2">
-                          <div className="w-5 h-5 rounded-full border border-gray-300" style={{ backgroundColor: item.color || '#6b7280' }} />
-                          <span className={`text-xs ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>{item.color || '—'}</span>
-                        </div>
-                      </td>
-                      <td className={`py-3 px-4 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>{item.sortOrder}</td>
-                      <td className="py-3 px-4"><span className={`px-2 py-1 rounded-full text-xs font-medium ${item.isActive ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>{item.isActive ? 'Активен' : 'Неактивен'}</span></td>
-                      <td className="py-3 px-4">
-                        <div className="flex gap-1">
-                          <button onClick={() => startEdit(item)} className={`p-2 rounded-lg ${isDark ? 'text-gray-400 hover:text-teal-400 hover:bg-teal-900/30' : 'text-gray-500 hover:text-teal-600 hover:bg-teal-50'}`}><Pencil className="w-4 h-4" /></button>
-                          <button onClick={() => remove(item.id)} className={`p-2 rounded-lg ${isDark ? 'text-gray-400 hover:text-red-400 hover:bg-red-900/30' : 'text-gray-500 hover:text-red-600 hover:bg-red-50'}`}><Trash2 className="w-4 h-4" /></button>
-                        </div>
-                      </td>
-                    </>
-                  )}
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
-    </>
+        {showAdd && (
+          <div className={`${ds.panelPadded} mb-6`}>
+            <div className={`text-sm font-semibold mb-4 ${isDark ? 'text-white' : 'text-[#111113]'}`}>Новый статус</div>
+            <FormFields />
+            <div className="flex gap-2 mt-6 flex-wrap">
+              <button type="button" onClick={save} disabled={saving} className={ds.primaryBtn}><Check className="w-4 h-4" />{saving ? 'Сохранение...' : 'Сохранить'}</button>
+              <button type="button" onClick={() => { setShowAdd(false); setForm(emptyForm) }} className={ds.secondaryBtn}><X className="w-4 h-4" />Отмена</button>
+            </div>
+          </div>
+        )}
+
+        {isLoading ? (
+          <div className="flex flex-col items-center justify-center py-16">
+            <div className={ds.spinner} />
+            <p className={`mt-4 text-sm ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>Загрузка...</p>
+          </div>
+        ) : (
+          <div className={ds.tableScroll}>
+            <div className={ds.tableWrap}>
+              <table className="w-full border-collapse text-sm min-w-[800px]">
+                <thead>
+                  <tr className={ds.theadRow}>
+                    {['ID', 'Название', 'Код', 'Цвет', 'Порядок', 'Статус', 'Действия'].map(h => (
+                      <th key={h} className={ds.th}>{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {items.length === 0 ? (
+                    <tr><td colSpan={7} className={`${ds.td} text-center py-12 ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>Нет данных</td></tr>
+                  ) : items.map(item => (
+                    <tr key={item.id} className={ds.tr}>
+                      {editingId === item.id ? (
+                        <td colSpan={7} className={`${ds.td} align-top`}>
+                          <FormFields />
+                          <div className="flex gap-2 mt-4">
+                            <button type="button" onClick={save} disabled={saving} className={ds.primaryBtn}><Check className="w-4 h-4" />{saving ? 'Сохр...' : 'Сохранить'}</button>
+                            <button type="button" onClick={cancelEdit} className={ds.secondaryBtn}><X className="w-4 h-4" />Отмена</button>
+                          </div>
+                        </td>
+                      ) : (
+                        <>
+                          <td className={`${ds.td} ${isDark ? 'text-gray-500' : 'text-gray-500'}`}>{item.id}</td>
+                          <td className={ds.td}>
+                            <span className="px-2.5 py-1 rounded-full text-xs font-medium text-white" style={{ backgroundColor: item.color || '#6b7280' }}>
+                              {item.name}
+                            </span>
+                          </td>
+                          <td className={`${ds.td} font-mono text-xs ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>{item.code}</td>
+                          <td className={ds.td}>
+                            <div className="flex items-center gap-2">
+                              <div className="w-5 h-5 rounded-full border border-black/10" style={{ backgroundColor: item.color || '#6b7280' }} />
+                              <span className={`text-xs ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>{item.color || '—'}</span>
+                            </div>
+                          </td>
+                          <td className={`${ds.td} ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>{item.sortOrder}</td>
+                          <td className={ds.td}>
+                            <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${item.isActive ? (isDark ? 'bg-emerald-950/50 text-emerald-300' : 'bg-emerald-50 text-emerald-800') : (isDark ? 'bg-white/10 text-gray-400' : 'bg-gray-100 text-gray-500')}`}>
+                              {item.isActive ? 'Активен' : 'Неактивен'}
+                            </span>
+                          </td>
+                          <td className={ds.td}>
+                            <div className="flex gap-1">
+                              <button type="button" onClick={() => startEdit(item)} className={`p-2 rounded-xl ${isDark ? 'text-gray-400 hover:bg-white/10' : 'text-gray-500 hover:bg-black/[0.04]'}`}><Pencil className="w-4 h-4" /></button>
+                              <button type="button" onClick={() => remove(item.id)} className={`p-2 rounded-xl ${isDark ? 'text-gray-400 hover:bg-red-950/40' : 'text-gray-500 hover:bg-red-50'}`}><Trash2 className="w-4 h-4" /></button>
+                            </div>
+                          </td>
+                        </>
+                      )}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
   )
 }

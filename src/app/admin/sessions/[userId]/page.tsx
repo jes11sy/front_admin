@@ -5,6 +5,7 @@ import { useRouter, useParams } from 'next/navigation'
 import { apiClient } from '@/lib/api'
 import { useDesignStore } from '@/store/design.store'
 import { toast } from '@/components/ui/toast'
+import { dashboardStyles } from '@/lib/dashboard-ui'
 
 interface LoginAttempt {
   id: number
@@ -35,7 +36,8 @@ export default function UserSessionDetailPage() {
   const params = useParams()
   const { theme } = useDesignStore()
   const isDark = theme === 'dark'
-  
+  const ds = dashboardStyles(isDark)
+
   const [userSession, setUserSession] = useState<UserSession | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -71,8 +73,8 @@ export default function UserSessionDetailPage() {
         setError(errorMsg)
       }
     } catch (error: any) {
-      const errorMessage = error?.response?.data?.message || 
-                          error?.message || 
+      const errorMessage = error?.response?.data?.message ||
+                          error?.message ||
                           'Ошибка при загрузке данных пользователя'
       setError(errorMessage)
     } finally {
@@ -82,21 +84,21 @@ export default function UserSessionDetailPage() {
 
   const handleDeauthorize = async () => {
     if (!userSession) return
-    
+
     if (!confirm(`Вы уверены, что хотите деавторизовать ${userSession.fullName}?`)) {
       return
     }
 
     try {
       const response = await apiClient.deauthorizeUser(userSession.userId, userSession.role)
-      
+
       if (response.success) {
         toast.success('Пользователь успешно деавторизован')
         router.push('/admin/sessions')
       } else {
         toast.error('Ошибка при деавторизации пользователя')
       }
-    } catch (error) {
+    } catch {
       toast.error('Ошибка при деавторизации пользователя')
     }
   }
@@ -111,7 +113,7 @@ export default function UserSessionDetailPage() {
     }
 
     return (
-      <span className={`px-2 py-1 rounded text-xs font-medium ${isDark ? 'bg-gray-700 text-gray-300' : 'bg-gray-100 text-gray-700'}`}>
+      <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${isDark ? 'bg-white/10 text-gray-200' : 'bg-gray-100 text-gray-700'}`}>
         {labels[role] || role}
       </span>
     )
@@ -131,10 +133,10 @@ export default function UserSessionDetailPage() {
 
   if (loading) {
     return (
-      <div className={`min-h-screen flex items-center justify-center ${isDark ? 'bg-[#1e2530]' : 'bg-white'}`}>
-        <div className="text-center">
-          <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-teal-600"></div>
-          <div className={`text-lg mt-4 ${isDark ? 'text-gray-200' : 'text-gray-700'}`}>Загрузка...</div>
+      <div className={`${ds.pageRoot} flex items-center justify-center`}>
+        <div className="text-center px-4">
+          <div className={`mx-auto ${ds.spinner}`} />
+          <div className={`text-base mt-4 ${isDark ? 'text-gray-300' : 'text-gray-600'}`}>Загрузка...</div>
         </div>
       </div>
     )
@@ -142,13 +144,10 @@ export default function UserSessionDetailPage() {
 
   if (error || !userSession) {
     return (
-      <div className={`min-h-screen flex items-center justify-center ${isDark ? 'bg-[#1e2530]' : 'bg-white'}`}>
-        <div className="text-center">
-          <div className={`text-xl mb-4 ${isDark ? 'text-gray-200' : 'text-gray-800'}`}>{error || 'Пользователь не найден'}</div>
-          <button
-            onClick={() => router.push('/admin/sessions')}
-            className="px-4 py-2 bg-teal-600 hover:bg-teal-700 text-white rounded-lg transition-colors"
-          >
+      <div className={`${ds.pageRoot} flex items-center justify-center`}>
+        <div className={`${ds.panelPadded} max-w-md text-center`}>
+          <div className={`text-lg mb-4 ${isDark ? 'text-gray-200' : 'text-gray-800'}`}>{error || 'Пользователь не найден'}</div>
+          <button type="button" onClick={() => router.push('/admin/sessions')} className={ds.primaryBtn}>
             Вернуться к списку сессий
           </button>
         </div>
@@ -157,12 +156,12 @@ export default function UserSessionDetailPage() {
   }
 
   return (
-    <div className={`min-h-screen transition-colors duration-300 ${isDark ? 'bg-[#1e2530]' : 'bg-white'}`}>
-      <div className="px-6 py-6">
-        {/* Кнопка назад */}
+    <div className={ds.pageRoot}>
+      <div className={ds.content}>
         <button
+          type="button"
           onClick={() => router.push('/admin/sessions')}
-          className={`mb-6 flex items-center gap-2 px-4 py-2 rounded-lg transition-colors text-sm font-medium ${isDark ? 'bg-[#3a4451] hover:bg-[#4a5461] text-gray-300' : 'bg-gray-100 hover:bg-gray-200 text-gray-700'}`}
+          className={`${ds.secondaryBtn} mb-6`}
         >
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
@@ -170,110 +169,86 @@ export default function UserSessionDetailPage() {
           Назад к списку сессий
         </button>
 
-        {/* Шапка */}
-        <div className={`rounded-lg p-6 border mb-6 ${isDark ? 'bg-[#2a3441] border-gray-700' : 'bg-white border-gray-200'}`}>
+        <div className={`${ds.panelPadded} mb-6`}>
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
             <div>
-              <h1 className={`text-2xl font-bold mb-2 ${isDark ? 'text-gray-100' : 'text-gray-800'}`}>{userSession.fullName}</h1>
-              <div className="flex items-center gap-3">
+              <h1 className={`text-2xl font-bold tracking-tight ${isDark ? 'text-white' : 'text-[#111113]'}`}>{userSession.fullName}</h1>
+              <div className="flex items-center gap-3 mt-2 flex-wrap">
                 <span className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>ID: {userSession.userId}</span>
                 <span className={isDark ? 'text-gray-600' : 'text-gray-300'}>•</span>
                 {getRoleBadge(userSession.role)}
               </div>
             </div>
-            <button
-              onClick={handleDeauthorize}
-              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${isDark ? 'bg-red-900/30 hover:bg-red-900/50 text-red-400 border border-red-700' : 'bg-red-50 hover:bg-red-100 text-red-600 border border-red-200'}`}
-            >
+            <button type="button" onClick={handleDeauthorize} className={ds.destructiveBtn}>
               Деавторизовать пользователя
             </button>
           </div>
         </div>
 
-        {/* Текущая сессия */}
         {userSession.currentSession && (
-          <div className={`rounded-lg p-6 border mb-6 ${isDark ? 'bg-[#2a3441] border-gray-700' : 'bg-white border-gray-200'}`}>
-            <h2 className={`text-lg font-semibold mb-4 ${isDark ? 'text-gray-100' : 'text-gray-800'}`}>
+          <div className={`${ds.panelPadded} mb-6`}>
+            <h2 className={`text-sm font-bold uppercase tracking-widest mb-4 ${ds.sectionLabel}`}>
               Текущая активная сессия
             </h2>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-              <div className={`rounded-lg p-4 border ${isDark ? 'bg-[#3a4451] border-gray-600' : 'bg-gray-50 border-gray-200'}`}>
-                <div className={`text-xs font-medium mb-1 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>Устройство</div>
-                <div className={`text-sm font-medium ${isDark ? 'text-gray-100' : 'text-gray-800'}`}>{userSession.currentSession.device}</div>
-              </div>
-              <div className={`rounded-lg p-4 border ${isDark ? 'bg-[#3a4451] border-gray-600' : 'bg-gray-50 border-gray-200'}`}>
-                <div className={`text-xs font-medium mb-1 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>IP Адрес</div>
-                <div className={`text-sm font-medium font-mono ${isDark ? 'text-gray-100' : 'text-gray-800'}`}>{userSession.currentSession.ip}</div>
-              </div>
-              <div className={`rounded-lg p-4 border ${isDark ? 'bg-[#3a4451] border-gray-600' : 'bg-gray-50 border-gray-200'}`}>
-                <div className={`text-xs font-medium mb-1 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>Дата авторизации</div>
-                <div className={`text-sm font-medium ${isDark ? 'text-gray-100' : 'text-gray-800'}`}>{formatDate(userSession.currentSession.loginDate)}</div>
-              </div>
-              <div className={`rounded-lg p-4 border ${isDark ? 'bg-[#3a4451] border-gray-600' : 'bg-gray-50 border-gray-200'}`}>
-                <div className={`text-xs font-medium mb-1 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>Последняя активность</div>
-                <div className={`text-sm font-medium ${isDark ? 'text-gray-100' : 'text-gray-800'}`}>{formatDate(userSession.currentSession.lastActivity)}</div>
-              </div>
+              {[
+                { label: 'Устройство', value: userSession.currentSession.device },
+                { label: 'IP адрес', value: userSession.currentSession.ip, mono: true },
+                { label: 'Дата авторизации', value: formatDate(userSession.currentSession.loginDate) },
+                { label: 'Последняя активность', value: formatDate(userSession.currentSession.lastActivity) },
+              ].map((field) => (
+                <div key={field.label} className={ds.innerWell}>
+                  <div className={`text-xs font-medium mb-1 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>{field.label}</div>
+                  <div className={`text-sm font-medium ${field.mono ? 'font-mono' : ''} ${isDark ? 'text-gray-100' : 'text-gray-800'}`}>{field.value}</div>
+                </div>
+              ))}
             </div>
           </div>
         )}
 
-        {/* История авторизаций */}
-        <div className={`rounded-lg p-6 border ${isDark ? 'bg-[#2a3441] border-gray-700' : 'bg-white border-gray-200'}`}>
-          <h2 className={`text-lg font-semibold mb-4 ${isDark ? 'text-gray-100' : 'text-gray-800'}`}>
+        <div className={ds.panelPadded}>
+          <h2 className={`text-sm font-bold uppercase tracking-widest mb-4 ${ds.sectionLabel}`}>
             История авторизаций ({userSession.loginHistory.length})
           </h2>
-          
+
           {userSession.loginHistory.length === 0 ? (
-            <div className={`text-center py-12 rounded-lg ${isDark ? 'bg-[#3a4451]' : 'bg-gray-50'}`}>
-              <p className={`text-lg mb-2 ${isDark ? 'text-gray-300' : 'text-gray-600'}`}>
-                История авторизаций отсутствует
-              </p>
+            <div className={`${ds.innerWell} text-center py-10`}>
+              <p className={isDark ? 'text-gray-400' : 'text-gray-500'}>История авторизаций отсутствует</p>
             </div>
           ) : (
-            <div className="overflow-x-auto">
-              <table className={`w-full border-collapse text-[11px] min-w-[600px] rounded-lg ${isDark ? 'bg-[#2a3441]' : 'bg-white'}`}>
-                <thead>
-                  <tr className={`border-b-2 ${isDark ? 'bg-[#3a4451]' : 'bg-gray-50'}`} style={{borderColor: '#0d5c4b'}}>
-                    <th className={`text-left py-3 px-3 font-semibold ${isDark ? 'text-gray-200' : 'text-gray-700'}`}>Дата и время</th>
-                    <th className={`text-left py-3 px-3 font-semibold ${isDark ? 'text-gray-200' : 'text-gray-700'}`}>IP Адрес</th>
-                    <th className={`text-left py-3 px-3 font-semibold ${isDark ? 'text-gray-200' : 'text-gray-700'}`}>Устройство</th>
-                    <th className={`text-left py-3 px-3 font-semibold ${isDark ? 'text-gray-200' : 'text-gray-700'}`}>Статус</th>
-                    <th className={`text-left py-3 px-3 font-semibold ${isDark ? 'text-gray-200' : 'text-gray-700'}`}>Причина</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {userSession.loginHistory.map((attempt) => (
-                    <tr 
-                      key={attempt.id} 
-                      className={`border-b transition-colors ${isDark ? 'hover:bg-[#3a4451] border-gray-700' : 'hover:bg-teal-50 border-gray-200'}`}
-                    >
-                      <td className={`py-3 px-3 ${isDark ? 'text-gray-300' : 'text-gray-600'}`}>
-                        {formatDate(attempt.timestamp)}
-                      </td>
-                      <td className={`py-3 px-3 font-mono ${isDark ? 'text-gray-300' : 'text-gray-600'}`}>
-                        {attempt.ip}
-                      </td>
-                      <td className={`py-3 px-3 ${isDark ? 'text-gray-300' : 'text-gray-600'}`}>
-                        {attempt.device}
-                      </td>
-                      <td className="py-3 px-3">
-                        {attempt.status === 'success' ? (
-                          <span className={`inline-flex items-center gap-1 px-2 py-1 rounded text-xs font-medium ${isDark ? 'bg-green-900/30 text-green-400' : 'bg-green-100 text-green-700'}`}>
-                            Успешно
-                          </span>
-                        ) : (
-                          <span className={`inline-flex items-center gap-1 px-2 py-1 rounded text-xs font-medium ${isDark ? 'bg-red-900/30 text-red-400' : 'bg-red-100 text-red-700'}`}>
-                            Ошибка
-                          </span>
-                        )}
-                      </td>
-                      <td className={`py-3 px-3 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
-                        {attempt.reason || '-'}
-                      </td>
+            <div className={ds.tableScroll}>
+              <div className={ds.tableWrap}>
+                <table className="w-full border-collapse text-sm min-w-[640px]">
+                  <thead>
+                    <tr className={ds.theadRow}>
+                      {['Дата и время', 'IP', 'Устройство', 'Статус', 'Причина'].map((h) => (
+                        <th key={h} className={ds.th}>{h}</th>
+                      ))}
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {userSession.loginHistory.map((attempt) => (
+                      <tr key={attempt.id} className={ds.tr}>
+                        <td className={`${ds.td} ${isDark ? 'text-gray-300' : 'text-gray-600'}`}>{formatDate(attempt.timestamp)}</td>
+                        <td className={`${ds.td} font-mono ${isDark ? 'text-gray-300' : 'text-gray-600'}`}>{attempt.ip}</td>
+                        <td className={`${ds.td} ${isDark ? 'text-gray-300' : 'text-gray-600'}`}>{attempt.device}</td>
+                        <td className={ds.td}>
+                          {attempt.status === 'success' ? (
+                            <span className={`inline-flex px-2 py-1 rounded-full text-xs font-medium ${isDark ? 'bg-emerald-950/50 text-emerald-300' : 'bg-emerald-50 text-emerald-800'}`}>
+                              Успешно
+                            </span>
+                          ) : (
+                            <span className={`inline-flex px-2 py-1 rounded-full text-xs font-medium ${isDark ? 'bg-red-950/50 text-red-300' : 'bg-red-50 text-red-700'}`}>
+                              Ошибка
+                            </span>
+                          )}
+                        </td>
+                        <td className={`${ds.td} ${isDark ? 'text-gray-500' : 'text-gray-500'}`}>{attempt.reason || '—'}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </div>
           )}
         </div>
