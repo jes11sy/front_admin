@@ -320,7 +320,13 @@ export default function MastersPage() {
                 <SelectContent className={isDark ? 'bg-[#1e1e20] border-white/10' : 'bg-white border-black/[0.08]'}>
                   <SelectItem value="all" className={isDark ? 'text-gray-100 focus:bg-white/10 focus:text-white' : 'text-gray-800 focus:bg-gray-100 focus:text-gray-900'}>Все города</SelectItem>
                   {uniqueCities.map(city => (
-                    <SelectItem key={city} value={city} className={isDark ? 'text-gray-100 focus:bg-white/10 focus:text-white' : 'text-gray-800 focus:bg-gray-100 focus:text-gray-900'}>{city}</SelectItem>
+                    <SelectItem
+                      key={city.id}
+                      value={String(city.id)}
+                      className={isDark ? 'text-gray-100 focus:bg-white/10 focus:text-white' : 'text-gray-800 focus:bg-gray-100 focus:text-gray-900'}
+                    >
+                      {city.name}
+                    </SelectItem>
                   ))}
                 </SelectContent>
               </Select>

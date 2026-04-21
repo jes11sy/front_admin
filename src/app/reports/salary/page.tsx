@@ -352,8 +352,12 @@ export default function SalaryPage() {
                         Все города
                       </SelectItem>
                       {uniqueCities.map((city) => (
-                        <SelectItem key={city} value={city} className={`rounded-xl mx-1 my-0.5 cursor-pointer ${isDark ? 'text-white focus:bg-white/10 focus:text-white' : 'text-[#111113] focus:bg-black/5 focus:text-[#111113]'}`}>
-                          {city}
+                        <SelectItem
+                          key={city.id}
+                          value={String(city.id)}
+                          className={`rounded-xl mx-1 my-0.5 cursor-pointer ${isDark ? 'text-white focus:bg-white/10 focus:text-white' : 'text-[#111113] focus:bg-black/5 focus:text-[#111113]'}`}
+                        >
+                          {city.name}
                         </SelectItem>
                       ))}
                     </SelectContent>
