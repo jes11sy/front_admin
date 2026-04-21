@@ -20,7 +20,6 @@ export default function AddPhoneNumberPage() {
     phoneNumber: '',
     rkId: 0,
     cityId: 0,
-    source: ''
   })
 
   useEffect(() => {
@@ -59,7 +58,6 @@ export default function AddPhoneNumberPage() {
         phoneNumber: formData.phoneNumber,
         rkId: formData.rkId,
         cityId: formData.cityId,
-        source: formData.source || undefined,
       })
       
       if (response.success) {
@@ -158,24 +156,6 @@ export default function AddPhoneNumberPage() {
                   ))}
                 </SelectContent>
               </Select>
-            </div>
-
-            {/* Источник */}
-            <div>
-              <label className={`block text-sm font-medium mb-2 ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
-                Источник
-              </label>
-              <input
-                type="text"
-                value={formData.source}
-                onChange={(e) => setFormData({ ...formData, source: e.target.value })}
-                placeholder="Авито, Яндекс, Листовка..."
-                className={`w-full px-4 py-3 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent transition-all ${
-                  isDark 
-                    ? 'bg-[#3a4451] border-gray-600 text-gray-100 placeholder-gray-500'
-                    : 'bg-white border-gray-200 text-gray-800 placeholder-gray-400'
-                }`}
-              />
             </div>
 
             {/* Кнопки */}

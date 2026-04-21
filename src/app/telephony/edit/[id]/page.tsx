@@ -13,7 +13,6 @@ interface PhoneData {
   phoneNumber: string
   rkId: number
   cityId: number
-  source?: string
 }
 
 export default function EditPhoneNumberPage() {
@@ -30,7 +29,6 @@ export default function EditPhoneNumberPage() {
     phoneNumber: '',
     rkId: 0,
     cityId: 0,
-    source: ''
   })
   const [errors, setErrors] = useState<{ phoneNumber?: string }>({})
   const [isLoading, setIsLoading] = useState(true)
@@ -54,7 +52,6 @@ export default function EditPhoneNumberPage() {
             phoneNumber: phone.phoneNumber || '',
             rkId: phone.rkId || 0,
             cityId: phone.cityId || 0,
-            source: phone.source || ''
           })
         } else {
           toast.error(response.error || 'Не удалось загрузить данные')
@@ -99,7 +96,6 @@ export default function EditPhoneNumberPage() {
         phoneNumber: formData.phoneNumber,
         rkId: formData.rkId,
         cityId: formData.cityId,
-        source: formData.source || undefined,
       })
       
       if (response.success) {
@@ -219,25 +215,6 @@ export default function EditPhoneNumberPage() {
                   ))}
                 </SelectContent>
               </Select>
-            </div>
-
-            {/* Источник */}
-            <div>
-              <label className={`block text-sm font-medium mb-2 ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
-                Источник
-              </label>
-              <input
-                type="text"
-                value={formData.source}
-                onChange={(e) => setFormData({ ...formData, source: e.target.value })}
-                placeholder="Авито, Яндекс, Листовка..."
-                disabled={isSubmitting}
-                className={`w-full px-4 py-3 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent transition-all disabled:opacity-50 ${
-                  isDark 
-                    ? 'bg-[#3a4451] border-gray-600 text-gray-100 placeholder-gray-500'
-                    : 'bg-white border-gray-200 text-gray-800 placeholder-gray-400'
-                }`}
-              />
             </div>
 
             {/* Кнопки */}
