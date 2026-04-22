@@ -21,7 +21,6 @@ import {
   UserCheck,
   ShoppingCart,
   Wallet,
-  DollarSign,
   TrendingUp,
   Settings,
   Activity,
@@ -63,20 +62,14 @@ const navigationItems = [
     ]
   },
   {
-    name: 'Зарплата',
-    icon: DollarSign,
-    dropdown: [
-      { name: 'Директора', href: '/salary', icon: Briefcase },
-      { name: 'Операторы', href: '/salary/operators', icon: Phone },
-    ]
-  },
-  {
     name: 'Отчеты',
     icon: FileText,
     dropdown: [
       { name: 'Отчет по городам', href: '/reports/cities', icon: MapPin },
       { name: 'Отчет по мастерам', href: '/reports/masters', icon: UserCheck },
       { name: 'Отчет по РК', href: '/reports/campaigns', icon: TrendingUp },
+      { name: 'Зарплата (директора)', href: '/reports/salary', icon: Briefcase },
+      { name: 'Зарплата (операторы)', href: '/reports/salary/operators', icon: Phone },
     ]
   },
   { name: 'Обращения', href: '/appeals', icon: MessageSquare },

@@ -34,6 +34,13 @@ const nextConfig = {
   
   // Turbopack конфигурация (пустая, чтобы использовать дефолтные настройки)
   turbopack: {},
+
+  async redirects() {
+    return [
+      { source: '/salary', destination: '/reports/salary', permanent: true },
+      { source: '/salary/operators', destination: '/reports/salary/operators', permanent: true },
+    ]
+  },
   
   // Заголовки безопасности
   async headers() {

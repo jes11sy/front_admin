@@ -73,7 +73,6 @@ const navigationItems: NavItem[] = [
   { name: 'Заказы', href: '/orders', icon: '/navigate/orders.svg' },
   { name: 'Обращения', href: '/appeals', lucideIcon: MessageSquare },
   { name: 'Касса', href: '/cashbox', icon: '/navigate/cash.svg' },
-  { name: 'Зарплата', href: '/salary', icon: '/navigate/stats.svg' },
   { name: 'Отчеты', href: '/reports', icon: '/navigate/reports.svg' },
   { name: 'Справочники', href: '/references', lucideIcon: BookOpen },
   { name: 'Администрирование', href: '/admin', icon: '/navigate/admin.svg' },
@@ -92,7 +91,7 @@ function isMobileDockRouteActive(pathname: string, href: string) {
   if (pathname === href) return true
   if (href === '/orders' && pathname.startsWith('/orders')) return true
   if (href === '/cashbox' && pathname.startsWith('/cashbox')) return true
-  if (href === '/reports' && (pathname.startsWith('/reports') || pathname.startsWith('/salary'))) return true
+  if (href === '/reports' && pathname.startsWith('/reports')) return true
   return false
 }
 
@@ -151,7 +150,6 @@ const MenuContent = memo(function MenuContent({
 
   const isActive = (href: string) => {
     if (pathname === href) return true
-    if (href === '/reports' && pathname.startsWith('/salary')) return true
     if (href !== '/orders' && pathname.startsWith(href + '/')) return true
     return false
   }
