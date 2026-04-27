@@ -4,6 +4,7 @@ import { useEffect, useRef, useState, useCallback } from 'react'
 import { Button } from '@/components/ui/button'
 import { toast } from 'sonner'
 import { logger } from '@/lib/logger'
+import { browserApi } from '@/lib/api/modules/browser'
 
 interface BrowserAuthModalProps {
   accountId: number
@@ -37,21 +38,11 @@ export function BrowserAuthModal({ accountId, proxyConfig, onSuccess, onClose }:
   const startBrowser = async () => {
     try {
       setIsLoading(true)
-      const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'https://api.lead-schem.ru/api/v1'
-      // Убираем /api/v1 если он уже есть
-      const API_URL = baseUrl.endsWith('/api/v1') ? baseUrl : `${baseUrl}/api/v1`
-      
-      const response = await fetch(`${API_URL}/browser/start`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ accountId, proxyConfig }),
-      })
-
-      const data = await response.json()
+      const data = await browserApi.startBrowserSession({ accountId, proxyConfig })
       
       logger.info('Browser start response', { success: data.success })
       
-      if (data.success && data.data.publicWsUrl) {
+      if (data.success && data.data?.publicWsUrl) {
         setWsUrl(data.data.publicWsUrl)
         
         // Начинаем проверять статус авторизации
@@ -73,12 +64,9 @@ export function BrowserAuthModal({ accountId, proxyConfig, onSuccess, onClose }:
 
   const checkAuthStatus = async () => {
     try {
-      const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'https://api.lead-schem.ru/api/v1'
-      const API_URL = baseUrl.endsWith('/api/v1') ? baseUrl : `${baseUrl}/api/v1`
-      const response = await fetch(`${API_URL}/browser/${accountId}/status`)
-      const data = await response.json()
+      const data = await browserApi.getBrowserSessionStatus(accountId)
 
-      if (data.success && data.data.isAuthorized) {
+      if (data.success && data.data?.isAuthorized) {
         setIsAuthorized(true)
         if (checkIntervalRef.current) {
           clearInterval(checkIntervalRef.current)
@@ -92,19 +80,15 @@ export function BrowserAuthModal({ accountId, proxyConfig, onSuccess, onClose }:
 
   const handleComplete = async () => {
     try {
-      const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'https://api.lead-schem.ru/api/v1'
-      const API_URL = baseUrl.endsWith('/api/v1') ? baseUrl : `${baseUrl}/api/v1`
-      
       // Получаем cookies
-      const response = await fetch(`${API_URL}/browser/${accountId}/cookies`)
-      const data = await response.json()
+      const data = await browserApi.getBrowserSessionCookies(accountId)
 
-      if (data.success && data.data.cookies) {
+      if (data.success && data.data?.cookies) {
         toast.success('✅ Cookies получены!')
         onSuccess(data.data.cookies)
         
         // Закрываем браузер
-        await fetch(`${API_URL}/browser/${accountId}`, { method: 'DELETE' })
+        await browserApi.closeBrowserSession(accountId)
         
         onClose()
       } else {
@@ -124,9 +108,7 @@ export function BrowserAuthModal({ accountId, proxyConfig, onSuccess, onClose }:
     }
     
     try {
-      const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'https://api.lead-schem.ru/api/v1'
-      const API_URL = baseUrl.endsWith('/api/v1') ? baseUrl : `${baseUrl}/api/v1`
-      await fetch(`${API_URL}/browser/${accountId}`, { method: 'DELETE' })
+      await browserApi.closeBrowserSession(accountId)
     } catch (error) {
       logger.error('Close browser error', { error: String(error) })
     }

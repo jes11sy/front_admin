@@ -8,84 +8,14 @@ import { usePathname, useRouter } from 'next/navigation'
 import { useAuthStore } from '@/store/auth.store'
 import { useDesignStore } from '@/store/design.store'
 import { useNotifications } from '@/hooks/useNotifications'
+import { useThemeWithoutFlash } from '@/hooks/use-theme-without-flash'
 import { cn } from '@/lib/utils'
+import { mobileBottomTabs, mobileQuickAccessHrefs, navigationItems } from '@/components/navigation/menu-config'
 import {
-  SunMedium, MoonStar, Bell, User, Menu, X,
-  Globe, MessageSquare, BookOpen, Calendar, ChartColumnBig, ClipboardList, Wallet,
+  SunMedium, MoonStar, Bell, User, Menu, X, Check,
   Search, FileText, Info, LayoutGrid, Settings, LogOut, ChevronRight, ChevronLeft, GripHorizontal,
 } from 'lucide-react'
 
-
-// Функция для синхронного получения темы из DOM/localStorage
-function getThemeFromDOM(): 'light' | 'dark' {
-  if (typeof window === 'undefined') return 'light' // SSR
-  
-  // Проверяем класс dark на html (установлен синхронным скриптом в layout.tsx)
-  if (document.documentElement.classList.contains('dark')) {
-    return 'dark'
-  }
-  
-  // Fallback на localStorage
-  try {
-    const stored = localStorage.getItem('admin-design-storage')
-    if (stored) {
-      const parsed = JSON.parse(stored)
-      return parsed.state?.theme || 'light'
-    }
-  } catch {}
-  return 'light'
-}
-
-// Хук для получения темы с поддержкой SSR без мерцания
-function useThemeWithoutFlash() {
-  const storeTheme = useDesignStore((state) => state.theme)
-  const hasHydrated = useDesignStore((state) => state._hasHydrated)
-  
-  // ✅ FIX: Используем useEffect для получения темы на клиенте после монтирования
-  const [clientTheme, setClientTheme] = useState<'light' | 'dark'>('light')
-  const [isMounted, setIsMounted] = useState(false)
-  
-  useEffect(() => {
-    setClientTheme(getThemeFromDOM())
-    setIsMounted(true)
-  }, [])
-  
-  // После гидратации store - используем store
-  if (hasHydrated) {
-    return storeTheme
-  }
-  
-  // До монтирования - используем light (SSR)
-  // После монтирования но до гидратации - используем значение из DOM
-  return isMounted ? clientTheme : 'light'
-}
-
-type NavItem =
-  | { name: string; href: string; icon: string; lucideIcon?: undefined }
-  | { name: string; href: string; lucideIcon: React.ElementType; icon?: undefined }
-
-const navigationItems: NavItem[] = [
-  { name: 'Дашборд', href: '/', icon: '/navigate/dashboard.svg' },
-  { name: 'Сотрудники', href: '/employees', icon: '/navigate/employees.svg' },
-  { name: 'Расписание', href: '/schedule', lucideIcon: Calendar },
-  { name: 'Телефония', href: '/telephony', icon: '/navigate/telephony.svg' },
-  { name: 'Заявки с сайта', href: '/site-orders', lucideIcon: Globe },
-  { name: 'Заказы', href: '/orders', icon: '/navigate/orders.svg' },
-  { name: 'Обращения', href: '/appeals', lucideIcon: MessageSquare },
-  { name: 'Касса', href: '/cashbox', icon: '/navigate/cash.svg' },
-  { name: 'Отчеты', href: '/reports', icon: '/navigate/reports.svg' },
-  { name: 'Справочники', href: '/references', lucideIcon: BookOpen },
-  { name: 'Администрирование', href: '/admin', icon: '/navigate/admin.svg' },
-
-]
-
-const mobileBottomTabs = [
-  { name: 'Отчеты', href: '/reports', icon: ChartColumnBig },
-  { name: 'Заказы', href: '/orders', icon: ClipboardList },
-  { name: 'Касса', href: '/cashbox', icon: Wallet },
-] as const
-
-const mobileQuickAccessHrefs = new Set(['/orders', '/cashbox', '/reports', '/profile'])
 
 function isMobileDockRouteActive(pathname: string, href: string) {
   if (pathname === href) return true
@@ -967,8 +897,20 @@ export function CustomNavigation() {
                 {navigationItems
                   .filter((item) => !mobileQuickAccessHrefs.has(item.href))
                   .map((item) => {
-                  const Icon = item.icon
                   const active = pathname === item.href || pathname.startsWith(`${item.href}/`)
+                  const iconNode = ('lucideIcon' in item && item.lucideIcon)
+                    ? (
+                      <item.lucideIcon className={cn('h-5 w-5 shrink-0', theme === 'dark' ? 'text-white/90' : 'text-[#0a4f42]')} />
+                    )
+                    : (
+                      <Image
+                        src={item.icon}
+                        alt={item.name}
+                        width={20}
+                        height={20}
+                        className="h-5 w-5 shrink-0"
+                      />
+                    )
                   return (
                     <Link
                       key={item.href}
@@ -980,7 +922,7 @@ export function CustomNavigation() {
                         active && 'ring-2 ring-[#0a4f42]/30 dark:ring-white/20'
                       )}
                     >
-                      <Icon className={cn('h-5 w-5 shrink-0', theme === 'dark' ? 'text-white/90' : 'text-[#0a4f42]')} />
+                      {iconNode}
                       {item.name}
                     </Link>
                   )

@@ -64,7 +64,7 @@ export default function OrderStatusesPage() {
     if (!form.name.trim() || !form.code.trim()) { toast.error('Заполните название и код'); return }
     setSaving(true)
     try {
-      if (editingId) { await apiClient.updateOrderStatus(editingId, form); toast.success('Обновлено') }
+      if (editingId) { await apiClient.updateOrderStatusReference(editingId, form); toast.success('Обновлено') }
       else { await apiClient.createOrderStatus(form); toast.success('Добавлено') }
       setEditingId(null); setShowAdd(false); setForm(emptyForm); await load()
     } catch (e: any) { toast.error(e.message || 'Ошибка') }

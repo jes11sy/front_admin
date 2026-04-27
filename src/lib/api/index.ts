@@ -1,0 +1,8 @@
+export { apiClient, ApiError } from '@/lib/api/client'
+export * from '@/lib/api/types'
+export { authApi } from '@/lib/api/modules/auth'
+export { notificationsApi } from '@/lib/api/modules/notifications'
+export { ordersApi } from '@/lib/api/modules/orders'
+export { reportsApi } from '@/lib/api/modules/reports'
+export { employeesApi } from '@/lib/api/modules/employees'
+export { browserApi } from '@/lib/api/modules/browser'

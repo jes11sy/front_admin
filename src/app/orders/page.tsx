@@ -9,7 +9,7 @@ import { OptimizedPagination } from '@/components/ui/optimized-pagination'
 import { NetworkError } from '@/components/ui/network-error'
 import { LoadingState } from '@/components/ui/loading-state'
 import { useDesignStore } from '@/store/design.store'
-import { apiClient } from '@/lib/api'
+import { ordersApi } from '@/lib/api/modules/orders'
 import { logger } from '@/lib/logger'
 import {
   getFormFieldClass,
@@ -17,6 +17,7 @@ import {
   getFormSelectItemClass,
   getFormSelectTriggerClass,
 } from '@/components/ui/form-styles'
+import { useOrdersScrollRestoration } from '@/hooks/orders/use-orders-scroll-restoration'
 
 // Ключ для сохранения позиции прокрутки
 const SCROLL_POSITION_KEY = 'admin_orders_scroll_position'
@@ -118,31 +119,13 @@ function OrdersContent() {
   const abortControllerRef = useRef<AbortController | null>(null)
   const requestIdRef = useRef(0)
   const isInitialMount = useRef(true)
-  const hasRestoredScroll = useRef(false)
-  
-  // Определяем тип навигации: back/forward vs reload/direct
-  const isBackNavigation = useRef(false)
-
-  // При монтировании проверяем тип навигации и загружаем опции фильтров
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const navEntries = performance.getEntriesByType('navigation') as PerformanceNavigationTiming[]
-      const navigationType = navEntries.length > 0 ? navEntries[0].type : 'navigate'
-      
-      if (navigationType === 'reload' || navigationType === 'navigate') {
-        sessionStorage.removeItem(SCROLL_POSITION_KEY)
-        isBackNavigation.current = false
-      } else if (navigationType === 'back_forward') {
-        isBackNavigation.current = true
-      }
-    }
-  }, [])
+  const { saveScrollPosition, restoreScrollPosition } = useOrdersScrollRestoration(SCROLL_POSITION_KEY)
 
   // Загрузка опций фильтров
   useEffect(() => {
     const loadFilterOptions = async () => {
       try {
-        const response = await apiClient.getFilterOptions()
+        const response = await ordersApi.getFilterOptions()
         if (response.success && response.data) {
           setAllRks(response.data.rks || [])
           setAllEquipmentTypes(response.data.equipmentTypes || [])
@@ -179,27 +162,6 @@ function OrdersContent() {
     window.history.replaceState(null, '', newUrl)
   }, [currentPage, statusTab, searchId, searchPhone, searchAddress, statusFilter, cityFilter, masterFilter, rkFilter, typeEquipmentFilter, dateType, dateFrom, dateTo])
 
-  // Сохранение позиции прокрутки
-  const saveScrollPosition = useCallback(() => {
-    if (typeof window !== 'undefined') {
-      sessionStorage.setItem(SCROLL_POSITION_KEY, window.scrollY.toString())
-    }
-  }, [])
-
-  // Восстановление позиции прокрутки
-  const restoreScrollPosition = useCallback(() => {
-    if (typeof window !== 'undefined' && !hasRestoredScroll.current && isBackNavigation.current) {
-      const savedPosition = sessionStorage.getItem(SCROLL_POSITION_KEY)
-      if (savedPosition) {
-        setTimeout(() => {
-          window.scrollTo(0, parseInt(savedPosition, 10))
-          hasRestoredScroll.current = true
-          sessionStorage.removeItem(SCROLL_POSITION_KEY)
-        }, 100)
-      }
-    }
-  }, [])
-
   // Загрузка данных
   const loadOrders = useCallback(async () => {
     if (abortControllerRef.current) {
@@ -223,7 +185,7 @@ function OrdersContent() {
         }
       }
       
-      const response = await apiClient.getOrders({
+      const response = await ordersApi.getOrders({
         page: currentPage,
         limit: itemsPerPage,
         status: effectiveStatus,

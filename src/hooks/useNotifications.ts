@@ -1,17 +1,9 @@
 import { useState, useEffect, useCallback } from 'react'
+import { notificationsApi } from '@/lib/api/modules/notifications'
+import type { AppNotification } from '@/lib/api/types'
+import { logger } from '@/lib/logger'
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://api.lead-schem.ru/api/v1'
-
-export interface Notification {
-  id: string
-  type: string
-  title: string
-  message: string
-  orderId?: number
-  data?: Record<string, any>
-  read: boolean
-  createdAt: string
-}
+export type Notification = AppNotification
 
 export function useNotifications() {
   const [notifications, setNotifications] = useState<Notification[]>([])
@@ -24,27 +16,13 @@ export function useNotifications() {
       setIsLoading(true)
       setError(null)
 
-      const response = await fetch(`${API_URL}/notifications`, {
-        method: 'GET',
-        credentials: 'include',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-Use-Cookies': 'true',
-        },
-      })
-
-      if (!response.ok) {
-        throw new Error(`Failed to load notifications: ${response.status}`)
-      }
-
-      const result = await response.json()
-
+      const result = await notificationsApi.getNotifications()
       if (result.success && result.data) {
         setNotifications(result.data.notifications || [])
         setUnreadCount(result.data.unreadCount || 0)
       }
     } catch (err) {
-      console.error('Failed to load notifications:', err)
+      logger.error('Failed to load notifications', { error: String(err) })
       setError(err instanceof Error ? err.message : 'Failed to load notifications')
     } finally {
       setIsLoading(false)
@@ -53,45 +31,27 @@ export function useNotifications() {
 
   const markAsRead = useCallback(async (notificationId: string) => {
     try {
-      const response = await fetch(`${API_URL}/notifications/read`, {
-        method: 'POST',
-        credentials: 'include',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-Use-Cookies': 'true',
-        },
-        body: JSON.stringify({ notificationId }),
-      })
-
-      if (response.ok) {
+      const response = await notificationsApi.markNotificationAsRead(notificationId)
+      if (response.success) {
         setNotifications((prev) =>
           prev.map((n) => (n.id === notificationId ? { ...n, read: true } : n))
         )
         setUnreadCount((prev) => Math.max(0, prev - 1))
       }
     } catch (err) {
-      console.error('Failed to mark notification as read:', err)
+      logger.error('Failed to mark notification as read', { error: String(err) })
     }
   }, [])
 
   const markAllAsRead = useCallback(async () => {
     try {
-      const response = await fetch(`${API_URL}/notifications/read-all`, {
-        method: 'POST',
-        credentials: 'include',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-Use-Cookies': 'true',
-        },
-        body: '{}',
-      })
-
-      if (response.ok) {
+      const response = await notificationsApi.markAllNotificationsAsRead()
+      if (response.success) {
         setNotifications((prev) => prev.map((n) => ({ ...n, read: true })))
         setUnreadCount(0)
       }
     } catch (err) {
-      console.error('Failed to mark all notifications as read:', err)
+      logger.error('Failed to mark all notifications as read', { error: String(err) })
     }
   }, [])
 

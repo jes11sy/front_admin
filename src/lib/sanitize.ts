@@ -5,7 +5,7 @@
 import DOMPurify from 'dompurify';
 
 // Конфигурация DOMPurify для строгой санитизации
-const STRICT_CONFIG: DOMPurify.Config = {
+const STRICT_CONFIG = {
   ALLOWED_TAGS: [], // Не разрешаем никакие теги
   ALLOWED_ATTR: [], // Не разрешаем никакие атрибуты
   KEEP_CONTENT: true, // Сохраняем текстовое содержимое
@@ -20,7 +20,7 @@ export function sanitizeString(input: string): string {
   if (!input) return ''
   
   // Используем DOMPurify для надежной санитизации
-  return DOMPurify.sanitize(input, STRICT_CONFIG).trim()
+  return String(DOMPurify.sanitize(input, STRICT_CONFIG)).trim()
 }
 
 /**
@@ -32,7 +32,7 @@ export function escapeHtml(input: string): string {
   if (!input) return ''
   
   // DOMPurify с пустым списком тегов экранирует все HTML
-  return DOMPurify.sanitize(input, STRICT_CONFIG)
+  return String(DOMPurify.sanitize(input, STRICT_CONFIG))
 }
 
 /**

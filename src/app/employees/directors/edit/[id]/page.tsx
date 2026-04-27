@@ -48,7 +48,7 @@ export default function EditDirectorPage() {
       try {
         const [citiesResult, directorResponse] = await Promise.all([
           apiClient.getCities(),
-          apiClient.request<any>(`/directors/${directorId}`)
+          apiClient.getDirector(directorId as string)
         ])
         setAvailableCities(citiesResult)
 

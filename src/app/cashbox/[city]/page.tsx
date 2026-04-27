@@ -645,9 +645,6 @@ export default function CityTransactionsPage() {
                 currentPage={currentPage}
                 totalPages={totalPages}
                 onPageChange={handlePageChange}
-                showFirstLast={true}
-                showPrevNext={true}
-                maxVisiblePages={5}
                 disabled={loading}
               />
             )}

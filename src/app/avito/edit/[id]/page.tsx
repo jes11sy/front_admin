@@ -7,6 +7,7 @@ import { Label } from '@/components/ui/label'
 import { useRouter, useParams } from 'next/navigation'
 import { useState, useEffect } from 'react'
 import { apiClient } from '@/lib/api'
+import { API_BASE_URL } from '@/lib/config/env'
 import { toast } from 'sonner'
 import { BrowserAuthModal } from '@/components/BrowserAuthModal'
 import { getFormFieldClass } from '@/components/ui/form-styles'
@@ -165,9 +166,7 @@ export default function EditAvitoAccountPage() {
       setShowBrowserAuth(true)
     } else {
       // Если OAuth - перенаправляем
-      // ✅ FIX #173: Исправлена опечатка lead-shem -> lead-schem
-      const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'https://api.lead-schem.ru/api/v1'
-      const apiUrl = baseUrl.endsWith('/api/v1') ? baseUrl.replace('/api/v1', '') : baseUrl
+      const apiUrl = API_BASE_URL.endsWith('/api/v1') ? API_BASE_URL.replace('/api/v1', '') : API_BASE_URL
       const avitoAuthUrl = `${apiUrl}/api/v1/auth/avito/authorize/${accountId}`
       window.location.href = avitoAuthUrl
     }

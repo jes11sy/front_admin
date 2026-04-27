@@ -3,54 +3,11 @@
 import React, { useState, useEffect, useCallback, useLayoutEffect, useRef } from 'react'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { DateRangePicker } from '@/components/ui/date-range-picker'
-import { apiClient } from '@/lib/api'
+import { reportsApi } from '@/lib/api/modules/reports'
+import { ALL_PURPOSES, PAYMENT_PURPOSES, reportTabs, ReportData, ReportType } from '@/components/reports/report-constants'
 import { useDesignStore } from '@/store/design.store'
 import { toast } from 'sonner'
 import { logger } from '@/lib/logger'
-
-// Типы отчётов
-type ReportType = 'cash' | 'orders' | 'campaigns'
-
-const reportTabs: Array<{ id: ReportType; label: string }> = [
-  { id: 'cash', label: 'По кассе' },
-  { id: 'orders', label: 'По заказам' },
-  { id: 'campaigns', label: 'По РК' },
-]
-
-// Назначения платежей (хардкоры из фронта директора)
-const PAYMENT_PURPOSES = {
-  expense: [
-    { value: 'Авито', label: 'Авито' },
-    { value: 'Офис', label: 'Офис' },
-    { value: 'Промоутеры', label: 'Промоутеры' },
-    { value: 'Листовки', label: 'Листовки' },
-    { value: 'Инкасс', label: 'Инкасс' },
-    { value: 'Зарплата директора', label: 'Зарплата директора' },
-    { value: 'Иное', label: 'Иное' }
-  ],
-  income: [
-    { value: 'Заказ', label: 'Заказ' },
-    { value: 'Депозит', label: 'Депозит' },
-    { value: 'Штраф', label: 'Штраф' },
-    { value: 'Иное', label: 'Иное' }
-  ]
-}
-
-// Все назначения платежей
-const ALL_PURPOSES = [
-  ...PAYMENT_PURPOSES.expense,
-  ...PAYMENT_PURPOSES.income.filter(p => !PAYMENT_PURPOSES.expense.find(e => e.value === p.value))
-]
-
-// Интерфейс данных отчёта
-interface ReportData {
-  type: ReportType
-  generatedAt: string
-  period: { from: string; to: string }
-  cityIds: number[]
-  data: any
-  purposes?: string[]
-}
 
 export default function ReportsPage() {
   // Тема
@@ -105,7 +62,7 @@ export default function ReportsPage() {
   
   // Загрузка списка городов
   useEffect(() => {
-    apiClient.getCities().then((cities: Array<{ id: number; name: string }>) => {
+    reportsApi.getCities().then((cities: Array<{ id: number; name: string }>) => {
       setAvailableCities(cities)
       const ids = cities.map(c => c.id)
       setSelectedCityIds(ids)
@@ -213,7 +170,7 @@ export default function ReportsPage() {
         case 'cash':
           if (filterByPurpose) {
             // Детальный отчёт с группировкой по назначениям платежа
-            const cashResponse = await apiClient.getCashByPurpose({
+            const cashResponse = await reportsApi.getCashByPurpose({
               startDate: dateFrom,
               endDate: dateTo,
               cityId: selectedCityIds.length === 1 ? selectedCityIds[0] : undefined,
@@ -239,7 +196,7 @@ export default function ReportsPage() {
             }
           } else {
             // Простой отчёт - итоги по городам (используем тот же API для консистентности)
-            const cashResponse = await apiClient.getCashByPurpose({
+            const cashResponse = await reportsApi.getCashByPurpose({
               startDate: dateFrom,
               endDate: dateTo,
               cityId: selectedCityIds.length === 1 ? selectedCityIds[0] : undefined
@@ -276,7 +233,7 @@ export default function ReportsPage() {
           
         case 'orders':
           // Используем reports API для получения статистики заказов
-          const ordersReportResponse = await apiClient.getCitiesReport({
+          const ordersReportResponse = await reportsApi.getCitiesReport({
             startDate: dateFrom,
             endDate: dateTo,
             cityId: selectedCityIds.length === 1 ? selectedCityIds[0] : undefined
@@ -332,7 +289,7 @@ export default function ReportsPage() {
           
         case 'campaigns':
           // Отчёт по рекламным кампаниям с группировкой по городам и типам РК
-          const campaignsResponse = await apiClient.getCampaignsReport({
+          const campaignsResponse = await reportsApi.getCampaignsReport({
             startDate: dateFrom,
             endDate: dateTo,
             cityId: selectedCityIds.length === 1 ? selectedCityIds[0] : undefined

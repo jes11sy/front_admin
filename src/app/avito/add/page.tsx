@@ -7,6 +7,7 @@ import { Label } from '@/components/ui/label'
 import { useRouter } from 'next/navigation'
 import { useState } from 'react'
 import { apiClient } from '@/lib/api'
+import { API_BASE_URL } from '@/lib/config/env'
 import { toast } from 'sonner'
 import { BrowserAuthModal } from '@/components/BrowserAuthModal'
 import { getFormFieldClass } from '@/components/ui/form-styles'
@@ -71,9 +72,7 @@ export default function AddAvitoAccountPage() {
           // Если OAuth - перенаправляем на авторизацию Avito
           toast.success('Аккаунт создан! Перенаправляем на авторизацию Avito...')
           setTimeout(() => {
-            // ✅ FIX #173: Исправлена опечатка lead-shem -> lead-schem
-            const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'https://api.lead-schem.ru/api/v1'
-            const apiUrl = baseUrl.endsWith('/api/v1') ? baseUrl.replace('/api/v1', '') : baseUrl
+            const apiUrl = API_BASE_URL.endsWith('/api/v1') ? API_BASE_URL.replace('/api/v1', '') : API_BASE_URL
             const avitoAuthUrl = `${apiUrl}/api/v1/auth/avito/authorize/${response.data.id}`
             window.location.href = avitoAuthUrl
           }, 1500)

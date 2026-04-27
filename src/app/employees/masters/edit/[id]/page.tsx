@@ -49,7 +49,7 @@ export default function EditMasterPage() {
       try {
         const [citiesResult, masterResponse] = await Promise.all([
           apiClient.getCities(),
-          apiClient.request<any>(`/masters/${masterId}`)
+          apiClient.getMaster(masterId as string)
         ])
         setAvailableCities(citiesResult)
 

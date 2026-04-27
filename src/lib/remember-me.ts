@@ -88,6 +88,7 @@ async function openDB(): Promise<IDBDatabase> {
  * Генерирует ключ шифрования
  */
 async function generateEncryptionKey(salt: Uint8Array): Promise<CryptoKey> {
+  const normalizedSalt = new Uint8Array(salt)
   const fingerprint = [
     'admin_token_v1',
     window.location.origin,
@@ -106,7 +107,7 @@ async function generateEncryptionKey(salt: Uint8Array): Promise<CryptoKey> {
   return crypto.subtle.deriveKey(
     {
       name: 'PBKDF2',
-      salt: salt,
+      salt: normalizedSalt,
       iterations: 100000,
       hash: 'SHA-256',
     },

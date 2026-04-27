@@ -1,14 +1,24 @@
 // ✅ FIX #151: Добавлен fetch retry logic
 import { logger } from './logger'
 import { fetchWithRetry, classifyNetworkError, getUserFriendlyErrorMessage } from './fetch-with-retry'
-
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://api.lead-schem.ru/api/v1'
+import { API_BASE_URL } from './config/env'
 
 interface ApiResponse<T> {
   success: boolean
   data?: T
   error?: string
   message?: string
+}
+
+export interface AppNotification {
+  id: string
+  type: string
+  title: string
+  message: string
+  orderId?: number
+  data?: Record<string, unknown>
+  read: boolean
+  createdAt: string
 }
 
 /**
@@ -576,6 +586,10 @@ class ApiClient {
       method: 'PUT',
       body: JSON.stringify(data),
     })
+  }
+
+  async getMaster(id: string) {
+    return this.request<any>(`/masters/${id}`)
   }
 
 
@@ -1637,6 +1651,46 @@ class ApiClient {
     return this.request<any>(`/notification-logs${query ? `?${query}` : ''}`)
   }
 
+  async getNotifications() {
+    return this.request<{
+      notifications: AppNotification[]
+      unreadCount: number
+    }>('/notifications')
+  }
+
+  async markNotificationAsRead(notificationId: string) {
+    return this.request<any>('/notifications/read', {
+      method: 'POST',
+      body: JSON.stringify({ notificationId }),
+    })
+  }
+
+  async markAllNotificationsAsRead() {
+    return this.request<any>('/notifications/read-all', {
+      method: 'POST',
+      body: JSON.stringify({}),
+    })
+  }
+
+  async startBrowserSession(payload: { accountId: number; proxyConfig?: any }) {
+    return this.request<{ publicWsUrl?: string }>('/browser/start', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    })
+  }
+
+  async getBrowserSessionStatus(accountId: number) {
+    return this.request<{ isAuthorized?: boolean }>(`/browser/${accountId}/status`)
+  }
+
+  async getBrowserSessionCookies(accountId: number) {
+    return this.request<{ cookies?: string }>(`/browser/${accountId}/cookies`)
+  }
+
+  async closeBrowserSession(accountId: number) {
+    return this.request<any>(`/browser/${accountId}`, { method: 'DELETE' })
+  }
+
   // ==================== REFERENCES ====================
 
   async getCitiesList(params?: { isActive?: boolean }) {
@@ -1717,7 +1771,7 @@ class ApiClient {
     return this.request<any>('/references/order-statuses', { method: 'POST', body: JSON.stringify(data) })
   }
 
-  async updateOrderStatus(id: number, data: { name?: string; code?: string; color?: string; sortOrder?: number; isActive?: boolean }) {
+  async updateOrderStatusReference(id: number, data: { name?: string; code?: string; color?: string; sortOrder?: number; isActive?: boolean }) {
     return this.request<any>(`/references/order-statuses/${id}`, { method: 'PUT', body: JSON.stringify(data) })
   }
 

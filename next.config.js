@@ -13,9 +13,9 @@ const nextConfig = {
   // Отключаем source maps в production для безопасности
   productionBrowserSourceMaps: false,
   
-  // Отключаем TypeScript проверки во время сборки для Docker  
+  // TypeScript ошибки должны блокировать production build
   typescript: {
-    ignoreBuildErrors: true,
+    ignoreBuildErrors: false,
   },
   
   images: {
@@ -61,9 +61,33 @@ const nextConfig = {
       // Fonts
       "font-src 'self' data:",
       // Connect (API)
-      isDevelopment
-        ? "connect-src 'self' https: wss: ws: http://localhost:* ws://localhost:*"
-        : "connect-src 'self' https://api.lead-schem.ru wss://api.lead-schem.ru https://api.test-shem.ru wss://api.test-shem.ru https://s3.twcstorage.ru",
+      (() => {
+        const configuredApiUrl = process.env.NEXT_PUBLIC_API_URL
+        const configuredApiOrigin = configuredApiUrl ? (() => {
+          try {
+            return new URL(configuredApiUrl).origin
+          } catch {
+            return null
+          }
+        })() : null
+
+        const productionConnectSrc = [
+          "'self'",
+          'https://api.lead-schem.ru',
+          'wss://api.lead-schem.ru',
+          'https://api.test-shem.ru',
+          'wss://api.test-shem.ru',
+          'https://s3.twcstorage.ru',
+        ]
+
+        if (configuredApiOrigin && !productionConnectSrc.includes(configuredApiOrigin)) {
+          productionConnectSrc.push(configuredApiOrigin)
+        }
+
+        return isDevelopment
+          ? "connect-src 'self' https: wss: ws: http://localhost:* ws://localhost:*"
+          : `connect-src ${productionConnectSrc.join(' ')}`
+      })(),
       // Media
       "media-src 'self' https://s3.twcstorage.ru https://s3.timeweb.com",
       // Objects: запрещаем

@@ -361,11 +361,11 @@ export default function SalaryPage() {
                       </SelectItem>
                       {uniqueCities.map((city) => (
                         <SelectItem
-                          key={city.id}
-                          value={String(city.id)}
+                          key={city}
+                          value={city}
                           className={filterSelectItemClass}
                         >
-                          {city.name}
+                          {city}
                         </SelectItem>
                       ))}
                     </SelectContent>

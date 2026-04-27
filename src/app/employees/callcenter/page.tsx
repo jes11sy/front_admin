@@ -273,7 +273,7 @@ export default function CallCenterPage() {
               <h3 className={`text-xs font-semibold uppercase tracking-wider ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>Статус</h3>
               <Select
                 value={statusFilter}
-                onValueChange={(value: 'working' | 'fired' | 'all') => setStatusFilter(value)}
+                onValueChange={(value: 'active' | 'inactive' | 'all') => setStatusFilter(value)}
               >
                 <SelectTrigger className={`w-full min-h-[44px] rounded-2xl border shadow-sm focus:ring-0 focus-visible:ring-0 data-[state=open]:ring-0 ${
                   isDark
@@ -283,8 +283,8 @@ export default function CallCenterPage() {
                   <SelectValue placeholder="Статус" />
                 </SelectTrigger>
                 <SelectContent className={isDark ? 'bg-[#1e1e20] border-white/10' : 'bg-white border-black/[0.08]'}>
-                  <SelectItem value="working" className={isDark ? 'text-gray-100 focus:bg-white/10 focus:text-white' : 'text-gray-800 focus:bg-gray-100 focus:text-gray-900'}>Работает</SelectItem>
-                  <SelectItem value="fired" className={isDark ? 'text-gray-100 focus:bg-white/10 focus:text-white' : 'text-gray-800 focus:bg-gray-100 focus:text-gray-900'}>Уволен</SelectItem>
+                  <SelectItem value="active" className={isDark ? 'text-gray-100 focus:bg-white/10 focus:text-white' : 'text-gray-800 focus:bg-gray-100 focus:text-gray-900'}>Работает</SelectItem>
+                  <SelectItem value="inactive" className={isDark ? 'text-gray-100 focus:bg-white/10 focus:text-white' : 'text-gray-800 focus:bg-gray-100 focus:text-gray-900'}>Уволен</SelectItem>
                   <SelectItem value="all" className={isDark ? 'text-gray-100 focus:bg-white/10 focus:text-white' : 'text-gray-800 focus:bg-gray-100 focus:text-gray-900'}>Все</SelectItem>
                 </SelectContent>
               </Select>

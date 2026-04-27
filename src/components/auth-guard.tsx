@@ -39,32 +39,34 @@ export default function AuthGuard({ children }: AuthGuardProps) {
         setReady(true)
         return
       }
-      
-      // Нет user — быстрая проверка сессии (5 сек таймаут)
-      const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'https://api.lead-schem.ru/api/v1'
-      
+
       try {
-        const controller = new AbortController()
-        const timeoutId = setTimeout(() => controller.abort(), 5000)
-        
-        const response = await fetch(`${baseUrl}/auth/profile`, {
-          method: 'GET',
-          headers: { 'X-Use-Cookies': 'true' },
-          credentials: 'include',
-          signal: controller.signal,
-        })
-        
-        clearTimeout(timeoutId)
-        
-        if (response.ok) {
-          const data = await response.json()
-          if (data.success && data.data) {
+        const profileResponse = await apiClient.getProfile()
+        if (profileResponse.success && profileResponse.data) {
+          useAuthStore.setState({
+            user: {
+              id: profileResponse.data.id,
+              login: profileResponse.data.login,
+              name: profileResponse.data.name || profileResponse.data.login,
+              role: profileResponse.data.role || 'admin',
+            },
+            isAuthenticated: true,
+          })
+          setReady(true)
+          return
+        }
+
+        logger.debug('[AuthGuard] Profile not available, attempting token refresh')
+        const refreshResult = await apiClient.refreshAuthToken()
+        if (refreshResult.success) {
+          const retryProfileResponse = await apiClient.getProfile()
+          if (retryProfileResponse.success && retryProfileResponse.data) {
             useAuthStore.setState({
               user: {
-                id: data.data.id,
-                login: data.data.login,
-                name: data.data.name || data.data.login,
-                role: data.data.role || 'admin',
+                id: retryProfileResponse.data.id,
+                login: retryProfileResponse.data.login,
+                name: retryProfileResponse.data.name || retryProfileResponse.data.login,
+                role: retryProfileResponse.data.role || 'admin',
               },
               isAuthenticated: true,
             })
@@ -72,91 +74,29 @@ export default function AuthGuard({ children }: AuthGuardProps) {
             return
           }
         }
-        
-        // ✅ FIX: При 401 пробуем refresh перед редиректом на логин
-        if (response.status === 401) {
-          logger.debug('[AuthGuard] Got 401, attempting token refresh...')
-          
-          try {
-            const refreshResult = await apiClient.refreshAuthToken()
-            
-            if (refreshResult.success) {
-              // Refresh успешен — повторяем проверку профиля
-              const retryController = new AbortController()
-              const retryTimeoutId = setTimeout(() => retryController.abort(), 5000)
-              
-              const retryResponse = await fetch(`${baseUrl}/auth/profile`, {
-                method: 'GET',
-                headers: { 'X-Use-Cookies': 'true' },
-                credentials: 'include',
-                signal: retryController.signal,
-              })
-              
-              clearTimeout(retryTimeoutId)
-              
-              if (retryResponse.ok) {
-                const retryData = await retryResponse.json()
-                if (retryData.success && retryData.data) {
-                  useAuthStore.setState({
-                    user: {
-                      id: retryData.data.id,
-                      login: retryData.data.login,
-                      name: retryData.data.name || retryData.data.login,
-                      role: retryData.data.role || 'admin',
-                    },
-                    isAuthenticated: true,
-                  })
-                  setReady(true)
-                  return
-                }
-              }
-            }
-          } catch (refreshError) {
-            logger.debug('[AuthGuard] Refresh attempt failed', { error: String(refreshError) })
-          }
-          
-          // ✅ FIX: Последняя попытка — восстановление через IndexedDB
-          try {
-            const restored = await apiClient.restoreSessionFromIndexedDB()
-            if (restored) {
-              const retryController = new AbortController()
-              const retryTimeoutId = setTimeout(() => retryController.abort(), 5000)
-              
-              const retryResponse = await fetch(`${baseUrl}/auth/profile`, {
-                method: 'GET',
-                headers: { 'X-Use-Cookies': 'true' },
-                credentials: 'include',
-                signal: retryController.signal,
-              })
-              
-              clearTimeout(retryTimeoutId)
-              
-              if (retryResponse.ok) {
-                const retryData = await retryResponse.json()
-                if (retryData.success && retryData.data) {
-                  useAuthStore.setState({
-                    user: {
-                      id: retryData.data.id,
-                      login: retryData.data.login,
-                      name: retryData.data.name || retryData.data.login,
-                      role: retryData.data.role || 'admin',
-                    },
-                    isAuthenticated: true,
-                  })
-                  setReady(true)
-                  return
-                }
-              }
-            }
-          } catch (e) {
-            logger.debug('[AuthGuard] IndexedDB restore failed', { error: String(e) })
+
+        logger.debug('[AuthGuard] Trying IndexedDB session restoration')
+        const restored = await apiClient.restoreSessionFromIndexedDB()
+        if (restored) {
+          const recoveredProfileResponse = await apiClient.getProfile()
+          if (recoveredProfileResponse.success && recoveredProfileResponse.data) {
+            useAuthStore.setState({
+              user: {
+                id: recoveredProfileResponse.data.id,
+                login: recoveredProfileResponse.data.login,
+                name: recoveredProfileResponse.data.name || recoveredProfileResponse.data.login,
+                role: recoveredProfileResponse.data.role || 'admin',
+              },
+              isAuthenticated: true,
+            })
+            setReady(true)
+            return
           }
         }
-        
-        // Все попытки исчерпаны — на логин
+
         router.push('/login')
-      } catch {
-        // Таймаут или ошибка сети — на логин
+      } catch (error) {
+        logger.debug('[AuthGuard] Auth check failed', { error: String(error) })
         router.push('/login')
       }
     }

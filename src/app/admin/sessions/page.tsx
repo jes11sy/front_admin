@@ -14,7 +14,7 @@ import { getFormFieldClass } from '@/components/ui/form-styles'
 interface Session {
   userId: number
   fullName: string
-  role: 'admin' | 'director' | 'operator' | 'master'
+  role: string
   device: string
   deviceType: 'desktop' | 'mobile' | 'tablet'
   ip: string
