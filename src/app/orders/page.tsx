@@ -11,6 +11,12 @@ import { LoadingState } from '@/components/ui/loading-state'
 import { useDesignStore } from '@/store/design.store'
 import { apiClient } from '@/lib/api'
 import { logger } from '@/lib/logger'
+import {
+  getFormFieldClass,
+  getFormSelectContentClass,
+  getFormSelectItemClass,
+  getFormSelectTriggerClass,
+} from '@/components/ui/form-styles'
 
 // Ключ для сохранения позиции прокрутки
 const SCROLL_POSITION_KEY = 'admin_orders_scroll_position'
@@ -443,11 +449,10 @@ function OrdersContent() {
 
   const safeOrders = Array.isArray(orders) ? orders : []
   const hasActiveFilters = searchId || searchPhone || searchAddress || statusFilter || cityFilter || masterFilter || rkFilter || typeEquipmentFilter || dateFrom || dateTo
-  const selectTriggerClass = `w-full min-h-[44px] px-4 rounded-2xl text-[15px] shadow-sm outline-none ring-0 focus:outline-none focus-visible:outline-none focus:ring-0 focus-visible:ring-0 data-[state=open]:ring-0 data-[state=open]:ring-offset-0 dark:border-white/15 dark:focus:!border-white/30 dark:data-[state=open]:!border-white/30 ${
-    isDark ? 'bg-white/[0.04] text-white data-[state=open]:border-white/20' : 'border border-[#cfd2d8] bg-white text-[#111113] shadow-[0_1px_2px_rgba(15,23,42,0.06)] focus:border-gray-300 data-[state=open]:border-[#c4c9d1]'
-  }`
-  const selectContentClass = `rounded-2xl border-0 shadow-xl ${isDark ? 'bg-[#1e1e20]' : 'bg-white'}`
-  const selectItemClass = `rounded-xl mx-1 my-0.5 cursor-pointer ${isDark ? 'text-white focus:bg-white/10 focus:text-white' : 'text-[#111113] focus:bg-black/5 focus:text-[#111113]'}`
+  const inputFieldClass = `${getFormFieldClass(isDark, 'lg')} min-h-[44px] px-4`
+  const selectTriggerClass = `${getFormSelectTriggerClass(isDark, 'lg')} min-h-[44px] px-4`
+  const selectContentClass = getFormSelectContentClass(isDark)
+  const selectItemClass = getFormSelectItemClass(isDark)
 
   return (
     <div className={`min-h-screen transition-colors duration-300 ${
@@ -555,11 +560,7 @@ function OrdersContent() {
                           value={draftSearchId}
                           onChange={(e) => setDraftSearchId(e.target.value)}
                           placeholder="ID заказа..."
-                          className={`w-full min-h-[44px] px-4 py-2 rounded-2xl text-[15px] outline-none ring-0 focus:outline-none focus-visible:outline-none focus:ring-0 focus-visible:ring-0 transition-all shadow-sm ${
-                            isDark 
-                              ? 'bg-white/[0.04] text-white placeholder-white/30'
-                              : 'border border-[#cfd2d8] bg-white text-[#111113] placeholder:text-[#8e8e93] shadow-[0_1px_2px_rgba(15,23,42,0.06)] focus:border-gray-300'
-                          }`}
+                          className={inputFieldClass}
                         />
                       </div>
                       
@@ -570,11 +571,7 @@ function OrdersContent() {
                           value={draftSearchPhone}
                           onChange={(e) => setDraftSearchPhone(e.target.value)}
                           placeholder="Номер телефона..."
-                          className={`w-full min-h-[44px] px-4 py-2 rounded-2xl text-[15px] outline-none ring-0 focus:outline-none focus-visible:outline-none focus:ring-0 focus-visible:ring-0 transition-all shadow-sm ${
-                            isDark 
-                              ? 'bg-white/[0.04] text-white placeholder-white/30'
-                              : 'border border-[#cfd2d8] bg-white text-[#111113] placeholder:text-[#8e8e93] shadow-[0_1px_2px_rgba(15,23,42,0.06)] focus:border-gray-300'
-                          }`}
+                          className={inputFieldClass}
                         />
                       </div>
                       
@@ -585,11 +582,7 @@ function OrdersContent() {
                           value={draftSearchAddress}
                           onChange={(e) => setDraftSearchAddress(e.target.value)}
                           placeholder="Адрес..."
-                          className={`w-full min-h-[44px] px-4 py-2 rounded-2xl text-[15px] outline-none ring-0 focus:outline-none focus-visible:outline-none focus:ring-0 focus-visible:ring-0 transition-all shadow-sm ${
-                            isDark 
-                              ? 'bg-white/[0.04] text-white placeholder-white/30'
-                              : 'border border-[#cfd2d8] bg-white text-[#111113] placeholder:text-[#8e8e93] shadow-[0_1px_2px_rgba(15,23,42,0.06)] focus:border-gray-300'
-                          }`}
+                          className={inputFieldClass}
                         />
                       </div>
                     </div>
@@ -624,7 +617,7 @@ function OrdersContent() {
                           <SelectContent className={selectContentClass}>
                             <SelectItem value="all" className={selectItemClass}>Все города</SelectItem>
                             {allCities.map(city => (
-                              <SelectItem key={city.id} value={String(city.id)} className={isDark ? 'text-gray-100 focus:bg-[#3a4451] focus:text-teal-400' : 'text-gray-800 focus:bg-teal-50 focus:text-teal-700'}>{city.name}</SelectItem>
+                              <SelectItem key={city.id} value={String(city.id)} className={selectItemClass}>{city.name}</SelectItem>
 
                             ))}
                           </SelectContent>
@@ -637,11 +630,7 @@ function OrdersContent() {
                           value={draftMasterFilter}
                           onChange={(e) => setDraftMasterFilter(e.target.value)}
                           placeholder="Мастер..."
-                          className={`w-full min-h-[44px] px-4 py-2 rounded-2xl text-[15px] outline-none ring-0 focus:outline-none focus-visible:outline-none focus:ring-0 focus-visible:ring-0 transition-all shadow-sm ${
-                            isDark 
-                              ? 'bg-white/[0.04] text-white placeholder-white/30'
-                              : 'border border-[#cfd2d8] bg-white text-[#111113] placeholder:text-[#8e8e93] shadow-[0_1px_2px_rgba(15,23,42,0.06)] focus:border-gray-300'
-                          }`}
+                          className={inputFieldClass}
                         />
                       </div>
                     </div>
@@ -661,7 +650,7 @@ function OrdersContent() {
                           <SelectContent className={selectContentClass}>
                             <SelectItem value="all" className={selectItemClass}>Все РК</SelectItem>
                             {allRks.map(rk => (
-                              <SelectItem key={rk.id} value={String(rk.id)} className={isDark ? 'text-gray-100 focus:bg-[#3a4451] focus:text-teal-400' : 'text-gray-800 focus:bg-teal-50 focus:text-teal-700'}>{rk.name}</SelectItem>
+                              <SelectItem key={rk.id} value={String(rk.id)} className={selectItemClass}>{rk.name}</SelectItem>
 
                             ))}
                           </SelectContent>
@@ -674,10 +663,10 @@ function OrdersContent() {
                           <SelectTrigger className={selectTriggerClass}>
                             <SelectValue placeholder="Все направления" />
                           </SelectTrigger>
-                          <SelectContent className={isDark ? 'bg-[#2a3441] border-gray-600' : 'bg-white border-gray-200'}>
-                            <SelectItem value="all" className={isDark ? 'text-gray-100 focus:bg-[#3a4451] focus:text-teal-400' : 'text-gray-800 focus:bg-teal-50 focus:text-teal-700'}>Все направления</SelectItem>
+                          <SelectContent className={selectContentClass}>
+                            <SelectItem value="all" className={selectItemClass}>Все направления</SelectItem>
                             {allEquipmentTypes.map(type => (
-                              <SelectItem key={type.id} value={String(type.id)} className={isDark ? 'text-gray-100 focus:bg-[#3a4451] focus:text-teal-400' : 'text-gray-800 focus:bg-teal-50 focus:text-teal-700'}>{type.name}</SelectItem>
+                              <SelectItem key={type.id} value={String(type.id)} className={selectItemClass}>{type.name}</SelectItem>
 
                             ))}
                           </SelectContent>

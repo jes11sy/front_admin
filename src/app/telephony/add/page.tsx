@@ -7,6 +7,12 @@ import { apiClient } from '@/lib/api'
 import { useDesignStore } from '@/store/design.store'
 import { toast } from 'sonner'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import {
+  getFormFieldClass,
+  getFormSelectContentClass,
+  getFormSelectItemClass,
+  getFormSelectTriggerClass,
+} from '@/components/ui/form-styles'
 
 export default function AddPhoneNumberPage() {
   const router = useRouter()
@@ -32,6 +38,10 @@ export default function AddPhoneNumberPage() {
   }, [])
   const [errors, setErrors] = useState<{ phoneNumber?: string }>({})
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const fieldClass = `${getFormFieldClass(isDark, 'lg')} rounded-lg`
+  const selectTriggerClass = `${getFormSelectTriggerClass(isDark, 'lg')} h-12`
+  const selectContentClass = getFormSelectContentClass(isDark)
+  const selectItemClass = getFormSelectItemClass(isDark)
 
   const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value.replace(/\D/g, '')
@@ -107,11 +117,7 @@ export default function AddPhoneNumberPage() {
                 onChange={handlePhoneChange}
                 placeholder="79539979880"
                 maxLength={11}
-                className={`w-full px-4 py-3 border rounded-lg text-sm font-mono focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent transition-all ${
-                  isDark 
-                    ? 'bg-[#3a4451] border-gray-600 text-gray-100 placeholder-gray-500'
-                    : 'bg-white border-gray-200 text-gray-800 placeholder-gray-400'
-                } ${errors.phoneNumber ? 'border-red-500' : ''}`}
+                className={`${fieldClass} text-sm font-mono ${errors.phoneNumber ? 'border-red-500' : ''}`}
               />
               <p className={`text-xs mt-1.5 ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
                 11 цифр без пробелов и скобок
@@ -130,12 +136,12 @@ export default function AddPhoneNumberPage() {
                 РК <span className="text-red-500">*</span>
               </label>
               <Select value={formData.rkId ? formData.rkId.toString() : ''} onValueChange={(v) => setFormData({ ...formData, rkId: Number(v) })}>
-                <SelectTrigger className={`w-full h-12 ${isDark ? 'bg-[#3a4451] border-gray-600 text-gray-100' : 'bg-white border-gray-200 text-gray-800'}`}>
+                <SelectTrigger className={selectTriggerClass}>
                   <SelectValue placeholder="Выберите РК" />
                 </SelectTrigger>
-                <SelectContent className={isDark ? 'bg-[#2a3441] border-gray-600' : 'bg-white border-gray-200'}>
+                <SelectContent className={selectContentClass}>
                   {availableRks.map(rk => (
-                    <SelectItem key={rk.id} value={rk.id.toString()} className={isDark ? 'text-gray-100' : 'text-gray-800'}>{rk.name}</SelectItem>
+                    <SelectItem key={rk.id} value={rk.id.toString()} className={selectItemClass}>{rk.name}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -147,12 +153,12 @@ export default function AddPhoneNumberPage() {
                 Город <span className="text-red-500">*</span>
               </label>
               <Select value={formData.cityId ? formData.cityId.toString() : ''} onValueChange={(v) => setFormData({ ...formData, cityId: Number(v) })}>
-                <SelectTrigger className={`w-full h-12 ${isDark ? 'bg-[#3a4451] border-gray-600 text-gray-100' : 'bg-white border-gray-200 text-gray-800'}`}>
+                <SelectTrigger className={selectTriggerClass}>
                   <SelectValue placeholder="Выберите город" />
                 </SelectTrigger>
-                <SelectContent className={isDark ? 'bg-[#2a3441] border-gray-600' : 'bg-white border-gray-200'}>
+                <SelectContent className={selectContentClass}>
                   {availableCities.map(city => (
-                    <SelectItem key={city.id} value={city.id.toString()} className={isDark ? 'text-gray-100' : 'text-gray-800'}>{city.name}</SelectItem>
+                    <SelectItem key={city.id} value={city.id.toString()} className={selectItemClass}>{city.name}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>

@@ -6,6 +6,7 @@ import { useDesignStore } from '@/store/design.store'
 import { toast } from 'sonner'
 import { OptimizedPagination } from '@/components/ui/optimized-pagination'
 import { Building2, CalendarClock, ExternalLink, Filter, Globe, MessageSquare, Phone, Search, X } from 'lucide-react'
+import { getFormFieldClass } from '@/components/ui/form-styles'
 
 interface SiteOrder {
   id: number
@@ -207,9 +208,7 @@ export default function SiteOrdersPage() {
     : 'border border-black/[0.08] bg-white'
   const mutedClass = isDark ? 'text-gray-400' : 'text-gray-500'
   const titleClass = isDark ? 'text-white' : 'text-[#111113]'
-  const inputCls = isDark
-    ? 'w-full rounded-2xl border border-[#313136] bg-white/[0.04] px-4 py-3 text-sm text-gray-100 placeholder:text-gray-500 outline-none transition focus:border-[#313136]'
-    : 'w-full rounded-2xl border border-[#e5e7eb] bg-white px-4 py-3 text-sm text-gray-800 placeholder:text-gray-400 outline-none transition focus:border-[#e5e7eb]'
+  const inputCls = `${getFormFieldClass(isDark, 'lg')} min-h-[44px] px-4`
   const secondaryButtonCls = isDark
     ? 'rounded-2xl bg-white/[0.04] px-4 py-3 text-sm font-medium text-white transition hover:bg-white/[0.08]'
     : 'rounded-2xl border border-[#cfd2d8] bg-white px-4 py-3 text-sm font-medium text-[#111113] shadow-[0_1px_2px_rgba(15,23,42,0.06)] transition hover:bg-[#f3f4f6]'

@@ -9,6 +9,7 @@ import { useState, useEffect } from 'react'
 import { apiClient } from '@/lib/api'
 import { toast } from 'sonner'
 import { BrowserAuthModal } from '@/components/BrowserAuthModal'
+import { getFormFieldClass } from '@/components/ui/form-styles'
 
 interface AvitoAccountData {
   id: string
@@ -50,6 +51,7 @@ export default function EditAvitoAccountPage() {
   const router = useRouter()
   const params = useParams()
   const accountId = params.id
+  const selectFieldClass = `${getFormFieldClass(false, 'md')} rounded-md`
 
   const [formData, setFormData] = useState<FormData>({
     name: '',
@@ -320,7 +322,7 @@ export default function EditAvitoAccountPage() {
                   id="proxyType"
                   value={formData.proxyType}
                   onChange={(e) => setFormData({ ...formData, proxyType: e.target.value })}
-                  className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent"
+                  className={`mt-1 ${selectFieldClass}`}
                 >
                   <option value="http">HTTP</option>
                   <option value="https">HTTPS</option>

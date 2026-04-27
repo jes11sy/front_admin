@@ -7,6 +7,7 @@ import { toast } from 'sonner'
 import { useDesignStore } from '@/store/design.store'
 import { OptimizedPagination } from '@/components/ui/optimized-pagination'
 import { DateRangePicker } from '@/components/ui/date-range-picker'
+import { getFormFieldClass } from '@/components/ui/form-styles'
 
 interface Transaction {
   id: number
@@ -57,6 +58,7 @@ export default function CityTransactionsPage() {
   const [draftEndDate, setDraftEndDate] = useState('')
   const [draftTypeFilter, setDraftTypeFilter] = useState('all')
   const [draftDateFilter, setDraftDateFilter] = useState<DateFilter>('all')
+  const compactFieldClass = `${getFormFieldClass(isDark, 'sm')} rounded-lg text-sm`
 
   const PAGE_SIZES = [
     { value: '20', label: '20' },
@@ -628,7 +630,7 @@ export default function CityTransactionsPage() {
                     setItemsPerPage(parseInt(e.target.value))
                     setCurrentPage(1)
                   }}
-                  className={`px-2 py-1 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 ${isDark ? 'bg-[#3a4451] border-gray-600 text-gray-200' : 'bg-white border-gray-200 text-gray-800'}`}
+                  className={compactFieldClass}
                 >
                   {PAGE_SIZES.map((size) => (
                     <option key={size.value} value={size.value}>

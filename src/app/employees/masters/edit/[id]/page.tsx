@@ -6,6 +6,7 @@ import { useState, useEffect } from 'react'
 import { apiClient } from '@/lib/api'
 import { toast } from 'sonner'
 import { useDesignStore } from '@/store/design.store'
+import { getFormFieldClass } from '@/components/ui/form-styles'
 
 export default function EditMasterPage() {
   const router = useRouter()
@@ -34,6 +35,7 @@ export default function EditMasterPage() {
   const [existingContract, setExistingContract] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [availableCities, setAvailableCities] = useState<Array<{ id: number; name: string }>>([])
+  const fieldClass = `${getFormFieldClass(isDark, 'md')} rounded-lg text-sm`
 
   const filteredCities = availableCities.filter(city =>
     city.name.toLowerCase().includes(citySearch.toLowerCase()) &&
@@ -249,11 +251,7 @@ export default function EditMasterPage() {
                 }}
                 onFocus={() => setShowCityDropdown(true)}
                 placeholder="Начните вводить название города..."
-                className={`w-full px-3 py-2.5 rounded-lg text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-teal-500 ${
-                  isDark 
-                    ? 'bg-[#1e2530] border border-gray-600 text-gray-100 placeholder-gray-500'
-                    : 'bg-white border border-gray-200 text-gray-800 placeholder-gray-400'
-                }`}
+                className={fieldClass}
               />
               
               {showCityDropdown && filteredCities.length > 0 && (
@@ -300,11 +298,7 @@ export default function EditMasterPage() {
                   value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                   placeholder="Введите полное имя"
-                  className={`w-full px-3 py-2.5 rounded-lg text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-teal-500 ${
-                    isDark 
-                      ? 'bg-[#1e2530] border border-gray-600 text-gray-100 placeholder-gray-500'
-                      : 'bg-white border border-gray-200 text-gray-800 placeholder-gray-400'
-                  }`}
+                  className={fieldClass}
                 />
               </div>
 
@@ -319,11 +313,7 @@ export default function EditMasterPage() {
                     value={formData.login}
                     onChange={(e) => setFormData({ ...formData, login: e.target.value })}
                     placeholder="Необязательно"
-                    className={`flex-1 px-3 py-2.5 rounded-lg text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-teal-500 ${
-                      isDark 
-                        ? 'bg-[#1e2530] border border-gray-600 text-gray-100 placeholder-gray-500'
-                        : 'bg-white border border-gray-200 text-gray-800 placeholder-gray-400'
-                    }`}
+                    className={fieldClass}
                   />
                   <button 
                     type="button" 
@@ -350,11 +340,7 @@ export default function EditMasterPage() {
                     value={formData.password}
                     onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                     placeholder="Оставьте пустым, чтобы не менять"
-                    className={`flex-1 px-3 py-2.5 rounded-lg text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-teal-500 ${
-                      isDark 
-                        ? 'bg-[#1e2530] border border-gray-600 text-gray-100 placeholder-gray-500'
-                        : 'bg-white border border-gray-200 text-gray-800 placeholder-gray-400'
-                    }`}
+                    className={fieldClass}
                   />
                   <button 
                     type="button" 
@@ -378,11 +364,7 @@ export default function EditMasterPage() {
                 <select
                   value={formData.status}
                   onChange={(e) => setFormData({ ...formData, status: e.target.value })}
-                  className={`w-full px-3 py-2.5 rounded-lg text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-teal-500 ${
-                    isDark 
-                      ? 'bg-[#1e2530] border border-gray-600 text-gray-100'
-                      : 'bg-white border border-gray-200 text-gray-800'
-                  }`}
+                  className={fieldClass}
                 >
                   <option value="active">Работает</option>
                   <option value="inactive">Уволен</option>
@@ -406,11 +388,7 @@ export default function EditMasterPage() {
                 value={formData.chatId}
                 onChange={(e) => setFormData({ ...formData, chatId: e.target.value })}
                 placeholder="ID чата"
-                className={`w-full px-3 py-2.5 rounded-lg text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-teal-500 ${
-                  isDark 
-                    ? 'bg-[#1e2530] border border-gray-600 text-gray-100 placeholder-gray-500'
-                    : 'bg-white border border-gray-200 text-gray-800 placeholder-gray-400'
-                }`}
+                className={fieldClass}
               />
             </div>
           </div>
@@ -501,11 +479,7 @@ export default function EditMasterPage() {
                 value={formData.note}
                 onChange={(e) => setFormData({ ...formData, note: e.target.value })}
                 placeholder="Дополнительная информация"
-                className={`w-full px-3 py-2.5 rounded-lg text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-teal-500 resize-none ${
-                  isDark 
-                    ? 'bg-[#1e2530] border border-gray-600 text-gray-100 placeholder-gray-500'
-                    : 'bg-white border border-gray-200 text-gray-800 placeholder-gray-400'
-                }`}
+                className={`${fieldClass} resize-none`}
               />
             </div>
           </div>

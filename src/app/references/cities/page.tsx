@@ -5,6 +5,7 @@ import { apiClient } from '@/lib/api'
 import { useDesignStore } from '@/store/design.store'
 import { toast } from 'sonner'
 import { Plus, Pencil, Trash2, Check, X } from 'lucide-react'
+import { getFormFieldClass } from '@/components/ui/form-styles'
 
 interface City {
   id: number
@@ -93,11 +94,7 @@ export default function CitiesPage() {
     : 'border border-black/[0.08] bg-white'
   const titleClass = isDark ? 'text-white' : 'text-[#111113]'
   const mutedClass = isDark ? 'text-gray-400' : 'text-gray-500'
-  const inputCls = `w-full min-h-[44px] px-4 py-2 rounded-2xl text-[15px] outline-none ring-0 focus:outline-none focus-visible:outline-none focus:ring-0 focus-visible:ring-0 transition-all shadow-sm ${
-    isDark
-      ? 'bg-white/[0.04] text-white placeholder-white/30 border border-white/15 focus:border-white/30'
-      : 'border border-[#cfd2d8] bg-white text-[#111113] placeholder:text-[#8e8e93] shadow-[0_1px_2px_rgba(15,23,42,0.06)] focus:border-gray-300'
-  }`
+  const inputCls = `${getFormFieldClass(isDark, 'lg')} min-h-[44px] px-4`
   const secondaryButtonCls = isDark
     ? 'rounded-2xl bg-white/[0.04] px-4 py-3 text-sm font-medium text-white transition hover:bg-white/[0.08]'
     : 'rounded-2xl border border-[#cfd2d8] bg-white px-4 py-3 text-sm font-medium text-[#111113] shadow-[0_1px_2px_rgba(15,23,42,0.06)] transition hover:bg-[#f3f4f6]'

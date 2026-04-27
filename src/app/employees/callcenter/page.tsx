@@ -9,6 +9,7 @@ import { logger } from '@/lib/logger'
 import { OptimizedPagination } from '@/components/ui/optimized-pagination'
 import { LoadingState } from '@/components/ui/loading-state'
 import { NetworkError } from '@/components/ui/network-error'
+import { getFormFieldClass } from '@/components/ui/form-styles'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 
 interface Operator {
@@ -249,11 +250,7 @@ export default function CallCenterPage() {
                 value={searchName}
                 onChange={(e) => setSearchName(e.target.value)}
                 placeholder="Введите имя или логин..."
-                className={`w-full px-3 py-2 border rounded-2xl text-sm outline-none ring-0 focus:outline-none focus-visible:outline-none focus:ring-0 focus-visible:ring-0 focus:border-transparent transition-all ${
-                  isDark
-                    ? 'bg-white/[0.04] border-white/15 text-gray-200 placeholder-gray-500 focus:border-white/30'
-                    : 'bg-white border-gray-200 text-gray-800 placeholder-gray-400 focus:border-gray-300'
-                }`}
+                className={`${getFormFieldClass(isDark, 'md')} rounded-2xl text-sm`}
               />
             </div>
 
@@ -263,11 +260,7 @@ export default function CallCenterPage() {
               <select
                 value={statusFilter}
                 onChange={(e) => setStatusFilter(e.target.value as 'active' | 'inactive' | 'all')}
-                className={`w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#0d5c4b] focus:border-transparent transition-all ${
-                  isDark 
-                    ? 'bg-[#1e2530] border-[#0d5c4b]/30 text-gray-200'
-                    : 'bg-white border-gray-200 text-gray-800'
-                }`}
+                className={`${getFormFieldClass(isDark, 'md')} rounded-lg text-sm`}
               >
                 <option value="active">Работает</option>
                 <option value="inactive">Уволен</option>

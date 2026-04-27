@@ -7,6 +7,7 @@ import { OptimizedPagination } from '@/components/ui/optimized-pagination'
 import apiClient from '@/lib/api'
 import { DateRangePicker } from '@/components/ui/date-range-picker'
 import { LoadingState } from '@/components/ui/loading-state'
+import { getFormFieldClass } from '@/components/ui/form-styles'
 
 interface AuditLog {
   id: number
@@ -344,14 +345,14 @@ export default function UserLogsPage() {
                     placeholder="ФИО..."
                     value={draftFullName}
                     onChange={(e) => setDraftFullName(e.target.value)}
-                    className={`w-full min-h-[44px] px-4 py-2 border rounded-2xl text-sm outline-none ring-0 focus:outline-none focus-visible:outline-none focus:ring-0 focus-visible:ring-0 transition-all ${isDark ? 'bg-white/[0.04] border-white/15 text-gray-200 placeholder-gray-500 focus:border-white/30' : 'bg-white border-gray-200 text-gray-800 placeholder-gray-400 focus:border-gray-300'}`}
+                    className={`${getFormFieldClass(isDark, 'lg')} min-h-[44px] px-4 rounded-2xl text-sm`}
                   />
                   <input
                     type="text"
                     placeholder="Логин..."
                     value={draftLogin}
                     onChange={(e) => setDraftLogin(e.target.value)}
-                    className={`w-full min-h-[44px] px-4 py-2 border rounded-2xl text-sm outline-none ring-0 focus:outline-none focus-visible:outline-none focus:ring-0 focus-visible:ring-0 transition-all ${isDark ? 'bg-white/[0.04] border-white/15 text-gray-200 placeholder-gray-500 focus:border-white/30' : 'bg-white border-gray-200 text-gray-800 placeholder-gray-400 focus:border-gray-300'}`}
+                    className={`${getFormFieldClass(isDark, 'lg')} min-h-[44px] px-4 rounded-2xl text-sm`}
                   />
                 </div>
 

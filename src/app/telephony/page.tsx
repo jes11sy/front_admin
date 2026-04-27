@@ -11,6 +11,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { OptimizedPagination } from '@/components/ui/optimized-pagination'
 import { NetworkError } from '@/components/ui/network-error'
 import { LoadingState } from '@/components/ui/loading-state'
+import {
+  getFormFieldClass,
+  getFormSelectContentClass,
+  getFormSelectItemClass,
+  getFormSelectTriggerClass,
+} from '@/components/ui/form-styles'
 
 interface PhoneNumber {
   id: number
@@ -135,11 +141,10 @@ export default function TelephonyPage() {
     })
   }
 
-  const selectTriggerClass = `w-full min-h-[44px] px-4 rounded-2xl text-[15px] shadow-sm outline-none ring-0 focus:outline-none focus-visible:outline-none focus:ring-0 focus-visible:ring-0 data-[state=open]:ring-0 data-[state=open]:ring-offset-0 dark:border-white/15 dark:focus:!border-white/30 dark:data-[state=open]:!border-white/30 ${
-    isDark ? 'bg-white/[0.04] text-white data-[state=open]:border-white/20' : 'border border-[#cfd2d8] bg-white text-[#111113] shadow-[0_1px_2px_rgba(15,23,42,0.06)] focus:border-gray-300 data-[state=open]:border-[#c4c9d1]'
-  }`
-  const selectContentClass = `rounded-2xl border-0 shadow-xl ${isDark ? 'bg-[#1e1e20]' : 'bg-white'}`
-  const selectItemClass = `rounded-xl mx-1 my-0.5 cursor-pointer ${isDark ? 'text-white focus:bg-white/10 focus:text-white' : 'text-[#111113] focus:bg-black/5 focus:text-[#111113]'}`
+  const inputFieldClass = `${getFormFieldClass(isDark, 'lg')} min-h-[44px] px-4`
+  const selectTriggerClass = `${getFormSelectTriggerClass(isDark, 'lg')} min-h-[44px] px-4`
+  const selectContentClass = getFormSelectContentClass(isDark)
+  const selectItemClass = getFormSelectItemClass(isDark)
 
   // Открытие панели фильтров
   const openFiltersPanel = () => {
@@ -264,11 +269,7 @@ export default function TelephonyPage() {
                       value={draftSearchQuery}
                       onChange={(e) => setDraftSearchQuery(e.target.value)}
                       placeholder="Поиск..."
-                      className={`w-full min-h-[44px] px-4 py-2 rounded-2xl text-[15px] outline-none ring-0 focus:outline-none focus-visible:outline-none focus:ring-0 focus-visible:ring-0 transition-all shadow-sm ${
-                        isDark 
-                          ? 'bg-white/[0.04] text-white placeholder-white/30 border border-white/15 focus:border-white/30'
-                          : 'border border-[#cfd2d8] bg-white text-[#111113] placeholder:text-[#8e8e93] shadow-[0_1px_2px_rgba(15,23,42,0.06)] focus:border-gray-300'
-                      }`}
+                      className={inputFieldClass}
                     />
                   </div>
                 </div>

@@ -5,6 +5,7 @@ import { apiClient } from '@/lib/api'
 import { useDesignStore } from '@/store/design.store'
 import { toast } from 'sonner'
 import { Plus, Pencil, Trash2, Check, X, RefreshCw, Shield } from 'lucide-react'
+import { getFormFieldClass } from '@/components/ui/form-styles'
 
 interface Admin {
   id: number
@@ -87,7 +88,7 @@ export default function AdminsPage() {
     catch (e: any) { toast.error(e.message || 'Ошибка удаления') }
   }
 
-  const inputCls = `w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent transition-all ${isDark ? 'bg-[#3a4451] border-gray-600 text-gray-100 placeholder-gray-500' : 'bg-gray-50 border-gray-200 text-gray-800 placeholder-gray-400'}`
+  const inputCls = `${getFormFieldClass(isDark, 'md')} rounded-lg text-sm`
 
   const FormFields = () => (
     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">

@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { LoadingState } from '@/components/ui/loading-state'
 import { NetworkError } from '@/components/ui/network-error'
 import { DateRangePicker } from '@/components/ui/date-range-picker'
+import { getFormFieldClass } from '@/components/ui/form-styles'
 
 interface ApiMasterReport {
   masterId: number
@@ -329,7 +330,7 @@ export default function MastersReportPage() {
                       value={draftSearchQuery}
                       onChange={(e) => setDraftSearchQuery(e.target.value)}
                       placeholder="Имя мастера или город..."
-                      className={`w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent transition-all ${isDark ? 'bg-[#3a4451] border-gray-600 text-gray-200 placeholder-gray-500' : 'bg-gray-50 border-gray-200 text-gray-800 placeholder-gray-400'}`}
+                      className={`${getFormFieldClass(isDark, 'md')} rounded-lg text-sm`}
                     />
                   </div>
 

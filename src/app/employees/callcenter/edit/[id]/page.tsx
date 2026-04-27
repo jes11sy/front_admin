@@ -6,6 +6,7 @@ import { useState, useEffect } from 'react'
 import { apiClient } from '@/lib/api'
 import { toast } from 'sonner'
 import { useDesignStore } from '@/store/design.store'
+import { getFormFieldClass } from '@/components/ui/form-styles'
 
 export default function EditCallCenterEmployeePage() {
   const router = useRouter()
@@ -29,6 +30,7 @@ export default function EditCallCenterEmployeePage() {
   const [existingPassport, setExistingPassport] = useState<string | null>(null)
   const [existingContract, setExistingContract] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(true)
+  const fieldClass = `${getFormFieldClass(isDark, 'md')} rounded-lg text-sm`
 
   // Загрузка данных сотрудника
   useEffect(() => {
@@ -178,11 +180,7 @@ export default function EditCallCenterEmployeePage() {
                   value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                   placeholder="Введите полное имя"
-                  className={`w-full px-3 py-2.5 rounded-lg text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-teal-500 ${
-                    isDark 
-                      ? 'bg-[#1e2530] border border-gray-600 text-gray-100 placeholder-gray-500'
-                      : 'bg-white border border-gray-200 text-gray-800 placeholder-gray-400'
-                  }`}
+                  className={fieldClass}
                 />
               </div>
 
@@ -198,11 +196,7 @@ export default function EditCallCenterEmployeePage() {
                     value={formData.login}
                     onChange={(e) => setFormData({ ...formData, login: e.target.value })}
                     placeholder="Введите логин"
-                    className={`flex-1 px-3 py-2.5 rounded-lg text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-teal-500 ${
-                      isDark 
-                        ? 'bg-[#1e2530] border border-gray-600 text-gray-100 placeholder-gray-500'
-                        : 'bg-white border border-gray-200 text-gray-800 placeholder-gray-400'
-                    }`}
+                    className={fieldClass}
                   />
                   <button 
                     type="button" 
@@ -229,11 +223,7 @@ export default function EditCallCenterEmployeePage() {
                     value={formData.password}
                     onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                     placeholder="Оставьте пустым, чтобы не менять"
-                    className={`flex-1 px-3 py-2.5 rounded-lg text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-teal-500 ${
-                      isDark 
-                        ? 'bg-[#1e2530] border border-gray-600 text-gray-100 placeholder-gray-500'
-                        : 'bg-white border border-gray-200 text-gray-800 placeholder-gray-400'
-                    }`}
+                    className={fieldClass}
                   />
                   <button 
                     type="button" 
@@ -260,11 +250,7 @@ export default function EditCallCenterEmployeePage() {
                   value={formData.sipAddress}
                   onChange={(e) => setFormData({ ...formData, sipAddress: e.target.value })}
                   placeholder="Например: 100"
-                  className={`w-full px-3 py-2.5 rounded-lg text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-teal-500 ${
-                    isDark 
-                      ? 'bg-[#1e2530] border border-gray-600 text-gray-100 placeholder-gray-500'
-                      : 'bg-white border border-gray-200 text-gray-800 placeholder-gray-400'
-                  }`}
+                  className={fieldClass}
                 />
               </div>
 
@@ -276,11 +262,7 @@ export default function EditCallCenterEmployeePage() {
                 <select
                   value={formData.status}
                   onChange={(e) => setFormData({ ...formData, status: e.target.value })}
-                  className={`w-full px-3 py-2.5 rounded-lg text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-teal-500 ${
-                    isDark 
-                      ? 'bg-[#1e2530] border border-gray-600 text-gray-100'
-                      : 'bg-white border border-gray-200 text-gray-800'
-                  }`}
+                  className={fieldClass}
                 >
                   <option value="active">Активен</option>
                   <option value="inactive">Неактивен</option>
@@ -375,11 +357,7 @@ export default function EditCallCenterEmployeePage() {
                 value={formData.note}
                 onChange={(e) => setFormData({ ...formData, note: e.target.value })}
                 placeholder="Дополнительная информация"
-                className={`w-full px-3 py-2.5 rounded-lg text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-teal-500 resize-none ${
-                  isDark 
-                    ? 'bg-[#1e2530] border border-gray-600 text-gray-100 placeholder-gray-500'
-                    : 'bg-white border border-gray-200 text-gray-800 placeholder-gray-400'
-                }`}
+                className={`${fieldClass} resize-none`}
               />
             </div>
           </div>

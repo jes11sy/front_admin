@@ -6,6 +6,7 @@ import { useDesignStore } from '@/store/design.store'
 import { toast } from 'sonner'
 import { OptimizedPagination } from '@/components/ui/optimized-pagination'
 import { Plus, CheckCircle, CreditCard, X } from 'lucide-react'
+import { getFormFieldClass } from '@/components/ui/form-styles'
 
 interface OperatorSalary {
   id: number
@@ -141,7 +142,7 @@ export default function OperatorSalaryPage() {
 
   const totalPages = Math.ceil(total / itemsPerPage)
 
-  const inputCls = `w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent transition-all ${isDark ? 'bg-[#3a4451] border-gray-600 text-gray-100 placeholder-gray-500' : 'bg-gray-50 border-gray-200 text-gray-800 placeholder-gray-400'}`
+  const inputCls = `${getFormFieldClass(isDark, 'md')} rounded-lg text-sm`
 
   return (
     <div>

@@ -8,6 +8,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { LoadingState } from '@/components/ui/loading-state'
 import { NetworkError } from '@/components/ui/network-error'
 import { DateRangePicker } from '@/components/ui/date-range-picker'
+import {
+  getFormFieldClass,
+  getFormSelectContentClass,
+  getFormSelectItemClass,
+  getFormSelectTriggerClass,
+} from '@/components/ui/form-styles'
 
 interface Director {
   id: number
@@ -178,6 +184,10 @@ export default function SalaryPage() {
     totalTurnoverPartner: filteredRecords.reduce((sum, r) => sum + r.turnoverPartner, 0),
     totalSalary: filteredRecords.reduce((sum, r) => sum + r.salary, 0),
   }
+  const filterInputClass = `${getFormFieldClass(isDark, 'md')} rounded-2xl text-sm`
+  const filterSelectTriggerClass = `${getFormSelectTriggerClass(isDark, 'lg')} min-h-[44px] px-4`
+  const filterSelectContentClass = getFormSelectContentClass(isDark)
+  const filterSelectItemClass = getFormSelectItemClass(isDark)
 
   const openFiltersPanel = () => {
     setDraftPeriod(period)
@@ -335,27 +345,25 @@ export default function SalaryPage() {
                     value={draftSearchQuery}
                     onChange={(e) => setDraftSearchQuery(e.target.value)}
                     placeholder="Город или директор..."
-                    className={`w-full px-3 py-2 border rounded-2xl text-sm focus:outline-none focus:ring-2 focus:border-transparent transition-all ${
-                      isDark ? 'bg-white/[0.04] border-white/15 text-gray-100 placeholder-gray-500 focus:ring-white/20' : 'bg-white border-gray-200 text-gray-800 placeholder-gray-400 focus:ring-gray-300'
-                    }`}
+                    className={filterInputClass}
                   />
                 </div>
 
                 <div>
                   <label className={`block text-sm font-medium mb-1 ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>Город</label>
                   <Select value={draftCityFilter || 'all'} onValueChange={(v) => setDraftCityFilter(v === 'all' ? '' : v)}>
-                    <SelectTrigger className={`w-full min-h-[44px] px-4 rounded-2xl text-[15px] shadow-sm focus:outline-none focus-visible:outline-none focus:ring-0 focus-visible:ring-0 ${isDark ? 'bg-white/[0.04] border-white/15 text-gray-100' : 'bg-white border-gray-200 text-gray-800'}`}>
+                    <SelectTrigger className={filterSelectTriggerClass}>
                       <SelectValue placeholder="Все города" />
                     </SelectTrigger>
-                    <SelectContent className={`rounded-2xl border-0 shadow-xl ${isDark ? 'bg-[#1e1e20]' : 'bg-white'}`}>
-                      <SelectItem value="all" className={`rounded-xl mx-1 my-0.5 cursor-pointer ${isDark ? 'text-white focus:bg-white/10 focus:text-white' : 'text-[#111113] focus:bg-black/5 focus:text-[#111113]'}`}>
+                    <SelectContent className={filterSelectContentClass}>
+                      <SelectItem value="all" className={filterSelectItemClass}>
                         Все города
                       </SelectItem>
                       {uniqueCities.map((city) => (
                         <SelectItem
                           key={city.id}
                           value={String(city.id)}
-                          className={`rounded-xl mx-1 my-0.5 cursor-pointer ${isDark ? 'text-white focus:bg-white/10 focus:text-white' : 'text-[#111113] focus:bg-black/5 focus:text-[#111113]'}`}
+                          className={filterSelectItemClass}
                         >
                           {city.name}
                         </SelectItem>
