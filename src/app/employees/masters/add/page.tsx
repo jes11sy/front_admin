@@ -30,7 +30,7 @@ export default function AddMasterPage() {
   const [showCityDropdown, setShowCityDropdown] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
 
-  const availableCities = ['Саратов', 'Энгельс', 'Ульяновск', 'Пенза', 'Тольятти', 'Омск', 'Ярославль']
+  const availableCities = ['Саратов', 'Энгельс', 'Ульяновск', 'Пенза', 'Тольятти', 'Омск', 'Ярославль', 'Липецк']
 
   const filteredCities = availableCities.filter(city =>
     city.toLowerCase().includes(citySearch.toLowerCase()) &&

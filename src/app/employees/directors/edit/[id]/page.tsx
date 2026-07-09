@@ -33,7 +33,7 @@ export default function EditDirectorPage() {
   const [existingContract, setExistingContract] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(true)
 
-  const availableCities = ['Саратов', 'Энгельс', 'Ульяновск', 'Пенза', 'Тольятти', 'Омск', 'Ярославль']
+  const availableCities = ['Саратов', 'Энгельс', 'Ульяновск', 'Пенза', 'Тольятти', 'Омск', 'Ярославль', 'Липецк']
 
   const filteredCities = availableCities.filter(city =>
     city.toLowerCase().includes(citySearch.toLowerCase()) &&

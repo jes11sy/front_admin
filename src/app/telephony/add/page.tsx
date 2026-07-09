@@ -8,7 +8,7 @@ import { useDesignStore } from '@/store/design.store'
 import { toast } from 'sonner'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 
-const ALL_CITIES = ['Саратов', 'Энгельс', 'Ульяновск', 'Пенза', 'Тольятти', 'Омск', 'Ярославль']
+const ALL_CITIES = ['Саратов', 'Энгельс', 'Ульяновск', 'Пенза', 'Тольятти', 'Омск', 'Ярославль', 'Липецк']
 
 export default function AddPhoneNumberPage() {
   const router = useRouter()
